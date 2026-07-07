@@ -7,7 +7,7 @@ import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/coach")({
+export const Route = createFileRoute("/_authenticated/app/coach")({
   component: CoachPage,
 });
 

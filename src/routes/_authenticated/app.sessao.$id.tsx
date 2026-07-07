@@ -7,7 +7,7 @@ import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/sessao/$id")({
+export const Route = createFileRoute("/_authenticated/app/sessao/$id")({
   component: SessionPage,
 });
 

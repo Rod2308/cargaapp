@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/perfil")({
+export const Route = createFileRoute("/_authenticated/app/perfil")({
   component: PerfilPage,
 });
 

@@ -7,7 +7,7 @@ import { Sparkles, Play, Plus, TrendingUp, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/app")({
   component: Dashboard,
 });
 

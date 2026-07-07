@@ -12,7 +12,7 @@ import { ArrowLeft, Play, Plus, Trash2, GripVertical } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/treinos/$id")({
+export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
   component: WorkoutEditor,
 });
 
