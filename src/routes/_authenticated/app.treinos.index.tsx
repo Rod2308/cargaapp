@@ -12,19 +12,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, ChevronRight, Sparkles, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
+  validateSearch: z.object({ ai: z.number().optional() }),
   component: TreinosList,
 });
 
 function TreinosList() {
   const { user } = AuthedRoute.useRouteContext();
-  const qc = useQueryClient();
+  const search = Route.useSearch();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  useEffect(() => {
+    if (search.ai) {
+      setAiOpen(true);
+      navigate({ to: "/app/treinos", search: {}, replace: true });
+    }
+  }, [search.ai, navigate]);
   const [label, setLabel] = useState("A");
   const [name, setName] = useState("");
 
