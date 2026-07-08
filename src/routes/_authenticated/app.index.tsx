@@ -193,7 +193,7 @@ function Dashboard() {
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
 
       {/* Calendário */}
-      <section className="mt-8">
+      <section className="mt-0">
         <h2 className="mb-3 font-display text-xl">Calendário</h2>
         <div className="card-lift p-3">
           <Calendar
@@ -212,7 +212,7 @@ function Dashboard() {
       </section>
 
       {/* Últimas sessões */}
-      <section className="mt-8">
+      <section className="mt-0">
         <h2 className="mb-3 font-display text-xl">Últimas sessões</h2>
         {recent.length === 0 ? (
           <div className="card-lift p-5 text-sm text-muted-foreground">
@@ -246,6 +246,7 @@ function Dashboard() {
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }
