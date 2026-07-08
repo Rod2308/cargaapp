@@ -54,6 +54,30 @@ function SessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateSet = useMutation({
+    mutationFn: async ({ setId, reps, weight_kg }: { setId: string; reps: number; weight_kg: number | null }) => {
+      const { error } = await supabase.from("session_sets").update({ reps, weight_kg }).eq("id", setId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      toast.success("Série atualizada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteSet = useMutation({
+    mutationFn: async (setId: string) => {
+      const { error } = await supabase.from("session_sets").delete().eq("id", setId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      toast.success("Série removida");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const finish = useMutation({
     mutationFn: async (effort: number | null) => {
       const { error } = await supabase.from("sessions").update({ ended_at: new Date().toISOString(), perceived_effort: effort }).eq("id", id);
