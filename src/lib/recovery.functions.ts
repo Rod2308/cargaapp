@@ -132,7 +132,20 @@ SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir 
 Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador.
 Seja direto, cite números concretos do sono e dos esportes quando relevante, use tom motivador mas honesto.`;
 
+    const recAge = profile?.birth_date
+      ? (() => {
+          const b = new Date(profile.birth_date);
+          const n = new Date();
+          let a = n.getFullYear() - b.getFullYear();
+          const m = n.getMonth() - b.getMonth();
+          if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+          return a;
+        })()
+      : null;
+
     const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
+Antropometria: ${profile?.sex ?? "-"}, ${recAge ?? "-"} anos, ${profile?.height_cm ?? "-"}cm, ${profile?.weight_kg ?? "-"}kg · atividade fora do treino: ${profile?.activity_level ?? "-"}
+Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma"}
 Sono (últimos 7 dias): ${sleepSummary}
 Treinos nos últimos 7 dias: ${sessionsThisWeek}
 Últimas sessões (14 dias):
