@@ -58,6 +58,7 @@ export type Database = {
           height_cm: number | null
           id: string
           injuries: string | null
+          invite_code: string | null
           sex: string | null
           updated_at: string
           uses_enhancers: boolean | null
@@ -74,6 +75,7 @@ export type Database = {
           height_cm?: number | null
           id: string
           injuries?: string | null
+          invite_code?: string | null
           sex?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
@@ -90,6 +92,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           injuries?: string | null
+          invite_code?: string | null
           sex?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
@@ -227,6 +230,48 @@ export type Database = {
         }
         Relationships: []
       }
+      trainer_students: {
+        Row: {
+          created_at: string
+          id: string
+          student_id: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          student_id: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          student_id?: string
+          trainer_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       workout_exercises: {
         Row: {
           exercise_id: string
@@ -281,6 +326,7 @@ export type Database = {
       workouts: {
         Row: {
           created_at: string
+          created_by_trainer_id: string | null
           id: string
           label: string
           name: string
@@ -291,6 +337,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by_trainer_id?: string | null
           id?: string
           label: string
           name: string
@@ -301,6 +348,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by_trainer_id?: string | null
           id?: string
           label?: string
           name?: string
@@ -316,10 +364,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invite_code: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_trainer_of: {
+        Args: { _student: string; _trainer: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "trainer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -446,6 +505,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "trainer"],
+    },
   },
 } as const
