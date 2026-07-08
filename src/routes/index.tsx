@@ -37,7 +37,7 @@ function Landing() {
         <Link to="/" className="flex items-center gap-2">
           <picture>
             <source srcSet={logoWebp} type="image/webp" />
-            <img src={logoPng} alt="Cárga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
+            <img src={logoPng} alt="Carga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
           </picture>
         </Link>
 
