@@ -212,20 +212,105 @@ function SessionPage() {
       <Link to="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Voltar
       </Link>
-      <div className="mt-3 flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Sessão em andamento</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
-          </h1>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => {
-          const e = prompt("Como foi o esforço? (1 a 10)");
-          const n = e ? Number(e) : null;
-          finish.mutate(n && n >= 1 && n <= 10 ? n : null);
-        }}>
-          <Flag className="size-4" /> Finalizar
-        </Button>
+      <div className="mt-3">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Sessão em andamento</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+          {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
+        </h1>
+      </div>
+
+      {/* Ações principais */}
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="lg" className="h-12 w-full gap-2 shadow-md">
+              <Flag className="size-5" /> Finalizar treino
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Finalizar treino?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O treino será salvo no seu histórico. Você pode registrar o esforço percebido (opcional).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <EffortPicker
+              onConfirm={(n) => finish.mutate(n)}
+              pending={finish.isPending}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={extraOpen} onOpenChange={setExtraOpen}>
+          <DialogTrigger asChild>
+            <Button size="lg" variant="outline" className="h-12 w-full gap-2">
+              <Plus className="size-5" /> Adicionar exercício
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar exercício extra</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Registre um exercício que você fez além do treino programado.
+              </p>
+              <Select value={extraExerciseId} onValueChange={setExtraExerciseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um exercício" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {allExercises.map((e: any) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name} {e.muscle_group ? `· ${e.muscle_group}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExtraOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={() => {
+                  if (!extraExerciseId) return toast.error("Escolha um exercício");
+                  if (!pendingExtras.includes(extraExerciseId) &&
+                      !(sets as any[]).some((s) => !s.workout_exercise_id && s.exercise_id === extraExerciseId)) {
+                    setPendingExtras((p) => [...p, extraExerciseId]);
+                  }
+                  setExtraExerciseId("");
+                  setExtraOpen(false);
+                }}
+              >
+                Adicionar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="lg" variant="outline" className="h-12 w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <Ban className="size-5" /> Cancelar treino
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar este treino?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A sessão e todas as séries registradas serão descartadas. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => cancelSession.mutate()}
+              >
+                Descartar treino
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {restSeconds !== null && (
