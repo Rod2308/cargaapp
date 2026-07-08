@@ -21,8 +21,9 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
 
     const now = new Date();
     const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const sleepSince = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [{ data: profile }, { data: sessions }] = await Promise.all([
+    const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency")
@@ -37,6 +38,12 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
         .gte("started_at", since.toISOString())
         .order("started_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("sleep_logs")
+        .select("log_date, hours, quality")
+        .eq("user_id", userId)
+        .gte("log_date", sleepSince.toISOString().slice(0, 10))
+        .order("log_date", { ascending: false }),
     ]);
 
     // Se não há treinos nos últimos 14 dias, resposta local (sem IA)
