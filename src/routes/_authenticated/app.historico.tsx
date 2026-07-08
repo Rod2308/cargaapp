@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play } from "lucide-react";
 import { toast } from "sonner";
+import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
