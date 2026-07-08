@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy } from "lucide-react";
+import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getRecoveryAdvice } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -83,6 +85,19 @@ function Dashboard() {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       navigate({ to: "/app/sessao/$id", params: { id: s.id } });
     },
+  });
+
+  // Recuperação inteligente (IA)
+  const fetchRecovery = useServerFn(getRecoveryAdvice);
+  const {
+    data: recovery,
+    isFetching: recoveryLoading,
+    refetch: refetchRecovery,
+  } = useQuery({
+    queryKey: ["recovery", user.id],
+    queryFn: () => fetchRecovery(),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
   });
 
   // Esportes: exercícios do grupo "Esportes" para log rápido do dia
@@ -182,6 +197,12 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Recuperação inteligente (IA) */}
+      <RecoveryCard
+        recovery={recovery}
+        loading={recoveryLoading}
+        onRefresh={() => refetchRecovery()}
+      />
 
       {/* Bento */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
@@ -402,6 +423,74 @@ function Dashboard() {
           </ul>
         )}
       </section>
+      </div>
+    </div>
+  );
+}
+
+type RecoveryData = {
+  status: "recuperado" | "leve" | "cuidado" | "descanso";
+  headline: string;
+  reason: string;
+  recommendation: string;
+};
+
+function RecoveryCard({
+  recovery,
+  loading,
+  onRefresh,
+}: {
+  recovery: RecoveryData | undefined;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const styles: Record<RecoveryData["status"], { bar: string; badge: string; label: string }> = {
+    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Recuperado" },
+    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Treino leve" },
+    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Cuidado" },
+    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
+  };
+  const s = recovery ? styles[recovery.status] : styles.leve;
+
+  return (
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
+      <span className={`absolute inset-y-0 left-0 w-1 ${s.bar}`} aria-hidden />
+      <div className="flex items-start gap-3 pl-2">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${s.badge}`}>
+          <HeartPulse className="size-4" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-eyebrow text-muted-foreground">Recuperação · IA</p>
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
+              aria-label="Recalcular"
+            >
+              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2.5} />
+            </button>
+          </div>
+          {loading && !recovery ? (
+            <p className="mt-1 text-sm text-muted-foreground">Analisando seus últimos treinos…</p>
+          ) : recovery ? (
+            <>
+              <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
+                {recovery.headline}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{recovery.reason}</p>
+              <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-foreground">
+                <span className={`mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.bar}`} />
+                {recovery.recommendation}
+              </p>
+              <span className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.badge}`}>
+                {s.label}
+              </span>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">Sem análise disponível.</p>
+          )}
+        </div>
       </div>
     </div>
   );
