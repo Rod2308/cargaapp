@@ -69,7 +69,23 @@ function Dashboard() {
     },
   });
   const trainedDays = monthSessions.map((s: any) => new Date(s.started_at));
-  const trainedThisMonth = new Set(trainedDays.map((d) => format(d, "yyyy-MM-dd"))).size;
+
+  const today = new Date();
+  const { data: currentMonthSessions = [] } = useQuery({
+    queryKey: ["month-sessions", user.id, today.getFullYear(), today.getMonth()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("started_at")
+        .eq("user_id", user.id)
+        .gte("started_at", startOfMonth(today).toISOString())
+        .lte("started_at", endOfMonth(today).toISOString());
+      return data ?? [];
+    },
+  });
+  const trainedThisMonth = new Set(
+    currentMonthSessions.map((s: any) => format(new Date(s.started_at), "yyyy-MM-dd")),
+  ).size;
 
   const startSession = useMutation({
     mutationFn: async (workoutId: string) => {
