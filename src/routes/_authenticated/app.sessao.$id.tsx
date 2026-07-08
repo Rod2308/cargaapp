@@ -113,6 +113,61 @@ function SessionPage() {
     },
   });
 
+  const cancelSession = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("sessions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      toast.success("Treino cancelado");
+      navigate({ to: "/app" });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Todos exercícios para adicionar extra
+  const { data: allExercises = [] } = useQuery({
+    queryKey: ["all-exercises"],
+    queryFn: async () => {
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group").order("name");
+      return data ?? [];
+    },
+  });
+
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraExerciseId, setExtraExerciseId] = useState<string>("");
+  // Extras adicionados nesta sessão que ainda não têm nenhuma série
+  const [pendingExtras, setPendingExtras] = useState<string[]>([]);
+
+  // Agrupar sets extras (sem workout_exercise_id) por exercise_id
+  const extraGroups = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const s of sets as any[]) {
+      if (!s.workout_exercise_id) {
+        const list = map.get(s.exercise_id) ?? [];
+        list.push(s);
+        map.set(s.exercise_id, list);
+      }
+    }
+    for (const exId of pendingExtras) {
+      if (!map.has(exId)) map.set(exId, []);
+    }
+    return Array.from(map.entries());
+  }, [sets, pendingExtras]);
+
+  // Finaliza a série extra em pending assim que já tiver sido salva pelo servidor
+  useEffect(() => {
+    if (pendingExtras.length === 0) return;
+    const withSets = new Set((sets as any[]).filter((s) => !s.workout_exercise_id).map((s) => s.exercise_id));
+    const stillPending = pendingExtras.filter((id) => !withSets.has(id));
+    if (stillPending.length !== pendingExtras.length) setPendingExtras(stillPending);
+  }, [sets, pendingExtras]);
+
+
+
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused] = useState(false);
