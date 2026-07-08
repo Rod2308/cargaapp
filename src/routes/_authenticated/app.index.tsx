@@ -245,6 +245,16 @@ function Dashboard() {
         onRefresh={() => refetchRecovery()}
       />
 
+      {/* Sono de hoje */}
+      <SleepCard
+        todayHours={todaySleep?.hours ?? null}
+        todayQuality={todaySleep?.quality ?? null}
+        avg7={sleepAvg7}
+        onLog={(hours, quality) => logSleep.mutate({ hours, quality })}
+        pending={logSleep.isPending}
+      />
+
+
       {/* Bento */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
         {/* Start workout — hero tile */}
