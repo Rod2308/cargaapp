@@ -3,12 +3,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote } from "lucide-react";
+import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { useMemo, useState } from "react";
 import { getDailyQuote } from "@/lib/quotes";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -78,6 +83,65 @@ function Dashboard() {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       navigate({ to: "/app/sessao/$id", params: { id: s.id } });
     },
+  });
+
+  // Esportes: exercícios do grupo "Esportes" para log rápido do dia
+  const { data: sports = [] } = useQuery({
+    queryKey: ["sports"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .eq("muscle_group", "Esportes")
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  const [sportOpen, setSportOpen] = useState(false);
+  const [sportId, setSportId] = useState<string>("");
+  const [sportDuration, setSportDuration] = useState<string>("30");
+  const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
+  const logSport = useMutation({
+    mutationFn: async () => {
+      if (!sportId) throw new Error("Escolha um esporte");
+      const dur = Number(sportDuration);
+      if (!dur || dur <= 0) throw new Error("Duração inválida");
+      const startedAt = new Date(`${sportDate}T12:00:00`);
+      const endedAt = new Date(startedAt.getTime() + dur * 60_000);
+      const { data: sess, error: sErr } = await supabase
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          workout_id: null,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          notes: `Esporte · ${dur} min`,
+        })
+        .select()
+        .single();
+      if (sErr) throw sErr;
+      const { error: setErr } = await supabase.from("session_sets").insert({
+        session_id: sess.id,
+        exercise_id: sportId,
+        set_number: 1,
+        reps: dur,
+        completed_at: endedAt.toISOString(),
+      });
+      if (setErr) throw setErr;
+      return sess;
+    },
+    onSuccess: () => {
+      toast.success("Esporte registrado!");
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      setSportOpen(false);
+      setSportId("");
+      setSportDuration("30");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
@@ -166,7 +230,71 @@ function Dashboard() {
           <ArrowUpRight className="mt-auto size-5 self-end" strokeWidth={2.5} />
           <Sparkles className="pointer-events-none absolute -right-2 -top-2 size-16 opacity-15" />
         </Link>
+
+        {/* Registrar esporte do dia */}
+        <button
+          onClick={() => setSportOpen(true)}
+          className="card-lift col-span-2 flex items-center gap-3 p-4 text-left sm:p-5 md:col-span-2"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
+            <Trophy className="size-5" strokeWidth={2.5} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-eyebrow text-muted-foreground">Praticou um esporte?</p>
+            <p className="font-display text-base font-bold leading-tight">Registrar esporte do dia</p>
+          </div>
+          <Plus className="size-5 text-muted-foreground" strokeWidth={2.5} />
+        </button>
       </div>
+
+      {/* Dialog: registrar esporte */}
+      <Dialog open={sportOpen} onOpenChange={setSportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar esporte</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">Esporte / atividade</Label>
+              <Select value={sportId} onValueChange={setSportId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um esporte" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {sports.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Duração (min)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={sportDuration}
+                  onChange={(e) => setSportDuration(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Data</Label>
+                <Input
+                  type="date"
+                  value={sportDate}
+                  onChange={(e) => setSportDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSportOpen(false)}>Cancelar</Button>
+            <Button onClick={() => logSport.mutate()} disabled={logSport.isPending}>
+              <Trophy className="size-4" /> Registrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Meus treinos */}
       <section className="mt-8">
