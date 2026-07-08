@@ -24,10 +24,10 @@ function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-28">
       <Outlet />
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}>
+      <nav className="fixed inset-x-0 bottom-0 z-30 px-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
+        <div className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md">
           {tabs.map(({ to, label, icon: Icon }) => {
             const active = to === "/app" ? location.pathname === "/app" : location.pathname.startsWith(to);
             return (
@@ -35,12 +35,14 @@ function Layout() {
                 key={to}
                 onClick={() => navigate({ to })}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold transition-all",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-soft"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className={cn("size-5", active && "text-accent")} />
-                {label}
+                <Icon className="size-4 shrink-0" />
+                {active && <span className="font-display">{label}</span>}
               </button>
             );
           })}

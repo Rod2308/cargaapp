@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, TrendingUp, Calendar as CalendarIcon, CalendarDays } from "lucide-react";
+import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -61,7 +61,7 @@ function Dashboard() {
     },
   });
   const trainedDays = monthSessions.map((s: any) => new Date(s.started_at));
-
+  const trainedThisMonth = new Set(trainedDays.map((d) => format(d, "yyyy-MM-dd"))).size;
 
   const startSession = useMutation({
     mutationFn: async (workoutId: string) => {
@@ -81,38 +81,103 @@ function Dashboard() {
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
+  const nextWorkout = workouts[0];
 
   return (
     <div className="mx-auto max-w-md px-5 pt-8">
-      <header>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{today}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Oi, {firstName} 👋</h1>
+      {/* Hero */}
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-eyebrow text-muted-foreground">{today}</p>
+          <h1 className="mt-2 font-display text-[2.4rem] leading-[0.95] tracking-tight">
+            Oi,<br />
+            <span className="text-foreground">{firstName}.</span>
+          </h1>
+        </div>
+        <button
+          onClick={() => navigate({ to: "/app/perfil" })}
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground font-display text-sm"
+        >
+          {firstName.slice(0, 1).toUpperCase()}
+        </button>
       </header>
 
-      <section className="mt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Iniciar treino</h2>
-          <Link to="/app/treinos" className="text-xs font-medium text-accent">Ver todos</Link>
-        </div>
-        {workouts.length === 0 ? (
-          <div className="card-soft mt-3 p-6 text-center">
-            <p className="text-sm text-muted-foreground">Você ainda não criou nenhum treino.</p>
+      {/* Bento */}
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        {/* Start workout — hero tile spanning full width */}
+        {nextWorkout ? (
+          <button
+            onClick={() => startSession.mutate(nextWorkout.id)}
+            disabled={startSession.isPending}
+            className="card-ink grid-noise col-span-2 flex flex-col items-start p-5 text-left"
+          >
+            <span className="text-eyebrow text-white/60">Próximo treino</span>
+            <div className="mt-3 flex items-end gap-3">
+              <span className="font-display text-6xl font-black leading-none text-brand">
+                {nextWorkout.label}
+              </span>
+              <span className="mb-1 font-display text-xl leading-tight">{nextWorkout.name}</span>
+            </div>
+            <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
+              <Play className="size-4 fill-current" /> Iniciar agora
+            </span>
+          </button>
+        ) : (
+          <div className="card-lift col-span-2 flex flex-col items-start p-5">
+            <span className="text-eyebrow text-muted-foreground">Comece</span>
+            <p className="mt-2 font-display text-2xl">Monte seu primeiro treino</p>
             <Button className="mt-4" onClick={() => navigate({ to: "/app/treinos" })}>
-              <Plus className="size-4" /> Criar meu primeiro treino
+              <Plus className="size-4" /> Criar treino
             </Button>
           </div>
+        )}
+
+        {/* Streak / stats */}
+        <div className="card-lift flex flex-col p-4">
+          <span className="text-eyebrow text-muted-foreground">Este mês</span>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="font-display text-4xl font-black tabular-nums">{trainedThisMonth}</span>
+            <span className="text-xs text-muted-foreground">treinos</span>
+          </div>
+          <Flame className="mt-auto size-5 self-end text-brand" strokeWidth={2.5} />
+        </div>
+
+        {/* Coach IA */}
+        <Link to="/app/coach" className="card-brand relative flex flex-col overflow-hidden p-4">
+          <span className="text-eyebrow opacity-70">Coach IA</span>
+          <p className="mt-2 font-display text-lg leading-tight">Montar treino automático</p>
+          <ArrowUpRight className="mt-auto size-5 self-end" strokeWidth={2.5} />
+          <Sparkles className="pointer-events-none absolute -right-2 -top-2 size-16 opacity-15" />
+        </Link>
+      </div>
+
+      {/* Meus treinos */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-xl">Meus treinos</h2>
+          <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
+            Ver todos
+          </Link>
+        </div>
+        {workouts.length === 0 ? (
+          <div className="card-lift p-6 text-center text-sm text-muted-foreground">
+            Nenhum treino ainda.
+          </div>
         ) : (
-          <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 -mx-5 px-5">
+          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2">
             {workouts.map((w) => (
-              <div key={w.id} className="card-soft flex min-w-[220px] snap-start flex-col p-4">
-                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-                  {w.label}
-                </span>
-                <h3 className="mt-3 font-semibold leading-tight">{w.name}</h3>
+              <div key={w.id} className="card-lift flex min-w-[210px] snap-start flex-col p-4">
+                <div className="flex items-center gap-2">
+                  <span className="grid size-9 place-items-center rounded-lg bg-primary font-display text-base font-black text-primary-foreground">
+                    {w.label}
+                  </span>
+                  <Dumbbell className="size-4 text-muted-foreground" />
+                </div>
+                <h3 className="mt-3 font-display text-base font-bold leading-tight">{w.name}</h3>
                 {w.notes && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{w.notes}</p>}
                 <div className="mt-4 flex gap-2">
                   <Button size="sm" className="flex-1" onClick={() => startSession.mutate(w.id)} disabled={startSession.isPending}>
-                    <Play className="size-3.5" /> Iniciar
+                    <Play className="size-3.5 fill-current" /> Iniciar
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/treinos/$id", params: { id: w.id } })}>
                     Editar
@@ -124,23 +189,10 @@ function Dashboard() {
         )}
       </section>
 
+      {/* Calendário */}
       <section className="mt-8">
-        <Link to="/app/coach" className="card-soft flex items-center gap-4 p-4 transition-colors hover:bg-secondary/40">
-          <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
-            <Sparkles className="size-5" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold leading-tight">Coach de IA</h3>
-            <p className="text-xs text-muted-foreground">Sugestões de treino, descanso e progressão</p>
-          </div>
-        </Link>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <CalendarDays className="size-4" /> Calendário de treinos
-        </h2>
-        <div className="card-soft p-3">
+        <h2 className="mb-3 font-display text-xl">Calendário</h2>
+        <div className="card-lift p-3">
           <Calendar
             mode="multiple"
             selected={trainedDays}
@@ -148,34 +200,37 @@ function Dashboard() {
             onMonthChange={setMonth}
             locale={ptBR}
             className="pointer-events-auto"
-            modifiersClassNames={{ selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" }}
+            modifiersClassNames={{
+              selected:
+                "!bg-brand !text-brand-foreground !font-bold hover:!bg-brand hover:!text-brand-foreground",
+            }}
           />
-          <p className="mt-2 px-2 text-xs text-muted-foreground">
-            {trainedDays.length} {trainedDays.length === 1 ? "treino" : "treinos"} neste mês
-          </p>
         </div>
       </section>
 
+      {/* Últimas sessões */}
       <section className="mt-8">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <TrendingUp className="size-4" /> Últimas sessões
-        </h2>
+        <h2 className="mb-3 font-display text-xl">Últimas sessões</h2>
         {recent.length === 0 ? (
-          <div className="card-soft p-5 text-sm text-muted-foreground">
+          <div className="card-lift p-5 text-sm text-muted-foreground">
             Nenhuma sessão registrada ainda.
           </div>
         ) : (
           <ul className="space-y-2">
             {recent.map((s: any) => (
-              <li key={s.id} className="card-soft flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-semibold">
+              <li key={s.id} className="card-lift flex items-center justify-between p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-display text-sm font-bold">
                     {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarIcon className="size-3" />
                     {format(new Date(s.started_at), "d MMM, HH:mm", { locale: ptBR })}
-                    {!s.ended_at && <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">em andamento</span>}
+                    {!s.ended_at && (
+                      <span className="ml-1 rounded-full bg-brand/25 px-2 py-0.5 font-semibold text-foreground">
+                        em andamento
+                      </span>
+                    )}
                   </p>
                 </div>
                 {!s.ended_at && (
