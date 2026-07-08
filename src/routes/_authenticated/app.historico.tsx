@@ -34,7 +34,7 @@ function HistoryPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("id, started_at, ended_at, perceived_effort, notes, workout_id, workouts(name, label), session_sets(id)")
+        .select("id, started_at, ended_at, perceived_effort, notes, workout_id, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))")
         .eq("user_id", user.id)
         .order("started_at", { ascending: false });
       return data ?? [];
