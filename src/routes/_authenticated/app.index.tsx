@@ -164,9 +164,9 @@ function Dashboard() {
             Nenhum treino ainda.
           </div>
         ) : (
-          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2">
+          <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 xl:grid-cols-4">
             {workouts.map((w) => (
-              <div key={w.id} className="card-lift flex min-w-[210px] snap-start flex-col p-4">
+              <div key={w.id} className="card-lift flex min-w-[210px] snap-start flex-col p-4 sm:min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="grid size-9 place-items-center rounded-lg bg-primary font-display text-base font-black text-primary-foreground">
                     {w.label}
@@ -188,6 +188,9 @@ function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* Calendário + Últimas sessões side-by-side em lg */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
 
       {/* Calendário */}
       <section className="mt-8">
