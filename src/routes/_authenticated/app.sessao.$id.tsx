@@ -227,7 +227,7 @@ function SessionPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
         </h1>
-        <ElapsedTimer startedAt={session.started_at} />
+        <ElapsedTimer startedAt={session.started_at} endedAt={session.ended_at} />
       </div>
 
       {/* Ações principais */}
@@ -593,24 +593,27 @@ function SetRow({ index, set, onSave, onDelete, unit = "reps", hideWeight = fals
   );
 }
 
-function ElapsedTimer({ startedAt }: { startedAt: string }) {
+function ElapsedTimer({ startedAt, endedAt }: { startedAt: string; endedAt?: string | null }) {
+  const finished = !!endedAt;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (finished) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [finished]);
   const start = new Date(startedAt).getTime();
-  const secs = Math.max(0, Math.floor((now - start) / 1000));
+  const end = finished ? new Date(endedAt!).getTime() : now;
+  const secs = Math.max(0, Math.floor((end - start) / 1000));
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
   const label = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   return (
-    <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1">
-      <Timer className="size-3.5 text-brand" />
+    <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 ${finished ? "border-muted-foreground/30 bg-muted/40" : "border-brand/30 bg-brand/10"}`}>
+      <Timer className={`size-3.5 ${finished ? "text-muted-foreground" : "text-brand"}`} />
       <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{label}</span>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">em treino</span>
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{finished ? "duração total" : "em treino"}</span>
     </div>
   );
 }
