@@ -111,7 +111,7 @@ function TreinosList() {
 
       <AiPlanDialog open={aiOpen} onOpenChange={setAiOpen} />
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
         {!isLoading && workouts.length === 0 && (
           <div className="card-soft p-8 text-center">

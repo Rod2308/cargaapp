@@ -188,7 +188,7 @@ function WorkoutEditor() {
         </Dialog>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 grid gap-3 lg:grid-cols-2">
         {items.length === 0 && (
           <div className="card-soft p-6 text-center text-sm text-muted-foreground">
             Adicione exercícios para começar.
