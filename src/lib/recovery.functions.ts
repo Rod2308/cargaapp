@@ -21,8 +21,9 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
 
     const now = new Date();
     const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const sleepSince = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [{ data: profile }, { data: sessions }] = await Promise.all([
+    const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency")
@@ -37,6 +38,12 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
         .gte("started_at", since.toISOString())
         .order("started_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("sleep_logs")
+        .select("log_date, hours, quality")
+        .eq("user_id", userId)
+        .gte("log_date", sleepSince.toISOString().slice(0, 10))
+        .order("log_date", { ascending: false }),
     ]);
 
     // Se não há treinos nos últimos 14 dias, resposta local (sem IA)
@@ -81,20 +88,38 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       (s: any) => now.getTime() - new Date(s.started_at).getTime() < 7 * 24 * 60 * 60 * 1000,
     ).length;
 
+    // Sono últimos 7 dias
+    const sleepArr = (sleep ?? []) as { log_date: string; hours: number; quality: number | null }[];
+    const sleepAvg =
+      sleepArr.length > 0
+        ? sleepArr.reduce((a, s) => a + Number(s.hours), 0) / sleepArr.length
+        : null;
+    const qualArr = sleepArr.filter((s) => s.quality != null);
+    const qualityAvg =
+      qualArr.length > 0
+        ? qualArr.reduce((a, s) => a + Number(s.quality), 0) / qualArr.length
+        : null;
+    const lastNight = sleepArr[0]?.hours ?? null;
+    const sleepSummary = sleepArr.length
+      ? `média ${sleepAvg!.toFixed(1)}h em ${sleepArr.length} noites${qualityAvg ? `, qualidade média ${qualityAvg.toFixed(1)}/5` : ""}${lastNight != null ? `, última noite ${lastNight}h` : ""}`
+      : "sem registros de sono";
+
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key);
 
     const system = `Você é um coach de musculação especialista em recuperação e periodização, respondendo em português brasileiro.
-Analise volume, frequência, esforço percebido (RPE) e grupos musculares treinados para decidir se o usuário está:
+Analise volume, frequência, esforço percebido (RPE), grupos musculares treinados E SONO para decidir se o usuário está:
 - "recuperado": pronto para treino pesado
 - "leve": pode treinar, mas reduzir intensidade/volume
 - "cuidado": sinais de fadiga, priorizar grupos não trabalhados ou treino leve
-- "descanso": excesso de carga / overreaching → deve descansar hoje
+- "descanso": excesso de carga / overreaching / privação de sono → deve descansar hoje
 Considere: >5 treinos em 7 dias sem folga = alerta; RPE médio >8.5 sustentado = fadiga; mesmo grupo muscular treinado sem 48h de intervalo = risco.
+SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir intensidade ou descansar; 6-7h = treino leve/moderado; 7-9h = ideal; qualidade baixa (≤2/5) sustentada = alerta.
 Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador.
-Seja direto, use tom motivador mas honesto.`;
+Seja direto, cite números concretos do sono quando relevante, use tom motivador mas honesto.`;
 
     const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
+Sono (últimos 7 dias): ${sleepSummary}
 Treinos nos últimos 7 dias: ${sessionsThisWeek}
 Últimas sessões (14 dias):
 ${summary.join("\n")}
@@ -102,9 +127,9 @@ ${summary.join("\n")}
 Retorne JSON:
 {
   "status": "recuperado" | "leve" | "cuidado" | "descanso",
-  "headline": "frase curta (máx 6 palavras) — ex: 'Pronto pra treinar pesado' ou 'Hoje é dia de descanso'",
-  "reason": "1-2 frases explicando com números concretos (ex: 'Você fez 5 treinos essa semana, RPE médio 9')",
-  "recommendation": "1-2 frases com ação prática (ex: 'Vá de perna hoje, poupe peito', 'Descanse ou faça só cardio leve 20min')"
+  "headline": "frase curta (máx 6 palavras) — ex: 'Pronto pra treinar pesado' ou 'Sono baixo, vá leve'",
+  "reason": "1-2 frases com números concretos incluindo sono quando afetar (ex: 'Dormiu média 5.2h e fez 4 treinos essa semana')",
+  "recommendation": "1-2 frases com ação prática (ex: 'Vá de perna hoje, poupe peito', 'Priorize dormir 8h e faça só cardio leve')"
 }`;
 
     try {

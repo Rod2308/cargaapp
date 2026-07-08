@@ -176,6 +176,39 @@ export type Database = {
           },
         ]
       }
+      sleep_logs: {
+        Row: {
+          created_at: string
+          hours: number
+          id: string
+          log_date: string
+          notes: string | null
+          quality: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hours: number
+          id?: string
+          log_date: string
+          notes?: string | null
+          quality?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hours?: number
+          id?: string
+          log_date?: string
+          notes?: string | null
+          quality?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workout_exercises: {
         Row: {
           exercise_id: string
