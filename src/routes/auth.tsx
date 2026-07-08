@@ -74,7 +74,7 @@ function AuthPage() {
           <div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
             <Dumbbell className="size-5" />
           </div>
-          <span className="text-lg font-bold tracking-tight">Cárga</span>
+          <span className="text-lg font-bold tracking-tight">Carga</span>
         </Link>
 
         <h1 className="text-2xl font-bold">Acesse sua conta</h1>
