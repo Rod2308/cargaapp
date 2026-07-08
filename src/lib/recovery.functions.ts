@@ -26,9 +26,10 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
     const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency")
+        .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency, sex, birth_date, height_cm, weight_kg, activity_level, injuries")
         .eq("id", userId)
         .maybeSingle(),
+
       supabase
         .from("sessions")
         .select(
