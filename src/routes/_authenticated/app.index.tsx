@@ -95,7 +95,7 @@ function Dashboard() {
     refetch: refetchRecovery,
   } = useQuery({
     queryKey: ["recovery", user.id],
-    queryFn: () => fetchRecovery({ data: undefined as any }),
+    queryFn: () => fetchRecovery(),
     staleTime: 1000 * 60 * 60,
     retry: false,
   });
