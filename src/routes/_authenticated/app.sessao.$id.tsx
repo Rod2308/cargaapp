@@ -100,15 +100,25 @@ function SessionPage() {
 
   const finish = useMutation({
     mutationFn: async (effort: number | null) => {
-      const { error } = await supabase.from("sessions").update({ ended_at: new Date().toISOString(), perceived_effort: effort }).eq("id", id);
+      const endedAt = new Date();
+      const { error } = await supabase
+        .from("sessions")
+        .update({ ended_at: endedAt.toISOString(), perceived_effort: effort })
+        .eq("id", id);
       if (error) throw error;
+      const startedAt = session?.started_at ? new Date(session.started_at) : endedAt;
+      const mins = Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
+      return { mins };
     },
-    onSuccess: () => {
+    onSuccess: ({ mins }) => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
       qc.invalidateQueries({ queryKey: ["recovery"] });
-      toast.success("Treino finalizado!");
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
+      toast.success(`Treino finalizado — ${label} registrados`);
       navigate({ to: "/app" });
     },
   });
