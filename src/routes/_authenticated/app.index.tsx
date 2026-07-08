@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell } from "lucide-react";
+import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { getDailyQuote } from "@/lib/quotes";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -82,6 +83,7 @@ function Dashboard() {
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
   const nextWorkout = workouts[0];
+  const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
 
   return (
     <div className="app-container pt-8 sm:pt-12">
@@ -101,6 +103,21 @@ function Dashboard() {
           {firstName.slice(0, 1).toUpperCase()}
         </button>
       </header>
+
+      {/* Frase do dia */}
+      <div className="card-lift mt-5 flex items-start gap-3 p-4 sm:p-5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
+          <Quote className="size-4" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-eyebrow text-muted-foreground">Frase do dia</p>
+          <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
+            &ldquo;{dailyQuote.text}&rdquo;
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">— {dailyQuote.author}</p>
+        </div>
+      </div>
+
 
       {/* Bento */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
