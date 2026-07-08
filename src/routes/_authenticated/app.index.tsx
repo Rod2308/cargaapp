@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, TrendingUp, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Sparkles, Play, Plus, TrendingUp, Calendar as CalendarIcon, CalendarDays } from "lucide-react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
