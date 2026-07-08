@@ -480,28 +480,30 @@ function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) =>
 }
 
 
-function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void }) {
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série" }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
   const [weight, setWeight] = useState<string>(String(defaultWeight ?? ""));
   return (
-    <div className="mt-3 grid grid-cols-[1fr_1fr_auto] gap-2 border-t border-border pt-3">
+    <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
       <label className="block">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Reps</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
         <Input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="mt-0.5 h-10" />
       </label>
-      <label className="block">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
-        <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
-      </label>
+      {!hideWeight && (
+        <label className="block">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
+          <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
+        </label>
+      )}
       <Button
         className="mt-4 h-10"
         onClick={() => {
           const r = Number(reps);
           const w = weight === "" ? null : Number(weight);
-          if (r > 0) onLog(r, w);
+          if (r > 0) onLog(r, hideWeight ? null : w);
         }}
       >
-        <Check className="size-4" /> Série
+        <Check className="size-4" /> {actionLabel}
       </Button>
     </div>
   );
