@@ -380,10 +380,94 @@ function SessionPage() {
             </div>
           );
         })}
+
+        {extraGroups.map(([exerciseId, doneSets], idx) => {
+          const ex = allExercises.find((e: any) => e.id === exerciseId);
+          const name = ex?.name ?? "Exercício extra";
+          return (
+            <div key={exerciseId} className="card-soft border border-brand/30 p-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="font-semibold leading-tight">
+                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Extra</span>
+                  {items.length + idx + 1}. {name}
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {doneSets.length} série{doneSets.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {ex?.muscle_group && (
+                <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
+              )}
+              <div className="mt-3 space-y-2">
+                {doneSets.map((s: any, i: number) => (
+                  <SetRow
+                    key={s.id}
+                    index={i}
+                    set={s}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    onDelete={() => deleteSet.mutate(s.id)}
+                  />
+                ))}
+              </div>
+              <SetLogger
+                key={doneSets.length}
+                defaultReps={Number(doneSets.at(-1)?.reps ?? 10)}
+                defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
+                onLog={(reps, weight) => {
+                  logSet.mutate({
+                    session_id: id,
+                    workout_exercise_id: null,
+                    exercise_id: exerciseId,
+                    set_number: doneSets.length + 1,
+                    reps,
+                    weight_kg: weight || null,
+                  });
+                  startRest(60);
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) => void; pending: boolean }) {
+  const [effort, setEffort] = useState<number | null>(null);
+  return (
+    <>
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Esforço percebido (opcional)
+        </p>
+        <div className="grid grid-cols-10 gap-1">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setEffort(effort === n ? null : n)}
+              className={`h-9 rounded-md border text-sm font-semibold transition ${
+                effort === n
+                  ? "border-brand bg-brand text-brand-foreground"
+                  : "border-border bg-background hover:bg-muted"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Voltar</AlertDialogCancel>
+        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort)}>
+          <Flag className="size-4" /> Finalizar
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </>
+  );
+}
+
 
 function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
