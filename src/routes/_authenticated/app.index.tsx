@@ -462,11 +462,12 @@ function Dashboard() {
               <li key={s.id} className="card-lift flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <p className="truncate font-display text-sm font-bold">
-                    {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
+                    {sessionTitle(s)}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarIcon className="size-3" />
                     {format(new Date(s.started_at), "d MMM, HH:mm", { locale: ptBR })}
+                    {sessionSubtitle(s) && <><span>·</span><span>{sessionSubtitle(s)}</span></>}
                     {!s.ended_at && (
                       <span className="ml-1 rounded-full bg-brand/25 px-2 py-0.5 font-semibold text-foreground">
                         em andamento
