@@ -103,27 +103,27 @@ function Dashboard() {
       </header>
 
       {/* Bento */}
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        {/* Start workout — hero tile spanning full width */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
+        {/* Start workout — hero tile */}
         {nextWorkout ? (
           <button
             onClick={() => startSession.mutate(nextWorkout.id)}
             disabled={startSession.isPending}
-            className="card-ink grid-noise col-span-2 flex flex-col items-start p-5 text-left"
+            className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left sm:p-7 md:col-span-2 md:min-h-[280px]"
           >
             <span className="text-eyebrow text-white/60">Próximo treino</span>
-            <div className="mt-3 flex items-end gap-3">
-              <span className="font-display text-6xl font-black leading-none text-brand">
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <span className="font-display text-6xl font-black leading-none text-brand sm:text-7xl md:text-8xl">
                 {nextWorkout.label}
               </span>
-              <span className="mb-1 font-display text-xl leading-tight">{nextWorkout.name}</span>
+              <span className="mb-1 font-display text-xl leading-tight sm:text-2xl">{nextWorkout.name}</span>
             </div>
-            <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
+            <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
               <Play className="size-4 fill-current" /> Iniciar agora
             </span>
           </button>
         ) : (
-          <div className="card-lift col-span-2 flex flex-col items-start p-5">
+          <div className="card-lift col-span-2 row-span-2 flex flex-col items-start p-5 sm:p-7 md:col-span-2">
             <span className="text-eyebrow text-muted-foreground">Comece</span>
             <p className="mt-2 font-display text-2xl">Monte seu primeiro treino</p>
             <Button className="mt-4" onClick={() => navigate({ to: "/app/treinos" })}>
@@ -133,17 +133,17 @@ function Dashboard() {
         )}
 
         {/* Streak / stats */}
-        <div className="card-lift flex flex-col p-4">
+        <div className="card-lift flex flex-col p-4 sm:p-5">
           <span className="text-eyebrow text-muted-foreground">Este mês</span>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="font-display text-4xl font-black tabular-nums">{trainedThisMonth}</span>
+            <span className="font-display text-4xl font-black tabular-nums sm:text-5xl">{trainedThisMonth}</span>
             <span className="text-xs text-muted-foreground">treinos</span>
           </div>
           <Flame className="mt-auto size-5 self-end text-brand" strokeWidth={2.5} />
         </div>
 
         {/* Coach IA */}
-        <Link to="/app/coach" className="card-brand relative flex flex-col overflow-hidden p-4">
+        <Link to="/app/coach" className="card-brand relative flex flex-col overflow-hidden p-4 sm:p-5">
           <span className="text-eyebrow opacity-70">Coach IA</span>
           <p className="mt-2 font-display text-lg leading-tight">Montar treino automático</p>
           <ArrowUpRight className="mt-auto size-5 self-end" strokeWidth={2.5} />
