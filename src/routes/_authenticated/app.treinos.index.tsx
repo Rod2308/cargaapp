@@ -23,10 +23,17 @@ export const Route = createFileRoute("/_authenticated/app/treinos/")({
 
 function TreinosList() {
   const { user } = AuthedRoute.useRouteContext();
-  const qc = useQueryClient();
+  const search = Route.useSearch();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  useEffect(() => {
+    if (search.ai) {
+      setAiOpen(true);
+      navigate({ to: "/app/treinos", search: {}, replace: true });
+    }
+  }, [search.ai, navigate]);
   const [label, setLabel] = useState("A");
   const [name, setName] = useState("");
 
