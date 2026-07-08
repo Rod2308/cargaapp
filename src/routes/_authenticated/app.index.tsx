@@ -546,3 +546,142 @@ function RecoveryCard({
     </div>
   );
 }
+
+function SleepCard({
+  todayHours,
+  todayQuality,
+  avg7,
+  onLog,
+  pending,
+}: {
+  todayHours: number | null;
+  todayQuality: number | null;
+  avg7: number | null;
+  onLog: (hours: number, quality?: number | null) => void;
+  pending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hours, setHours] = useState<string>(todayHours != null ? String(todayHours) : "8");
+  const [quality, setQuality] = useState<number>(todayQuality ?? 4);
+
+  const status =
+    todayHours == null
+      ? { color: "bg-muted", label: "Sem registro" }
+      : todayHours < 6
+        ? { color: "bg-destructive", label: "Pouco sono" }
+        : todayHours < 7
+          ? { color: "bg-amber-500", label: "Sono baixo" }
+          : todayHours <= 9
+            ? { color: "bg-emerald-500", label: "Sono ideal" }
+            : { color: "bg-brand", label: "Muito sono" };
+
+  const quick = [5, 6, 7, 8, 9];
+
+  return (
+    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+      <span className={`absolute inset-y-0 left-0 w-1 ${status.color}`} aria-hidden />
+      <div className="flex items-start gap-3 pl-2">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
+          <span className="text-lg leading-none">💤</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-eyebrow text-muted-foreground">Sono de hoje</p>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {avg7 != null ? `média 7d ${avg7.toFixed(1)}h` : "sem histórico"}
+            </span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-black tabular-nums text-foreground">
+              {todayHours != null ? `${todayHours}h` : "—"}
+            </span>
+            <span className="text-xs text-muted-foreground">{status.label}</span>
+            {todayQuality != null && (
+              <span className="text-xs text-muted-foreground">· qualidade {todayQuality}/5</span>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {quick.map((h) => (
+              <button
+                key={h}
+                onClick={() => onLog(h, quality)}
+                disabled={pending}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  todayHours === h
+                    ? "border-brand bg-brand text-brand-foreground"
+                    : "border-border bg-background hover:bg-secondary"
+                }`}
+              >
+                {h}h
+              </button>
+            ))}
+            <button
+              onClick={() => setOpen(true)}
+              className="rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold hover:bg-secondary"
+            >
+              Ajustar…
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar sono de hoje</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">Horas dormidas</Label>
+              <Input
+                type="number"
+                step="0.5"
+                min={0}
+                max={24}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Qualidade (1-5)</Label>
+              <div className="mt-1 flex gap-2">
+                {[1, 2, 3, 4, 5].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setQuality(q)}
+                    className={`h-10 flex-1 rounded-md border text-sm font-semibold ${
+                      quality === q
+                        ? "border-brand bg-brand text-brand-foreground"
+                        : "border-border bg-background hover:bg-secondary"
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                const h = Number(hours);
+                if (!h || h <= 0 || h > 24) {
+                  toast.error("Horas inválidas");
+                  return;
+                }
+                onLog(h, quality);
+                setOpen(false);
+              }}
+              disabled={pending}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
