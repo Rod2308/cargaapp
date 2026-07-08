@@ -197,6 +197,12 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Recuperação inteligente (IA) */}
+      <RecoveryCard
+        recovery={recovery}
+        loading={recoveryLoading}
+        onRefresh={() => refetchRecovery()}
+      />
 
       {/* Bento */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
