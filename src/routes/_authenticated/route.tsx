@@ -26,8 +26,8 @@ function Layout() {
   return (
     <div className="min-h-screen bg-background pb-28">
       <Outlet />
-      <nav className="fixed inset-x-0 bottom-0 z-30 px-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
-        <div className="mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md">
+      <nav className="fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
+        <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md sm:max-w-lg">
           {tabs.map(({ to, label, icon: Icon }) => {
             const active = to === "/app" ? location.pathname === "/app" : location.pathname.startsWith(to);
             return (

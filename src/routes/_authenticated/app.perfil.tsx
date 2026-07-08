@@ -49,7 +49,7 @@ function PerfilPage() {
   if (!profile) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-8">
+    <div className="app-container max-w-2xl pt-8 sm:max-w-2xl">
       <h1 className="text-3xl font-bold tracking-tight">Perfil</h1>
       <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
 

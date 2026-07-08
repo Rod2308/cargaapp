@@ -64,7 +64,7 @@ function TreinosList() {
   });
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-8">
+    <div className="app-container pt-8">
       <header className="flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meus treinos</h1>
@@ -111,7 +111,7 @@ function TreinosList() {
 
       <AiPlanDialog open={aiOpen} onOpenChange={setAiOpen} />
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
         {!isLoading && workouts.length === 0 && (
           <div className="card-soft p-8 text-center">

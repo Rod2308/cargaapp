@@ -141,6 +141,22 @@
   opacity: 0.9;
 }
 
+@utility app-container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 28rem; /* md */
+  padding-inline: 1.25rem;
+}
+@media (min-width: 640px) {
+  .app-container { max-width: 42rem; padding-inline: 1.75rem; }
+}
+@media (min-width: 1024px) {
+  .app-container { max-width: 64rem; padding-inline: 2.5rem; }
+}
+@media (min-width: 1280px) {
+  .app-container { max-width: 72rem; }
+}
+
 @utility grid-noise {
   &::before {
     content: "";

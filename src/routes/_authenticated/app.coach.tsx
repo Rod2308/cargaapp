@@ -40,7 +40,7 @@ function CoachPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-8">
+    <div className="app-container pt-8">
       <div className="flex items-center gap-3">
         <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
           <Sparkles className="size-5" />
