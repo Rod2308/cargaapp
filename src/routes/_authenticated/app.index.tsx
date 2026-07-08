@@ -70,16 +70,16 @@ function Dashboard() {
   });
   const trainedDays = monthSessions.map((s: any) => new Date(s.started_at));
 
-  const today = new Date();
+  const todayForMonth = new Date();
   const { data: currentMonthSessions = [] } = useQuery({
-    queryKey: ["month-sessions", user.id, today.getFullYear(), today.getMonth()],
+    queryKey: ["month-sessions", user.id, todayForMonth.getFullYear(), todayForMonth.getMonth()],
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
         .select("started_at")
         .eq("user_id", user.id)
-        .gte("started_at", startOfMonth(today).toISOString())
-        .lte("started_at", endOfMonth(today).toISOString());
+        .gte("started_at", startOfMonth(todayForMonth).toISOString())
+        .lte("started_at", endOfMonth(todayForMonth).toISOString());
       return data ?? [];
     },
   });
