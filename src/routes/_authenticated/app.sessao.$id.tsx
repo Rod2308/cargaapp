@@ -3,8 +3,28 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/sessao/$id")({
@@ -93,6 +113,61 @@ function SessionPage() {
     },
   });
 
+  const cancelSession = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("sessions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      toast.success("Treino cancelado");
+      navigate({ to: "/app" });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Todos exercícios para adicionar extra
+  const { data: allExercises = [] } = useQuery({
+    queryKey: ["all-exercises"],
+    queryFn: async () => {
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group").order("name");
+      return data ?? [];
+    },
+  });
+
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraExerciseId, setExtraExerciseId] = useState<string>("");
+  // Extras adicionados nesta sessão que ainda não têm nenhuma série
+  const [pendingExtras, setPendingExtras] = useState<string[]>([]);
+
+  // Agrupar sets extras (sem workout_exercise_id) por exercise_id
+  const extraGroups = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const s of sets as any[]) {
+      if (!s.workout_exercise_id) {
+        const list = map.get(s.exercise_id) ?? [];
+        list.push(s);
+        map.set(s.exercise_id, list);
+      }
+    }
+    for (const exId of pendingExtras) {
+      if (!map.has(exId)) map.set(exId, []);
+    }
+    return Array.from(map.entries());
+  }, [sets, pendingExtras]);
+
+  // Finaliza a série extra em pending assim que já tiver sido salva pelo servidor
+  useEffect(() => {
+    if (pendingExtras.length === 0) return;
+    const withSets = new Set((sets as any[]).filter((s) => !s.workout_exercise_id).map((s) => s.exercise_id));
+    const stillPending = pendingExtras.filter((id) => !withSets.has(id));
+    if (stillPending.length !== pendingExtras.length) setPendingExtras(stillPending);
+  }, [sets, pendingExtras]);
+
+
+
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -137,20 +212,105 @@ function SessionPage() {
       <Link to="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Voltar
       </Link>
-      <div className="mt-3 flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Sessão em andamento</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
-          </h1>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => {
-          const e = prompt("Como foi o esforço? (1 a 10)");
-          const n = e ? Number(e) : null;
-          finish.mutate(n && n >= 1 && n <= 10 ? n : null);
-        }}>
-          <Flag className="size-4" /> Finalizar
-        </Button>
+      <div className="mt-3">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Sessão em andamento</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+          {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
+        </h1>
+      </div>
+
+      {/* Ações principais */}
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="lg" className="h-12 w-full gap-2 shadow-md">
+              <Flag className="size-5" /> Finalizar treino
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Finalizar treino?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O treino será salvo no seu histórico. Você pode registrar o esforço percebido (opcional).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <EffortPicker
+              onConfirm={(n) => finish.mutate(n)}
+              pending={finish.isPending}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={extraOpen} onOpenChange={setExtraOpen}>
+          <DialogTrigger asChild>
+            <Button size="lg" variant="outline" className="h-12 w-full gap-2">
+              <Plus className="size-5" /> Adicionar exercício
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar exercício extra</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Registre um exercício que você fez além do treino programado.
+              </p>
+              <Select value={extraExerciseId} onValueChange={setExtraExerciseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um exercício" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {allExercises.map((e: any) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name} {e.muscle_group ? `· ${e.muscle_group}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExtraOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={() => {
+                  if (!extraExerciseId) return toast.error("Escolha um exercício");
+                  if (!pendingExtras.includes(extraExerciseId) &&
+                      !(sets as any[]).some((s) => !s.workout_exercise_id && s.exercise_id === extraExerciseId)) {
+                    setPendingExtras((p) => [...p, extraExerciseId]);
+                  }
+                  setExtraExerciseId("");
+                  setExtraOpen(false);
+                }}
+              >
+                Adicionar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="lg" variant="outline" className="h-12 w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <Ban className="size-5" /> Cancelar treino
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar este treino?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A sessão e todas as séries registradas serão descartadas. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => cancelSession.mutate()}
+              >
+                Descartar treino
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {restSeconds !== null && (
@@ -220,10 +380,94 @@ function SessionPage() {
             </div>
           );
         })}
+
+        {extraGroups.map(([exerciseId, doneSets], idx) => {
+          const ex = allExercises.find((e: any) => e.id === exerciseId);
+          const name = ex?.name ?? "Exercício extra";
+          return (
+            <div key={exerciseId} className="card-soft border border-brand/30 p-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="font-semibold leading-tight">
+                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Extra</span>
+                  {items.length + idx + 1}. {name}
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {doneSets.length} série{doneSets.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {ex?.muscle_group && (
+                <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
+              )}
+              <div className="mt-3 space-y-2">
+                {doneSets.map((s: any, i: number) => (
+                  <SetRow
+                    key={s.id}
+                    index={i}
+                    set={s}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    onDelete={() => deleteSet.mutate(s.id)}
+                  />
+                ))}
+              </div>
+              <SetLogger
+                key={doneSets.length}
+                defaultReps={Number(doneSets.at(-1)?.reps ?? 10)}
+                defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
+                onLog={(reps, weight) => {
+                  logSet.mutate({
+                    session_id: id,
+                    workout_exercise_id: null,
+                    exercise_id: exerciseId,
+                    set_number: doneSets.length + 1,
+                    reps,
+                    weight_kg: weight || null,
+                  });
+                  startRest(60);
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) => void; pending: boolean }) {
+  const [effort, setEffort] = useState<number | null>(null);
+  return (
+    <>
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Esforço percebido (opcional)
+        </p>
+        <div className="grid grid-cols-10 gap-1">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setEffort(effort === n ? null : n)}
+              className={`h-9 rounded-md border text-sm font-semibold transition ${
+                effort === n
+                  ? "border-brand bg-brand text-brand-foreground"
+                  : "border-border bg-background hover:bg-muted"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Voltar</AlertDialogCancel>
+        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort)}>
+          <Flag className="size-4" /> Finalizar
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </>
+  );
+}
+
 
 function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
