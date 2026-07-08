@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dumbbell, Sparkles, Timer, TrendingUp, ArrowRight } from "lucide-react";
+import logoUrl from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -26,12 +27,10 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2">
-          <div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Dumbbell className="size-5" />
-          </div>
-          <span className="text-lg font-bold tracking-tight">Cárga</span>
-        </div>
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logoUrl} alt="Cárga" width={140} height={56} className="h-8 w-auto" />
+        </Link>
+
         <Link to="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground">
           Entrar
         </Link>
