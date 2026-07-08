@@ -128,6 +128,23 @@ export const generatePlan = createServerFn({ method: "POST" })
     if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
     const { supabase, userId } = context;
 
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("sex, birth_date, height_cm, weight_kg, activity_level, injuries")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const planAge = userProfile?.birth_date
+      ? (() => {
+          const b = new Date(userProfile.birth_date);
+          const n = new Date();
+          let a = n.getFullYear() - b.getFullYear();
+          const m = n.getMonth() - b.getMonth();
+          if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+          return a;
+        })()
+      : null;
+
     // Biblioteca de exercícios disponível
     const { data: exercisesLib } = await supabase
       .from("exercises")
@@ -141,6 +158,7 @@ export const generatePlan = createServerFn({ method: "POST" })
     const catalog = (exercisesLib ?? [])
       .map((e) => `- ${e.name} [${e.muscle_group}${e.equipment ? ` · ${e.equipment}` : ""}]`)
       .join("\n");
+
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider(key);
@@ -167,9 +185,14 @@ Use APENAS exercícios da biblioteca fornecida — copie o nome EXATAMENTE. Resp
     const prompt = `Monte um plano semanal com ${data.days_per_week} treino(s) para:
 - Objetivo: ${data.goal}
 - Nível: ${data.experience}
+- Sexo: ${userProfile?.sex ?? "-"} · Idade: ${planAge ?? "-"}
+- Altura: ${userProfile?.height_cm ?? "-"} cm · Peso: ${userProfile?.weight_kg ?? "-"} kg
+- Atividade diária fora do treino: ${userProfile?.activity_level ?? "-"}
+- Lesões / limitações: ${userProfile?.injuries?.trim() || "nenhuma"} (EVITE exercícios que agravem essas áreas; sugira variações seguras)
 - Duração por sessão: ${data.session_minutes} minutos
 - Equipamento disponível: ${equipment}
 - Usa ergogênicos: ${data.uses_enhancers ? "sim (aumente volume)" : "não"}${focus}
+
 
 Rotule os treinos como A, B, C, D, E, F ou G conforme a quantidade de dias.
 Cada treino: nome curto descritivo (ex: "Peito e tríceps"), notas breves com dicas, e lista de exercícios.
