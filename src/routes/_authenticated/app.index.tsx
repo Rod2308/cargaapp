@@ -138,6 +138,26 @@ function Dashboard() {
 
       <section className="mt-8">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <CalendarDays className="size-4" /> Calendário de treinos
+        </h2>
+        <div className="card-soft p-3">
+          <Calendar
+            mode="multiple"
+            selected={trainedDays}
+            month={month}
+            onMonthChange={setMonth}
+            locale={ptBR}
+            className="pointer-events-auto"
+            modifiersClassNames={{ selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" }}
+          />
+          <p className="mt-2 px-2 text-xs text-muted-foreground">
+            {trainedDays.length} {trainedDays.length === 1 ? "treino" : "treinos"} neste mês
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <TrendingUp className="size-4" /> Últimas sessões
         </h2>
         {recent.length === 0 ? (
