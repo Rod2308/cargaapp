@@ -100,6 +100,47 @@ function Dashboard() {
     retry: false,
   });
 
+  // Sono — últimos 7 dias e log de hoje
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const { data: sleepLogs = [] } = useQuery({
+    queryKey: ["sleep-logs", user.id],
+    queryFn: async () => {
+      const since = format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+      const { data } = await supabase
+        .from("sleep_logs")
+        .select("log_date, hours, quality")
+        .eq("user_id", user.id)
+        .gte("log_date", since)
+        .order("log_date", { ascending: false });
+      return data ?? [];
+    },
+  });
+  const todaySleep = sleepLogs.find((s: any) => s.log_date === todayStr);
+  const sleepAvg7 =
+    sleepLogs.length > 0
+      ? sleepLogs.reduce((a: number, s: any) => a + Number(s.hours), 0) / sleepLogs.length
+      : null;
+
+  const logSleep = useMutation({
+    mutationFn: async ({ hours, quality }: { hours: number; quality?: number | null }) => {
+      const { error } = await supabase
+        .from("sleep_logs")
+        .upsert(
+          { user_id: user.id, log_date: todayStr, hours, quality: quality ?? null },
+          { onConflict: "user_id,log_date" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Sono registrado!");
+      qc.invalidateQueries({ queryKey: ["sleep-logs"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
+
   // Esportes: exercícios do grupo "Esportes" para log rápido do dia
   const { data: sports = [] } = useQuery({
     queryKey: ["sports"],
