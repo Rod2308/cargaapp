@@ -217,6 +217,7 @@ function SessionPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
         </h1>
+        <ElapsedTimer startedAt={session.started_at} />
       </div>
 
       {/* Ações principais */}
