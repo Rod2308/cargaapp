@@ -85,6 +85,65 @@ function Dashboard() {
     },
   });
 
+  // Esportes: exercícios do grupo "Esportes" para log rápido do dia
+  const { data: sports = [] } = useQuery({
+    queryKey: ["sports"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .eq("muscle_group", "Esportes")
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  const [sportOpen, setSportOpen] = useState(false);
+  const [sportId, setSportId] = useState<string>("");
+  const [sportDuration, setSportDuration] = useState<string>("30");
+  const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
+  const logSport = useMutation({
+    mutationFn: async () => {
+      if (!sportId) throw new Error("Escolha um esporte");
+      const dur = Number(sportDuration);
+      if (!dur || dur <= 0) throw new Error("Duração inválida");
+      const startedAt = new Date(`${sportDate}T12:00:00`);
+      const endedAt = new Date(startedAt.getTime() + dur * 60_000);
+      const { data: sess, error: sErr } = await supabase
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          workout_id: null,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          notes: `Esporte · ${dur} min`,
+        })
+        .select()
+        .single();
+      if (sErr) throw sErr;
+      const { error: setErr } = await supabase.from("session_sets").insert({
+        session_id: sess.id,
+        exercise_id: sportId,
+        set_number: 1,
+        reps: dur,
+        completed_at: endedAt.toISOString(),
+      });
+      if (setErr) throw setErr;
+      return sess;
+    },
+    onSuccess: () => {
+      toast.success("Esporte registrado!");
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      setSportOpen(false);
+      setSportId("");
+      setSportDuration("30");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
   const nextWorkout = workouts[0];
