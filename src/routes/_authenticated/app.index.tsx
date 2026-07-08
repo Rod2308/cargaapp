@@ -153,7 +153,7 @@ function Dashboard() {
                     {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="size-3" />
+                    <CalendarIcon className="size-3" />
                     {format(new Date(s.started_at), "d MMM, HH:mm", { locale: ptBR })}
                     {!s.ended_at && <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">em andamento</span>}
                   </p>
