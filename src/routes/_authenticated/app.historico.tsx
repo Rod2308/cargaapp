@@ -87,18 +87,19 @@ function HistoryPage() {
                 {list.map((s: any) => {
                   const done = !!s.ended_at;
                   const setsCount = s.session_sets?.length ?? 0;
+                  const subtitle = sessionSubtitle(s);
                   return (
                     <li key={s.id} className="card-lift flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="truncate font-display text-sm font-bold">
-                          {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
+                          {sessionTitle(s)}
                         </p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                           <CalendarIcon className="size-3" />
                           {format(new Date(s.started_at), "d MMM yyyy · HH:mm", { locale: ptBR })}
-                          <span>·</span>
-                          <span>{setsCount} série{setsCount === 1 ? "" : "s"}</span>
+                          {subtitle ? <><span>·</span><span>{subtitle}</span></> : (setsCount > 0 && <><span>·</span><span>{setsCount} série{setsCount === 1 ? "" : "s"}</span></>)}
                           {s.perceived_effort && <><span>·</span><span>RPE {s.perceived_effort}</span></>}
+                          {s.notes && <><span>·</span><span className="truncate">{s.notes}</span></>}
                           {!done && (
                             <span className="ml-1 rounded-full bg-brand/25 px-2 py-0.5 font-semibold text-foreground">
                               em andamento
