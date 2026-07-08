@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy } from "lucide-react";
+import { Sparkles, Play, Plus, ArrowUpRight, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getRecoveryAdvice } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
