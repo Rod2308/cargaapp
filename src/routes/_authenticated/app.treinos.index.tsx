@@ -64,7 +64,7 @@ function TreinosList() {
   });
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-8">
+    <div className="app-container pt-8">
       <header className="flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meus treinos</h1>

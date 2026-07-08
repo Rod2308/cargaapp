@@ -122,7 +122,7 @@ function WorkoutEditor() {
   if (!workout) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-6">
+    <div className="app-container pt-6">
       <Link to="/app/treinos" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Voltar
       </Link>
