@@ -568,3 +568,25 @@ function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onS
     </div>
   );
 }
+
+function ElapsedTimer({ startedAt }: { startedAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const start = new Date(startedAt).getTime();
+  const secs = Math.max(0, Math.floor((now - start) / 1000));
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const label = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return (
+    <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1">
+      <Timer className="size-3.5 text-brand" />
+      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{label}</span>
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">em treino</span>
+    </div>
+  );
+}
