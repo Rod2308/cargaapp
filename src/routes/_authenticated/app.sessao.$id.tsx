@@ -385,18 +385,23 @@ function SessionPage() {
         {extraGroups.map(([exerciseId, doneSets], idx) => {
           const ex = allExercises.find((e: any) => e.id === exerciseId);
           const name = ex?.name ?? "Exercício extra";
+          const isSport = ex?.muscle_group === "Esportes";
           return (
             <div key={exerciseId} className="card-soft border border-brand/30 p-4">
               <div className="flex items-baseline justify-between">
                 <h2 className="font-semibold leading-tight">
-                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Extra</span>
+                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+                    {isSport ? "Esporte" : "Extra"}
+                  </span>
                   {items.length + idx + 1}. {name}
                 </h2>
                 <span className="text-xs text-muted-foreground">
-                  {doneSets.length} série{doneSets.length === 1 ? "" : "s"}
+                  {isSport
+                    ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
+                    : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
                 </span>
               </div>
-              {ex?.muscle_group && (
+              {ex?.muscle_group && !isSport && (
                 <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
               )}
               <div className="mt-3 space-y-2">
@@ -405,15 +410,20 @@ function SessionPage() {
                     key={s.id}
                     index={i}
                     set={s}
-                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    unit={isSport ? "min" : "reps"}
+                    hideWeight={isSport}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg: isSport ? null : weight_kg })}
                     onDelete={() => deleteSet.mutate(s.id)}
                   />
                 ))}
               </div>
               <SetLogger
                 key={doneSets.length}
-                defaultReps={Number(doneSets.at(-1)?.reps ?? 10)}
+                defaultReps={Number(doneSets.at(-1)?.reps ?? (isSport ? 30 : 10))}
                 defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
+                repsLabel={isSport ? "Minutos" : "Reps"}
+                hideWeight={isSport}
+                actionLabel={isSport ? "Registrar" : "Série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
@@ -421,9 +431,9 @@ function SessionPage() {
                     exercise_id: exerciseId,
                     set_number: doneSets.length + 1,
                     reps,
-                    weight_kg: weight || null,
+                    weight_kg: isSport ? null : (weight || null),
                   });
-                  startRest(60);
+                  if (!isSport) startRest(60);
                 }}
               />
             </div>
