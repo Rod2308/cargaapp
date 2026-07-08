@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, Dumbbell, Sparkles, User, History } from "lucide-react";
+import { Home, Dumbbell, Sparkles, User, History, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -8,22 +8,28 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+    const isTrainer = (roles ?? []).some((r: { role: string }) => r.role === "trainer");
+    return { user: data.user, isTrainer };
   },
   component: Layout,
 });
 
-const tabs = [
-  { to: "/app", label: "Início", icon: Home },
-  { to: "/app/treinos", label: "Treinos", icon: Dumbbell },
-  { to: "/app/historico", label: "Histórico", icon: History },
-  { to: "/app/coach", label: "Coach", icon: Sparkles },
-  { to: "/app/perfil", label: "Perfil", icon: User },
-] as const;
-
 function Layout() {
+  const { isTrainer } = Route.useRouteContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const tabs = [
+    { to: "/app", label: "Início", icon: Home },
+    { to: "/app/treinos", label: "Treinos", icon: Dumbbell },
+    ...(isTrainer ? [{ to: "/app/alunos", label: "Alunos", icon: Users }] : []),
+    { to: "/app/historico", label: "Histórico", icon: History },
+    { to: "/app/coach", label: "Coach", icon: Sparkles },
+    { to: "/app/perfil", label: "Perfil", icon: User },
+  ] as const;
   return (
     <div className="min-h-screen bg-background pb-28">
       <Outlet />

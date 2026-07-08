@@ -98,6 +98,7 @@ const PlanInput = z.object({
   focus: z.string().max(200).optional(),
   uses_enhancers: z.boolean().default(false),
   replace_existing: z.boolean().default(false),
+  for_user_id: z.string().uuid().optional(),
 });
 
 const PlanSchema = z.object({
@@ -128,10 +129,22 @@ export const generatePlan = createServerFn({ method: "POST" })
     if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
     const { supabase, userId } = context;
 
+    // Se `for_user_id` foi passado, o professor está gerando para um aluno.
+    // Valida vínculo e usa o id do aluno como alvo.
+    const targetUserId = data.for_user_id ?? userId;
+    const trainerId = data.for_user_id ? userId : null;
+    if (data.for_user_id && data.for_user_id !== userId) {
+      const { data: linked } = await supabase.rpc("is_trainer_of", {
+        _trainer: userId,
+        _student: data.for_user_id,
+      });
+      if (!linked) throw new Error("Você não é professor deste aluno.");
+    }
+
     const { data: userProfile } = await supabase
       .from("profiles")
       .select("sex, birth_date, height_cm, weight_kg, activity_level, injuries")
-      .eq("id", userId)
+      .eq("id", targetUserId)
       .maybeSingle();
 
     const planAge = userProfile?.birth_date
@@ -238,14 +251,14 @@ Retorne JSON no formato:
 
     // Se o usuário optou por substituir, apaga treinos existentes
     if (data.replace_existing) {
-      await supabase.from("workouts").delete().eq("user_id", userId);
+      await supabase.from("workouts").delete().eq("user_id", targetUserId);
     }
 
     // Descobre próximo order_idx
     const { data: existing } = await supabase
       .from("workouts")
       .select("order_idx")
-      .eq("user_id", userId)
+      .eq("user_id", targetUserId)
       .order("order_idx", { ascending: false })
       .limit(1);
     let nextIdx = (existing?.[0]?.order_idx ?? -1) + 1;
@@ -256,11 +269,12 @@ Retorne JSON no formato:
       const { data: w, error: werr } = await supabase
         .from("workouts")
         .insert({
-          user_id: userId,
+          user_id: targetUserId,
           label: (split.label || "?").slice(0, 3).toUpperCase(),
           name: split.name.slice(0, 80),
           notes: split.notes?.slice(0, 400) ?? null,
           order_idx: nextIdx++,
+          created_by_trainer_id: trainerId,
         })
         .select("id, label, name")
         .single();
@@ -271,7 +285,7 @@ Retorne JSON no formato:
         const ex = split.exercises[i];
         let hit = libByName.get(ex.name.toLowerCase());
         if (!hit) {
-          // Cria exercício custom para o usuário se a IA inventou algo fora da lib
+          // Cria exercício custom se a IA inventou algo fora da lib
           const { data: newEx } = await supabase
             .from("exercises")
             .insert({
@@ -297,16 +311,19 @@ Retorne JSON no formato:
       }
     }
 
-    // Atualiza perfil com objetivo/frequência se ainda estiver vazio
-    await supabase
-      .from("profiles")
-      .update({
-        goal: data.goal,
-        weekly_frequency: data.days_per_week,
-        experience_level: data.experience,
-        uses_enhancers: data.uses_enhancers,
-      })
-      .eq("id", userId);
+    // Só atualiza o perfil quando o próprio usuário está gerando pra si
+    if (!data.for_user_id) {
+      await supabase
+        .from("profiles")
+        .update({
+          goal: data.goal,
+          weekly_frequency: data.days_per_week,
+          experience_level: data.experience,
+          uses_enhancers: data.uses_enhancers,
+        })
+        .eq("id", userId);
+    }
 
     return { overview: plan.overview, workouts: created };
   });
+

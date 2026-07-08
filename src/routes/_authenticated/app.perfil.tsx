@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/app/perfil")({
 });
 
 function PerfilPage() {
-  const { user } = AuthedRoute.useRouteContext();
+  const { user, isTrainer } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -64,6 +64,36 @@ function PerfilPage() {
     <div className="app-container max-w-2xl pt-8 sm:max-w-2xl">
       <h1 className="text-3xl font-bold tracking-tight">Perfil</h1>
       <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+
+      {isTrainer ? (
+        <div className="card-soft mt-5 flex items-center gap-3 p-4">
+          <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground text-lg">👨‍🏫</div>
+          <div className="flex-1">
+            <p className="font-semibold">Você é professor(a)</p>
+            <p className="text-xs text-muted-foreground">Acesse a aba <b>Alunos</b> para vincular e enviar treinos.</p>
+          </div>
+        </div>
+      ) : (
+        profile.invite_code && (
+          <div className="card-soft mt-5 p-4">
+            <p className="text-eyebrow text-muted-foreground">Seu código de convite</p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="font-display text-2xl font-black tracking-widest">{profile.invite_code}</p>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(profile.invite_code!);
+                  toast.success("Código copiado");
+                }}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
+              >
+                Copiar
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Envie ao seu professor para receber treinos direto no app.</p>
+          </div>
+        )
+      )}
+
 
       <div className="card-soft mt-6 space-y-5 p-5">
         <div className="space-y-1.5">

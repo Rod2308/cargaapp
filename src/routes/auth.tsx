@@ -18,6 +18,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"student" | "trainer">("student");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/app`,
-        data: { display_name: name || email.split("@")[0] },
+        data: { display_name: name || email.split("@")[0], role },
       },
     });
     setBusy(false);
@@ -113,6 +114,30 @@ function AuthPage() {
           </TabsContent>
           <TabsContent value="signup">
             <form onSubmit={signUp} className="space-y-4 pt-4">
+              <div className="space-y-1.5">
+                <Label>Sou...</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { v: "student", label: "Aluno(a)", desc: "Vou treinar" },
+                    { v: "trainer", label: "Professor(a)", desc: "Monto treinos" },
+                  ].map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.v}
+                      onClick={() => setRole(opt.v as "student" | "trainer")}
+                      className={
+                        "rounded-lg border p-3 text-left transition-colors " +
+                        (role === opt.v
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-secondary/40")
+                      }
+                    >
+                      <p className="text-sm font-semibold">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label>Nome</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como podemos te chamar?" />
