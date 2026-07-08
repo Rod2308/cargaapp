@@ -66,14 +66,23 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       let sets = 0;
       let avgRpe = 0;
       let rpeCount = 0;
+      let sportMinutes = 0;
+      const sportsList = new Set<string>();
       for (const st of s.session_sets ?? []) {
-        sets++;
-        totalVolume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
+        const mg = st.exercises?.muscle_group;
+        const isSport = mg === "Esportes";
+        if (isSport) {
+          // Em esportes: reps = minutos, sem carga
+          sportMinutes += Number(st.reps) || 0;
+          if (st.exercises?.name) sportsList.add(st.exercises.name);
+        } else {
+          sets++;
+          totalVolume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
+        }
         if (st.rpe) {
           avgRpe += Number(st.rpe);
           rpeCount++;
         }
-        const mg = st.exercises?.muscle_group;
         if (mg) musclesMap.set(mg, (musclesMap.get(mg) ?? 0) + 1);
       }
       const muscles = Array.from(musclesMap.entries())
@@ -81,7 +90,10 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
         .map(([m, n]) => `${m}(${n})`)
         .join(", ");
       const daysAgo = Math.floor((now.getTime() - new Date(s.started_at).getTime()) / (24 * 60 * 60 * 1000));
-      return `- há ${daysAgo}d: ${s.workouts?.label ?? "livre"} ${s.workouts?.name ?? ""} · ${sets} séries · vol ${Math.round(totalVolume)}kg · ${durationMin ? durationMin + " min" : "sem duração"} · esforço ${s.perceived_effort ?? "?"}${rpeCount ? " · RPE médio " + (avgRpe / rpeCount).toFixed(1) : ""} · músculos: ${muscles || "-"}`;
+      const sportPart = sportMinutes > 0
+        ? ` · esporte ${sportMinutes}min (${Array.from(sportsList).join("/")})`
+        : "";
+      return `- há ${daysAgo}d: ${s.workouts?.label ?? "livre"} ${s.workouts?.name ?? ""} · ${sets} séries · vol ${Math.round(totalVolume)}kg${sportPart} · ${durationMin ? durationMin + " min total" : "sem duração"} · esforço ${s.perceived_effort ?? "?"}${rpeCount ? " · RPE médio " + (avgRpe / rpeCount).toFixed(1) : ""} · músculos: ${muscles || "-"}`;
     });
 
     const sessionsThisWeek = sessions.filter(
@@ -114,9 +126,10 @@ Analise volume, frequência, esforço percebido (RPE), grupos musculares treinad
 - "cuidado": sinais de fadiga, priorizar grupos não trabalhados ou treino leve
 - "descanso": excesso de carga / overreaching / privação de sono → deve descansar hoje
 Considere: >5 treinos em 7 dias sem folga = alerta; RPE médio >8.5 sustentado = fadiga; mesmo grupo muscular treinado sem 48h de intervalo = risco.
+ESPORTES (futebol, vôlei, corrida etc — grupo "Esportes", medidos em minutos) somam carga cardiovascular/sistêmica e fadiga de MMII: >90min de esporte intenso nas últimas 48h ou esporte + treino de perna no mesmo/dia seguinte = fadiga acumulada, reduzir volume de pernas/glúteos; contam também na contagem semanal de "treinos".
 SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir intensidade ou descansar; 6-7h = treino leve/moderado; 7-9h = ideal; qualidade baixa (≤2/5) sustentada = alerta.
 Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador.
-Seja direto, cite números concretos do sono quando relevante, use tom motivador mas honesto.`;
+Seja direto, cite números concretos do sono e dos esportes quando relevante, use tom motivador mas honesto.`;
 
     const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
 Sono (últimos 7 dias): ${sleepSummary}
