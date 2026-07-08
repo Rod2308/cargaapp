@@ -47,6 +47,22 @@ function Dashboard() {
     },
   });
 
+  const [month, setMonth] = useState(new Date());
+  const { data: monthSessions = [] } = useQuery({
+    queryKey: ["month-sessions", user.id, month.getFullYear(), month.getMonth()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("started_at")
+        .eq("user_id", user.id)
+        .gte("started_at", startOfMonth(month).toISOString())
+        .lte("started_at", endOfMonth(month).toISOString());
+      return data ?? [];
+    },
+  });
+  const trainedDays = monthSessions.map((s: any) => new Date(s.started_at));
+
+
   const startSession = useMutation({
     mutationFn: async (workoutId: string) => {
       const { data, error } = await supabase
