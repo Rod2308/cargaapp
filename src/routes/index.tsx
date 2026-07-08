@@ -2,11 +2,18 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dumbbell, Sparkles, Timer, TrendingUp, ArrowRight } from "lucide-react";
-import logoUrl from "@/assets/logo.png";
+import logoWebp from "@/assets/logo.png?format=webp&quality=80&w=280&imagetools";
+import logoPng from "@/assets/logo.png?w=280&imagetools";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    links: [
+      { rel: "preload", as: "image", href: logoWebp, type: "image/webp", fetchpriority: "high" },
+    ],
+  }),
   component: Landing,
 });
+
 
 function Landing() {
   const navigate = useNavigate();
@@ -28,8 +35,12 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logoUrl} alt="Cárga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
+          <picture>
+            <source srcSet={logoWebp} type="image/webp" />
+            <img src={logoPng} alt="Cárga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
+          </picture>
         </Link>
+
 
         <Link to="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground">
           Entrar
