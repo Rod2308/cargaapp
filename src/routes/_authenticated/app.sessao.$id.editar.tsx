@@ -53,7 +53,7 @@ function EditSessionPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("session_sets")
-        .select("id, exercise_id, workout_exercise_id, set_number, reps, weight_kg, exercises(name)")
+        .select("id, exercise_id, workout_exercise_id, set_number, reps, weight_kg, exercises(name, muscle_group)")
         .eq("session_id", id)
         .order("completed_at");
       return (data ?? []) as SetRow[];
