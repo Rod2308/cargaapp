@@ -7,8 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
+
+function calcAge(birth?: string | null) {
+  if (!birth) return null;
+  const b = new Date(birth);
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
 
 export const Route = createFileRoute("/_authenticated/app/perfil")({
   component: PerfilPage,
@@ -61,6 +73,61 @@ function PerfilPage() {
             onBlur={(e) => e.target.value !== (profile.display_name ?? "") && update.mutate({ display_name: e.target.value })}
           />
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Sexo biológico</Label>
+            <Select value={profile.sex ?? undefined} onValueChange={(v) => update.mutate({ sex: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="masculino">Masculino</SelectItem>
+                <SelectItem value="feminino">Feminino</SelectItem>
+                <SelectItem value="outro">Outro / prefiro não dizer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data de nascimento{profile.birth_date ? ` · ${calcAge(profile.birth_date)} anos` : ""}</Label>
+            <Input
+              type="date"
+              defaultValue={profile.birth_date ?? ""}
+              max={new Date().toISOString().slice(0, 10)}
+              onBlur={(e) => e.target.value !== (profile.birth_date ?? "") && update.mutate({ birth_date: e.target.value || null })}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Altura (cm)</Label>
+            <Input
+              type="number"
+              step="0.1"
+              min={100}
+              max={250}
+              defaultValue={profile.height_cm ?? ""}
+              onBlur={(e) => {
+                const n = e.target.value ? Number(e.target.value) : null;
+                if (n !== profile.height_cm && (n === null || (n >= 100 && n <= 250))) update.mutate({ height_cm: n });
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Peso (kg)</Label>
+            <Input
+              type="number"
+              step="0.1"
+              min={30}
+              max={300}
+              defaultValue={profile.weight_kg ?? ""}
+              onBlur={(e) => {
+                const n = e.target.value ? Number(e.target.value) : null;
+                if (n !== profile.weight_kg && (n === null || (n >= 30 && n <= 300))) update.mutate({ weight_kg: n });
+              }}
+            />
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label>Nível de experiência</Label>
           <Select value={profile.experience_level ?? "iniciante"} onValueChange={(v) => update.mutate({ experience_level: v })}>
@@ -85,6 +152,19 @@ function PerfilPage() {
           </Select>
         </div>
         <div className="space-y-1.5">
+          <Label>Nível de atividade fora do treino</Label>
+          <Select value={profile.activity_level ?? undefined} onValueChange={(v) => update.mutate({ activity_level: v })}>
+            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sedentario">Sedentário (trabalho parado, pouca caminhada)</SelectItem>
+              <SelectItem value="leve">Leve (caminhadas ocasionais)</SelectItem>
+              <SelectItem value="moderado">Moderado (em pé / andando boa parte do dia)</SelectItem>
+              <SelectItem value="ativo">Ativo (trabalho físico ou muitos passos)</SelectItem>
+              <SelectItem value="muito_ativo">Muito ativo (trabalho braçal pesado)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
           <Label>Frequência semanal (dias)</Label>
           <Input
             type="number"
@@ -96,6 +176,16 @@ function PerfilPage() {
               if (n >= 1 && n <= 7 && n !== profile.weekly_frequency) update.mutate({ weekly_frequency: n });
             }}
           />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Lesões, dores ou limitações</Label>
+          <Textarea
+            rows={3}
+            placeholder="Ex.: dor lombar, tendinite no ombro direito, joelho sensível a agachamento profundo…"
+            defaultValue={profile.injuries ?? ""}
+            onBlur={(e) => e.target.value !== (profile.injuries ?? "") && update.mutate({ injuries: e.target.value || null })}
+          />
+          <p className="text-xs text-muted-foreground">O coach evita movimentos que agravem essas áreas.</p>
         </div>
         <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
           <div>
