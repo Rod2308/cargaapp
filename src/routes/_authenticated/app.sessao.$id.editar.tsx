@@ -174,6 +174,13 @@ function EditSessionPage() {
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
           {format(new Date(session.started_at), "d 'de' MMMM 'de' yyyy · HH:mm", { locale: ptBR })}
+          {session.ended_at && (() => {
+            const mins = Math.max(0, Math.round((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000));
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
+            return <> · <span className="font-semibold text-foreground">{label}</span> de duração</>;
+          })()}
         </p>
       </div>
 
