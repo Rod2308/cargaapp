@@ -49,34 +49,52 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_level: string | null
+          birth_date: string | null
           created_at: string
           display_name: string | null
           experience_level: string | null
           goal: string | null
+          height_cm: number | null
           id: string
+          injuries: string | null
+          sex: string | null
           updated_at: string
           uses_enhancers: boolean | null
           weekly_frequency: number | null
+          weight_kg: number | null
         }
         Insert: {
+          activity_level?: string | null
+          birth_date?: string | null
           created_at?: string
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
+          height_cm?: number | null
           id: string
+          injuries?: string | null
+          sex?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
+          weight_kg?: number | null
         }
         Update: {
+          activity_level?: string | null
+          birth_date?: string | null
           created_at?: string
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
+          height_cm?: number | null
           id?: string
+          injuries?: string | null
+          sex?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
+          weight_kg?: number | null
         }
         Relationships: []
       }
