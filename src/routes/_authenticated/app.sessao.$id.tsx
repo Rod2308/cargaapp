@@ -157,7 +157,7 @@ function SessionPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Alvo: {it.target_sets}×{it.target_reps}
-                {it.target_weight_kg && ` @ ${it.target_weight_kg}kg`} · descanso {it.target_rest_seconds}s
+                {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
               </p>
 
               <div className="mt-3 space-y-2">
