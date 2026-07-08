@@ -509,7 +509,7 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
   );
 }
 
-function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void }) {
+function SetRow({ index, set, onSave, onDelete, unit = "reps", hideWeight = false }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void; unit?: string; hideWeight?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [reps, setReps] = useState<string>(String(set.reps ?? ""));
   const [weight, setWeight] = useState<string>(set.weight_kg != null ? String(set.weight_kg) : "");
@@ -523,14 +523,14 @@ function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onS
     return (
       <div className="flex items-center gap-2 text-sm">
         <Check className="size-4 shrink-0 text-success" />
-        <span className="text-muted-foreground">Série {index + 1}:</span>
-        <span className="font-semibold">{set.reps} reps</span>
-        {set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+        <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
+        <span className="font-semibold">{set.reps} {unit}</span>
+        {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
         <div className="ml-auto flex gap-1">
-          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar série">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
             <Pencil className="size-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir série">
+          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
             <Trash2 className="size-3.5" />
           </Button>
         </div>
@@ -540,24 +540,26 @@ function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onS
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
-      <span className="text-xs text-muted-foreground">S{index + 1}</span>
+      <span className="text-xs text-muted-foreground">{unit === "min" ? "B" : "S"}{index + 1}</span>
       <Input
         type="number"
         inputMode="numeric"
         value={reps}
         onChange={(e) => setReps(e.target.value)}
-        className="h-8 w-16"
-        placeholder="reps"
-      />
-      <Input
-        type="number"
-        inputMode="decimal"
-        step="0.5"
-        value={weight}
-        onChange={(e) => setWeight(e.target.value)}
         className="h-8 w-20"
-        placeholder="kg"
+        placeholder={unit}
       />
+      {!hideWeight && (
+        <Input
+          type="number"
+          inputMode="decimal"
+          step="0.5"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          className="h-8 w-20"
+          placeholder="kg"
+        />
+      )}
       <div className="ml-auto flex gap-1">
         <Button
           size="icon"
