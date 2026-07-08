@@ -230,7 +230,71 @@ function Dashboard() {
           <ArrowUpRight className="mt-auto size-5 self-end" strokeWidth={2.5} />
           <Sparkles className="pointer-events-none absolute -right-2 -top-2 size-16 opacity-15" />
         </Link>
+
+        {/* Registrar esporte do dia */}
+        <button
+          onClick={() => setSportOpen(true)}
+          className="card-lift col-span-2 flex items-center gap-3 p-4 text-left sm:p-5 md:col-span-2"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground">
+            <Trophy className="size-5" strokeWidth={2.5} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-eyebrow text-muted-foreground">Praticou um esporte?</p>
+            <p className="font-display text-base font-bold leading-tight">Registrar esporte do dia</p>
+          </div>
+          <Plus className="size-5 text-muted-foreground" strokeWidth={2.5} />
+        </button>
       </div>
+
+      {/* Dialog: registrar esporte */}
+      <Dialog open={sportOpen} onOpenChange={setSportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar esporte</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">Esporte / atividade</Label>
+              <Select value={sportId} onValueChange={setSportId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um esporte" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {sports.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Duração (min)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={sportDuration}
+                  onChange={(e) => setSportDuration(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Data</Label>
+                <Input
+                  type="date"
+                  value={sportDate}
+                  onChange={(e) => setSportDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSportOpen(false)}>Cancelar</Button>
+            <Button onClick={() => logSport.mutate()} disabled={logSport.isPending}>
+              <Trophy className="size-4" /> Registrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Meus treinos */}
       <section className="mt-8">
