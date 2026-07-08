@@ -186,12 +186,13 @@ function SessionPage() {
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
-                  <div key={s.id} className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-success" />
-                    <span className="text-muted-foreground">Série {i + 1}:</span>
-                    <span className="font-semibold">{s.reps} reps</span>
-                    {s.weight_kg && <span className="font-semibold">· {s.weight_kg} kg</span>}
-                  </div>
+                  <SetRow
+                    key={s.id}
+                    index={i}
+                    set={s}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    onDelete={() => deleteSet.mutate(s.id)}
+                  />
                 ))}
               </div>
 
