@@ -213,7 +213,12 @@ function Dashboard() {
 
       {/* Últimas sessões */}
       <section className="mt-0">
-        <h2 className="mb-3 font-display text-xl">Últimas sessões</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-xl">Últimas sessões</h2>
+          <Link to="/app/historico" className="text-xs font-semibold text-foreground underline underline-offset-4">
+            Ver histórico
+          </Link>
+        </div>
         {recent.length === 0 ? (
           <div className="card-lift p-5 text-sm text-muted-foreground">
             Nenhuma sessão registrada ainda.
@@ -221,7 +226,7 @@ function Dashboard() {
         ) : (
           <ul className="space-y-2">
             {recent.map((s: any) => (
-              <li key={s.id} className="card-lift flex items-center justify-between p-4">
+              <li key={s.id} className="card-lift flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <p className="truncate font-display text-sm font-bold">
                     {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
@@ -236,11 +241,17 @@ function Dashboard() {
                     )}
                   </p>
                 </div>
-                {!s.ended_at && (
-                  <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
-                    Continuar
-                  </Button>
-                )}
+                <div className="flex shrink-0 gap-2">
+                  {!s.ended_at ? (
+                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
+                      Continuar
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/sessao/$id/editar", params: { id: s.id } })}>
+                      Editar
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
