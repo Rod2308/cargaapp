@@ -85,6 +85,9 @@ function SessionPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
       toast.success("Treino finalizado!");
       navigate({ to: "/app" });
     },
