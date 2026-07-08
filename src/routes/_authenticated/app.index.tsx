@@ -84,7 +84,7 @@ function Dashboard() {
   const nextWorkout = workouts[0];
 
   return (
-    <div className="mx-auto max-w-md px-5 pt-8">
+    <div className="app-container pt-8 sm:pt-12">
       {/* Hero */}
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
