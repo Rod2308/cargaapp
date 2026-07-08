@@ -32,7 +32,7 @@ type SetRow = {
   set_number: number;
   reps: number | null;
   weight_kg: number | null;
-  exercises?: { name: string };
+  exercises?: { name: string; muscle_group?: string | null };
 };
 
 function EditSessionPage() {
@@ -53,7 +53,7 @@ function EditSessionPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("session_sets")
-        .select("id, exercise_id, workout_exercise_id, set_number, reps, weight_kg, exercises(name)")
+        .select("id, exercise_id, workout_exercise_id, set_number, reps, weight_kg, exercises(name, muscle_group)")
         .eq("session_id", id)
         .order("completed_at");
       return (data ?? []) as SetRow[];
@@ -212,9 +212,14 @@ function EditSessionPage() {
         )}
         {Array.from(groups.entries()).map(([key, list]) => {
           const name = list[0].exercises?.name ?? "Exercício";
+          const isSport = list[0].exercises?.muscle_group === "Esportes";
+          const repsLabel = isSport ? "Minutos" : "Reps";
           return (
             <div key={key} className="card-soft p-4">
-              <h2 className="font-display text-base font-bold">{name}</h2>
+              <h2 className="font-display text-base font-bold">
+                {name}
+                {isSport && <span className="ml-2 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Esporte</span>}
+              </h2>
               <div className="mt-3 space-y-2">
                 {list.map((s, i) => {
                   const draft = edited[s.id] ?? {
@@ -223,10 +228,10 @@ function EditSessionPage() {
                   };
                   const dirty = !!edited[s.id];
                   return (
-                    <div key={s.id} className="grid grid-cols-[auto_1fr_1fr_auto_auto] items-end gap-2">
+                    <div key={s.id} className={`grid items-end gap-2 ${isSport ? "grid-cols-[auto_1fr_auto_auto]" : "grid-cols-[auto_1fr_1fr_auto_auto]"}`}>
                       <span className="pb-2 text-xs text-muted-foreground tabular-nums">#{i + 1}</span>
                       <label className="block">
-                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Reps</span>
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
                         <Input
                           type="number"
                           inputMode="numeric"
@@ -237,19 +242,21 @@ function EditSessionPage() {
                           className="mt-0.5 h-9"
                         />
                       </label>
-                      <label className="block">
-                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Kg</span>
-                        <Input
-                          type="number"
-                          inputMode="decimal"
-                          step="0.5"
-                          value={draft.weight_kg}
-                          onChange={(e) =>
-                            setEdited((prev) => ({ ...prev, [s.id]: { ...draft, weight_kg: e.target.value } }))
-                          }
-                          className="mt-0.5 h-9"
-                        />
-                      </label>
+                      {!isSport && (
+                        <label className="block">
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Kg</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.5"
+                            value={draft.weight_kg}
+                            onChange={(e) =>
+                              setEdited((prev) => ({ ...prev, [s.id]: { ...draft, weight_kg: e.target.value } }))
+                            }
+                            className="mt-0.5 h-9"
+                          />
+                        </label>
+                      )}
                       <Button
                         size="sm"
                         variant={dirty ? "default" : "outline"}
