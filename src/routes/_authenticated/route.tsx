@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, Dumbbell, Sparkles, User } from "lucide-react";
+import { Home, Dumbbell, Sparkles, User, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated")({
 const tabs = [
   { to: "/app", label: "Início", icon: Home },
   { to: "/app/treinos", label: "Treinos", icon: Dumbbell },
+  { to: "/app/historico", label: "Histórico", icon: History },
   { to: "/app/coach", label: "Coach", icon: Sparkles },
   { to: "/app/perfil", label: "Perfil", icon: User },
 ] as const;
