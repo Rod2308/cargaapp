@@ -166,7 +166,7 @@ function SessionPage() {
                     <Check className="size-4 text-success" />
                     <span className="text-muted-foreground">Série {i + 1}:</span>
                     <span className="font-semibold">{s.reps} reps</span>
-                    {s.weight_kg && <span className="font-semibold">@ {s.weight_kg} kg</span>}
+                    {s.weight_kg && <span className="font-semibold">· {s.weight_kg} kg</span>}
                   </div>
                 ))}
               </div>
