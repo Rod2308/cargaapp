@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Plus, TrendingUp, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Sparkles, Play, Plus, TrendingUp, Calendar as CalendarIcon, CalendarDays } from "lucide-react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -44,6 +46,22 @@ function Dashboard() {
       return data ?? [];
     },
   });
+
+  const [month, setMonth] = useState(new Date());
+  const { data: monthSessions = [] } = useQuery({
+    queryKey: ["month-sessions", user.id, month.getFullYear(), month.getMonth()],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("started_at")
+        .eq("user_id", user.id)
+        .gte("started_at", startOfMonth(month).toISOString())
+        .lte("started_at", endOfMonth(month).toISOString());
+      return data ?? [];
+    },
+  });
+  const trainedDays = monthSessions.map((s: any) => new Date(s.started_at));
+
 
   const startSession = useMutation({
     mutationFn: async (workoutId: string) => {
@@ -120,6 +138,26 @@ function Dashboard() {
 
       <section className="mt-8">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <CalendarDays className="size-4" /> Calendário de treinos
+        </h2>
+        <div className="card-soft p-3">
+          <Calendar
+            mode="multiple"
+            selected={trainedDays}
+            month={month}
+            onMonthChange={setMonth}
+            locale={ptBR}
+            className="pointer-events-auto"
+            modifiersClassNames={{ selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground" }}
+          />
+          <p className="mt-2 px-2 text-xs text-muted-foreground">
+            {trainedDays.length} {trainedDays.length === 1 ? "treino" : "treinos"} neste mês
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <TrendingUp className="size-4" /> Últimas sessões
         </h2>
         {recent.length === 0 ? (
@@ -135,7 +173,7 @@ function Dashboard() {
                     {s.workouts ? `Treino ${s.workouts.label} — ${s.workouts.name}` : "Treino livre"}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="size-3" />
+                    <CalendarIcon className="size-3" />
                     {format(new Date(s.started_at), "d MMM, HH:mm", { locale: ptBR })}
                     {!s.ended_at && <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">em andamento</span>}
                   </p>
