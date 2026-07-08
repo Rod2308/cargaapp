@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag } from "lucide-react";
+import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,6 +51,30 @@ function SessionPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session-sets", id] }),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateSet = useMutation({
+    mutationFn: async ({ setId, reps, weight_kg }: { setId: string; reps: number; weight_kg: number | null }) => {
+      const { error } = await supabase.from("session_sets").update({ reps, weight_kg }).eq("id", setId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      toast.success("Série atualizada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteSet = useMutation({
+    mutationFn: async (setId: string) => {
+      const { error } = await supabase.from("session_sets").delete().eq("id", setId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      toast.success("Série removida");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -162,12 +186,13 @@ function SessionPage() {
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
-                  <div key={s.id} className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-success" />
-                    <span className="text-muted-foreground">Série {i + 1}:</span>
-                    <span className="font-semibold">{s.reps} reps</span>
-                    {s.weight_kg && <span className="font-semibold">· {s.weight_kg} kg</span>}
-                  </div>
+                  <SetRow
+                    key={s.id}
+                    index={i}
+                    set={s}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    onDelete={() => deleteSet.mutate(s.id)}
+                  />
                 ))}
               </div>
 
@@ -220,6 +245,78 @@ function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number;
       >
         <Check className="size-4" /> Série
       </Button>
+    </div>
+  );
+}
+
+function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [reps, setReps] = useState<string>(String(set.reps ?? ""));
+  const [weight, setWeight] = useState<string>(set.weight_kg != null ? String(set.weight_kg) : "");
+
+  useEffect(() => {
+    setReps(String(set.reps ?? ""));
+    setWeight(set.weight_kg != null ? String(set.weight_kg) : "");
+  }, [set.reps, set.weight_kg]);
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <Check className="size-4 shrink-0 text-success" />
+        <span className="text-muted-foreground">Série {index + 1}:</span>
+        <span className="font-semibold">{set.reps} reps</span>
+        {set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+        <div className="ml-auto flex gap-1">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar série">
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir série">
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
+      <span className="text-xs text-muted-foreground">S{index + 1}</span>
+      <Input
+        type="number"
+        inputMode="numeric"
+        value={reps}
+        onChange={(e) => setReps(e.target.value)}
+        className="h-8 w-16"
+        placeholder="reps"
+      />
+      <Input
+        type="number"
+        inputMode="decimal"
+        step="0.5"
+        value={weight}
+        onChange={(e) => setWeight(e.target.value)}
+        className="h-8 w-20"
+        placeholder="kg"
+      />
+      <div className="ml-auto flex gap-1">
+        <Button
+          size="icon"
+          className="size-7"
+          onClick={() => {
+            const r = Number(reps);
+            if (!(r > 0)) return;
+            const w = weight === "" ? null : Number(weight);
+            onSave(r, w);
+            setEditing(false);
+          }}
+          aria-label="Salvar"
+        >
+          <Check className="size-3.5" />
+        </Button>
+        <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(false)} aria-label="Cancelar">
+          <X className="size-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }
