@@ -251,14 +251,14 @@ Retorne JSON no formato:
 
     // Se o usuário optou por substituir, apaga treinos existentes
     if (data.replace_existing) {
-      await supabase.from("workouts").delete().eq("user_id", userId);
+      await supabase.from("workouts").delete().eq("user_id", targetUserId);
     }
 
     // Descobre próximo order_idx
     const { data: existing } = await supabase
       .from("workouts")
       .select("order_idx")
-      .eq("user_id", userId)
+      .eq("user_id", targetUserId)
       .order("order_idx", { ascending: false })
       .limit(1);
     let nextIdx = (existing?.[0]?.order_idx ?? -1) + 1;
@@ -269,11 +269,12 @@ Retorne JSON no formato:
       const { data: w, error: werr } = await supabase
         .from("workouts")
         .insert({
-          user_id: userId,
+          user_id: targetUserId,
           label: (split.label || "?").slice(0, 3).toUpperCase(),
           name: split.name.slice(0, 80),
           notes: split.notes?.slice(0, 400) ?? null,
           order_idx: nextIdx++,
+          created_by_trainer_id: trainerId,
         })
         .select("id, label, name")
         .single();
@@ -284,7 +285,7 @@ Retorne JSON no formato:
         const ex = split.exercises[i];
         let hit = libByName.get(ex.name.toLowerCase());
         if (!hit) {
-          // Cria exercício custom para o usuário se a IA inventou algo fora da lib
+          // Cria exercício custom se a IA inventou algo fora da lib
           const { data: newEx } = await supabase
             .from("exercises")
             .insert({
@@ -310,16 +311,19 @@ Retorne JSON no formato:
       }
     }
 
-    // Atualiza perfil com objetivo/frequência se ainda estiver vazio
-    await supabase
-      .from("profiles")
-      .update({
-        goal: data.goal,
-        weekly_frequency: data.days_per_week,
-        experience_level: data.experience,
-        uses_enhancers: data.uses_enhancers,
-      })
-      .eq("id", userId);
+    // Só atualiza o perfil quando o próprio usuário está gerando pra si
+    if (!data.for_user_id) {
+      await supabase
+        .from("profiles")
+        .update({
+          goal: data.goal,
+          weekly_frequency: data.days_per_week,
+          experience_level: data.experience,
+          uses_enhancers: data.uses_enhancers,
+        })
+        .eq("id", userId);
+    }
 
     return { overview: plan.overview, workouts: created };
   });
+
