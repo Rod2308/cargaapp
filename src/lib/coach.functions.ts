@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText } from "ai";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 
 const CoachInput = z.object({
@@ -16,14 +16,12 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const { supabase, userId } = context;
 
-    // Perfil
     const { data: profile } = await supabase
       .from("profiles")
       .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency")
       .eq("id", userId)
       .maybeSingle();
 
-    // Últimas 5 sessões
     const { data: sessions } = await supabase
       .from("sessions")
       .select("started_at, ended_at, perceived_effort, workouts(name, label)")
@@ -31,7 +29,6 @@ export const askCoach = createServerFn({ method: "POST" })
       .order("started_at", { ascending: false })
       .limit(5);
 
-    // Treinos do usuário
     const { data: workouts } = await supabase
       .from("workouts")
       .select("label, name, notes, workout_exercises(target_sets, target_reps, target_weight_kg, target_rest_seconds, exercises(name, muscle_group))")
@@ -65,4 +62,207 @@ Pergunta: ${data.question}`;
     });
 
     return { answer: text };
+  });
+
+// ============================================================
+// Gerar plano de treino personalizado com IA
+// ============================================================
+
+const PlanInput = z.object({
+  goal: z.string().min(1).max(80),
+  days_per_week: z.number().int().min(1).max(7),
+  experience: z.enum(["iniciante", "intermediario", "avancado"]),
+  session_minutes: z.number().int().min(20).max(180).default(60),
+  equipment: z.string().max(200).optional(),
+  focus: z.string().max(200).optional(),
+  uses_enhancers: z.boolean().default(false),
+  replace_existing: z.boolean().default(false),
+});
+
+const PlanSchema = z.object({
+  overview: z.string(),
+  splits: z.array(
+    z.object({
+      label: z.string(),
+      name: z.string(),
+      notes: z.string(),
+      exercises: z.array(
+        z.object({
+          name: z.string(),
+          muscle_group: z.string(),
+          sets: z.number(),
+          reps: z.string(),
+          rest_seconds: z.number(),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const generatePlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => PlanInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
+    const { supabase, userId } = context;
+
+    // Biblioteca de exercícios disponível
+    const { data: exercisesLib } = await supabase
+      .from("exercises")
+      .select("id, name, muscle_group, equipment")
+      .order("muscle_group")
+      .order("name");
+
+    const libByName = new Map<string, { id: string; muscle_group: string }>();
+    for (const e of exercisesLib ?? []) libByName.set(e.name.toLowerCase(), { id: e.id, muscle_group: e.muscle_group });
+
+    const catalog = (exercisesLib ?? [])
+      .map((e) => `- ${e.name} [${e.muscle_group}${e.equipment ? ` · ${e.equipment}` : ""}]`)
+      .join("\n");
+
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const gateway = createLovableAiGatewayProvider(key);
+
+    const system = `Você é um coach profissional de musculação com base em ciência do treinamento (princípios de Schoenfeld, ACSM, NSCA).
+Monte um plano REAL e efetivo, com séries, repetições e descanso adequados ao objetivo:
+- Hipertrofia: 3-4 séries, 8-12 reps, descanso 60-90s.
+- Força: 4-6 séries, 3-6 reps, descanso 120-240s.
+- Resistência: 2-3 séries, 15-20 reps, descanso 30-45s.
+- Emagrecimento: circuitos, 12-15 reps, descanso 30-60s, inclua cardio.
+Divida a semana de forma equilibrada:
+- 2 dias: full-body A/B.
+- 3 dias: push/pull/legs OU A/B/C.
+- 4 dias: upper/lower A/B OU A/B/C/D com dia de foco.
+- 5 dias: PPL + upper + lower OU divisão por grupo.
+- 6 dias: PPL x2 (com ajuste de intensidade).
+Para usuários de ergogênicos, aumente volume (5-6 séries por exercício, 20+ séries por grupo muscular/semana).
+Cada treino deve ter 5-8 exercícios, começando por multiarticulares (compostos) e terminando em isoladores.
+Use APENAS exercícios da biblioteca fornecida — copie o nome EXATAMENTE. Responda em português brasileiro.`;
+
+    const equipment = data.equipment?.trim() || "academia completa";
+    const focus = data.focus?.trim() ? `\n- Foco especial: ${data.focus.trim()}` : "";
+
+    const prompt = `Monte um plano semanal com ${data.days_per_week} treino(s) para:
+- Objetivo: ${data.goal}
+- Nível: ${data.experience}
+- Duração por sessão: ${data.session_minutes} minutos
+- Equipamento disponível: ${equipment}
+- Usa ergogênicos: ${data.uses_enhancers ? "sim (aumente volume)" : "não"}${focus}
+
+Rotule os treinos como A, B, C, D, E, F ou G conforme a quantidade de dias.
+Cada treino: nome curto descritivo (ex: "Peito e tríceps"), notas breves com dicas, e lista de exercícios.
+
+BIBLIOTECA DE EXERCÍCIOS DISPONÍVEIS (use somente destes, copiando o nome exatamente):
+${catalog}
+
+Retorne JSON no formato:
+{
+  "overview": "resumo em 2-3 frases explicando a lógica do split",
+  "splits": [
+    {
+      "label": "A",
+      "name": "Peito e tríceps",
+      "notes": "Foco em volume, cadência controlada.",
+      "exercises": [
+        { "name": "Supino reto barra", "muscle_group": "Peito", "sets": 4, "reps": "8-10", "rest_seconds": 90 }
+      ]
+    }
+  ]
+}`;
+
+    let plan: z.infer<typeof PlanSchema>;
+    try {
+      const { output } = await generateText({
+        model: gateway("google/gemini-3-flash-preview"),
+        system,
+        prompt,
+        output: Output.object({ schema: PlanSchema }),
+      });
+      plan = output;
+    } catch (error) {
+      if (NoObjectGeneratedError.isInstance(error) && error.text) {
+        const match = error.text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("A IA não devolveu um plano válido. Tente novamente.");
+        plan = PlanSchema.parse(JSON.parse(match[0]));
+      } else {
+        throw error;
+      }
+    }
+
+    if (!plan.splits.length) throw new Error("A IA não gerou nenhum treino.");
+
+    // Se o usuário optou por substituir, apaga treinos existentes
+    if (data.replace_existing) {
+      await supabase.from("workouts").delete().eq("user_id", userId);
+    }
+
+    // Descobre próximo order_idx
+    const { data: existing } = await supabase
+      .from("workouts")
+      .select("order_idx")
+      .eq("user_id", userId)
+      .order("order_idx", { ascending: false })
+      .limit(1);
+    let nextIdx = (existing?.[0]?.order_idx ?? -1) + 1;
+
+    const created: { id: string; label: string; name: string }[] = [];
+
+    for (const split of plan.splits) {
+      const { data: w, error: werr } = await supabase
+        .from("workouts")
+        .insert({
+          user_id: userId,
+          label: (split.label || "?").slice(0, 3).toUpperCase(),
+          name: split.name.slice(0, 80),
+          notes: split.notes?.slice(0, 400) ?? null,
+          order_idx: nextIdx++,
+        })
+        .select("id, label, name")
+        .single();
+      if (werr || !w) throw new Error(`Falha ao criar treino: ${werr?.message}`);
+      created.push(w);
+
+      for (let i = 0; i < split.exercises.length; i++) {
+        const ex = split.exercises[i];
+        let hit = libByName.get(ex.name.toLowerCase());
+        if (!hit) {
+          // Cria exercício custom para o usuário se a IA inventou algo fora da lib
+          const { data: newEx } = await supabase
+            .from("exercises")
+            .insert({
+              name: ex.name.slice(0, 100),
+              muscle_group: ex.muscle_group?.slice(0, 40) || "Outros",
+              is_default: false,
+              created_by: userId,
+            })
+            .select("id, muscle_group")
+            .single();
+          if (!newEx) continue;
+          hit = { id: newEx.id, muscle_group: newEx.muscle_group };
+          libByName.set(ex.name.toLowerCase(), hit);
+        }
+        await supabase.from("workout_exercises").insert({
+          workout_id: w.id,
+          exercise_id: hit.id,
+          order_idx: i,
+          target_sets: Math.max(1, Math.min(10, Math.round(ex.sets || 3))),
+          target_reps: String(ex.reps || "10").slice(0, 20),
+          target_rest_seconds: Math.max(15, Math.min(600, Math.round(ex.rest_seconds || 90))),
+        });
+      }
+    }
+
+    // Atualiza perfil com objetivo/frequência se ainda estiver vazio
+    await supabase
+      .from("profiles")
+      .update({
+        goal: data.goal,
+        weekly_frequency: data.days_per_week,
+        experience_level: data.experience,
+        uses_enhancers: data.uses_enhancers,
+      })
+      .eq("id", userId);
+
+    return { overview: plan.overview, workouts: created };
   });
