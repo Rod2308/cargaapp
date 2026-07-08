@@ -129,10 +129,22 @@ export const generatePlan = createServerFn({ method: "POST" })
     if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
     const { supabase, userId } = context;
 
+    // Se `for_user_id` foi passado, o professor está gerando para um aluno.
+    // Valida vínculo e usa o id do aluno como alvo.
+    const targetUserId = data.for_user_id ?? userId;
+    const trainerId = data.for_user_id ? userId : null;
+    if (data.for_user_id && data.for_user_id !== userId) {
+      const { data: linked } = await supabase.rpc("is_trainer_of", {
+        _trainer: userId,
+        _student: data.for_user_id,
+      });
+      if (!linked) throw new Error("Você não é professor deste aluno.");
+    }
+
     const { data: userProfile } = await supabase
       .from("profiles")
       .select("sex, birth_date, height_cm, weight_kg, activity_level, injuries")
-      .eq("id", userId)
+      .eq("id", targetUserId)
       .maybeSingle();
 
     const planAge = userProfile?.birth_date
