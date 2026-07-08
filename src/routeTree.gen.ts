@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppCoachRouteImport } from './routes/_authenticated/app.coach'
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
@@ -37,6 +38,11 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
 } as any)
 const AuthenticatedAppPerfilRoute = AuthenticatedAppPerfilRouteImport.update({
   id: '/perfil',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRoute
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -80,9 +87,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/app': typeof AuthenticatedAppRouteWithChildren
   '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/app': typeof AuthenticatedAppIndexRoute
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRoute
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/app/treinos': typeof AuthenticatedAppTreinosIndexRoute
@@ -95,6 +102,7 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/app/coach': typeof AuthenticatedAppCoachRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/sessao/$id': typeof AuthenticatedAppSessaoIdRoute
   '/_authenticated/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/_authenticated/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -107,6 +115,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/coach'
     | '/app/perfil'
+    | '/app/'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
     | '/app/treinos/'
@@ -114,9 +123,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/app'
     | '/app/coach'
     | '/app/perfil'
+    | '/app'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
     | '/app/treinos'
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/_authenticated/app/coach'
     | '/_authenticated/app/perfil'
+    | '/_authenticated/app/'
     | '/_authenticated/app/sessao/$id'
     | '/_authenticated/app/treinos/$id'
     | '/_authenticated/app/treinos/'
@@ -168,6 +178,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app'
       preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/perfil': {
       id: '/_authenticated/app/perfil'
@@ -210,6 +227,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppCoachRoute: typeof AuthenticatedAppCoachRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppSessaoIdRoute: typeof AuthenticatedAppSessaoIdRoute
   AuthenticatedAppTreinosIdRoute: typeof AuthenticatedAppTreinosIdRoute
   AuthenticatedAppTreinosIndexRoute: typeof AuthenticatedAppTreinosIndexRoute
@@ -218,6 +236,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppCoachRoute: AuthenticatedAppCoachRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppSessaoIdRoute: AuthenticatedAppSessaoIdRoute,
   AuthenticatedAppTreinosIdRoute: AuthenticatedAppTreinosIdRoute,
   AuthenticatedAppTreinosIndexRoute: AuthenticatedAppTreinosIndexRoute,
