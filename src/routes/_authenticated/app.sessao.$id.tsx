@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban } from "lucide-react";
+import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
