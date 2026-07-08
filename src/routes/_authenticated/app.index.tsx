@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
+import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
