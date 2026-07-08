@@ -18,6 +18,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"student" | "trainer">("student");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/app`,
-        data: { display_name: name || email.split("@")[0] },
+        data: { display_name: name || email.split("@")[0], role },
       },
     });
     setBusy(false);
