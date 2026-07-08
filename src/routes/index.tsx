@@ -28,7 +28,7 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logoUrl} alt="Cárga" width={140} height={56} className="h-8 w-auto" />
+          <img src={logoUrl} alt="Cárga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
         </Link>
 
         <Link to="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground">
