@@ -385,18 +385,23 @@ function SessionPage() {
         {extraGroups.map(([exerciseId, doneSets], idx) => {
           const ex = allExercises.find((e: any) => e.id === exerciseId);
           const name = ex?.name ?? "Exercício extra";
+          const isSport = ex?.muscle_group === "Esportes";
           return (
             <div key={exerciseId} className="card-soft border border-brand/30 p-4">
               <div className="flex items-baseline justify-between">
                 <h2 className="font-semibold leading-tight">
-                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Extra</span>
+                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+                    {isSport ? "Esporte" : "Extra"}
+                  </span>
                   {items.length + idx + 1}. {name}
                 </h2>
                 <span className="text-xs text-muted-foreground">
-                  {doneSets.length} série{doneSets.length === 1 ? "" : "s"}
+                  {isSport
+                    ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
+                    : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
                 </span>
               </div>
-              {ex?.muscle_group && (
+              {ex?.muscle_group && !isSport && (
                 <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
               )}
               <div className="mt-3 space-y-2">
@@ -405,15 +410,20 @@ function SessionPage() {
                     key={s.id}
                     index={i}
                     set={s}
-                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg })}
+                    unit={isSport ? "min" : "reps"}
+                    hideWeight={isSport}
+                    onSave={(reps, weight_kg) => updateSet.mutate({ setId: s.id, reps, weight_kg: isSport ? null : weight_kg })}
                     onDelete={() => deleteSet.mutate(s.id)}
                   />
                 ))}
               </div>
               <SetLogger
                 key={doneSets.length}
-                defaultReps={Number(doneSets.at(-1)?.reps ?? 10)}
+                defaultReps={Number(doneSets.at(-1)?.reps ?? (isSport ? 30 : 10))}
                 defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
+                repsLabel={isSport ? "Minutos" : "Reps"}
+                hideWeight={isSport}
+                actionLabel={isSport ? "Registrar" : "Série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
@@ -421,9 +431,9 @@ function SessionPage() {
                     exercise_id: exerciseId,
                     set_number: doneSets.length + 1,
                     reps,
-                    weight_kg: weight || null,
+                    weight_kg: isSport ? null : (weight || null),
                   });
-                  startRest(60);
+                  if (!isSport) startRest(60);
                 }}
               />
             </div>
@@ -470,34 +480,36 @@ function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) =>
 }
 
 
-function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void }) {
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série" }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
   const [weight, setWeight] = useState<string>(String(defaultWeight ?? ""));
   return (
-    <div className="mt-3 grid grid-cols-[1fr_1fr_auto] gap-2 border-t border-border pt-3">
+    <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
       <label className="block">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Reps</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
         <Input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="mt-0.5 h-10" />
       </label>
-      <label className="block">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
-        <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
-      </label>
+      {!hideWeight && (
+        <label className="block">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
+          <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
+        </label>
+      )}
       <Button
         className="mt-4 h-10"
         onClick={() => {
           const r = Number(reps);
           const w = weight === "" ? null : Number(weight);
-          if (r > 0) onLog(r, w);
+          if (r > 0) onLog(r, hideWeight ? null : w);
         }}
       >
-        <Check className="size-4" /> Série
+        <Check className="size-4" /> {actionLabel}
       </Button>
     </div>
   );
 }
 
-function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void }) {
+function SetRow({ index, set, onSave, onDelete, unit = "reps", hideWeight = false }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void; unit?: string; hideWeight?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [reps, setReps] = useState<string>(String(set.reps ?? ""));
   const [weight, setWeight] = useState<string>(set.weight_kg != null ? String(set.weight_kg) : "");
@@ -511,14 +523,14 @@ function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onS
     return (
       <div className="flex items-center gap-2 text-sm">
         <Check className="size-4 shrink-0 text-success" />
-        <span className="text-muted-foreground">Série {index + 1}:</span>
-        <span className="font-semibold">{set.reps} reps</span>
-        {set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+        <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
+        <span className="font-semibold">{set.reps} {unit}</span>
+        {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
         <div className="ml-auto flex gap-1">
-          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar série">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
             <Pencil className="size-3.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir série">
+          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
             <Trash2 className="size-3.5" />
           </Button>
         </div>
@@ -528,24 +540,26 @@ function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onS
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
-      <span className="text-xs text-muted-foreground">S{index + 1}</span>
+      <span className="text-xs text-muted-foreground">{unit === "min" ? "B" : "S"}{index + 1}</span>
       <Input
         type="number"
         inputMode="numeric"
         value={reps}
         onChange={(e) => setReps(e.target.value)}
-        className="h-8 w-16"
-        placeholder="reps"
-      />
-      <Input
-        type="number"
-        inputMode="decimal"
-        step="0.5"
-        value={weight}
-        onChange={(e) => setWeight(e.target.value)}
         className="h-8 w-20"
-        placeholder="kg"
+        placeholder={unit}
       />
+      {!hideWeight && (
+        <Input
+          type="number"
+          inputMode="decimal"
+          step="0.5"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          className="h-8 w-20"
+          placeholder="kg"
+        />
+      )}
       <div className="ml-auto flex gap-1">
         <Button
           size="icon"
