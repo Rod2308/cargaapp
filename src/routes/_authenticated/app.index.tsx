@@ -87,6 +87,19 @@ function Dashboard() {
     },
   });
 
+  // Recuperação inteligente (IA)
+  const fetchRecovery = useServerFn(getRecoveryAdvice);
+  const {
+    data: recovery,
+    isFetching: recoveryLoading,
+    refetch: refetchRecovery,
+  } = useQuery({
+    queryKey: ["recovery", user.id],
+    queryFn: () => fetchRecovery({ data: undefined as any }),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+
   // Esportes: exercícios do grupo "Esportes" para log rápido do dia
   const { data: sports = [] } = useQuery({
     queryKey: ["sports"],
