@@ -18,9 +18,25 @@ export const askCoach = createServerFn({ method: "POST" })
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency")
+      .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency, sex, birth_date, height_cm, weight_kg, activity_level, injuries")
       .eq("id", userId)
       .maybeSingle();
+
+    const age = profile?.birth_date
+      ? (() => {
+          const b = new Date(profile.birth_date);
+          const n = new Date();
+          let a = n.getFullYear() - b.getFullYear();
+          const m = n.getMonth() - b.getMonth();
+          if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+          return a;
+        })()
+      : null;
+    const bmi =
+      profile?.height_cm && profile?.weight_kg
+        ? (Number(profile.weight_kg) / Math.pow(Number(profile.height_cm) / 100, 2)).toFixed(1)
+        : null;
+
 
     const { data: sessions } = await supabase
       .from("sessions")
@@ -44,10 +60,15 @@ Responda em no máximo 6 frases, use bullets quando fizer sentido, e cite númer
 
     const context_text = `Perfil do usuário:
 - Nome: ${profile?.display_name ?? "-"}
+- Sexo: ${profile?.sex ?? "-"} · Idade: ${age ?? "-"}${age != null ? " anos" : ""}
+- Altura: ${profile?.height_cm ?? "-"}${profile?.height_cm ? " cm" : ""} · Peso: ${profile?.weight_kg ?? "-"}${profile?.weight_kg ? " kg" : ""}${bmi ? ` · IMC ${bmi}` : ""}
 - Nível: ${profile?.experience_level ?? "iniciante"}
 - Objetivo: ${profile?.goal ?? "hipertrofia"}
+- Atividade diária fora do treino: ${profile?.activity_level ?? "-"}
 - Frequência semanal: ${profile?.weekly_frequency ?? "-"} dias
 - Usa recursos ergogênicos: ${profile?.uses_enhancers ? "sim" : "não"}
+- Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma informada"}
+
 
 Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w.workout_exercises?.length ?? 0} exercícios`).join("; ") || "nenhum"}
 
