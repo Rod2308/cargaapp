@@ -157,7 +157,7 @@ function SessionPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Alvo: {it.target_sets}×{it.target_reps}
-                {it.target_weight_kg && ` @ ${it.target_weight_kg}kg`} · descanso {it.target_rest_seconds}s
+                {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
               </p>
 
               <div className="mt-3 space-y-2">
@@ -166,7 +166,7 @@ function SessionPage() {
                     <Check className="size-4 text-success" />
                     <span className="text-muted-foreground">Série {i + 1}:</span>
                     <span className="font-semibold">{s.reps} reps</span>
-                    {s.weight_kg && <span className="font-semibold">@ {s.weight_kg} kg</span>}
+                    {s.weight_kg && <span className="font-semibold">· {s.weight_kg} kg</span>}
                   </div>
                 ))}
               </div>
