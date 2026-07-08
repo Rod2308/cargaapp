@@ -248,3 +248,75 @@ function SetLogger({ defaultReps, defaultWeight, onLog }: { defaultReps: number;
     </div>
   );
 }
+
+function SetRow({ index, set, onSave, onDelete }: { index: number; set: any; onSave: (reps: number, weight_kg: number | null) => void; onDelete: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [reps, setReps] = useState<string>(String(set.reps ?? ""));
+  const [weight, setWeight] = useState<string>(set.weight_kg != null ? String(set.weight_kg) : "");
+
+  useEffect(() => {
+    setReps(String(set.reps ?? ""));
+    setWeight(set.weight_kg != null ? String(set.weight_kg) : "");
+  }, [set.reps, set.weight_kg]);
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <Check className="size-4 shrink-0 text-success" />
+        <span className="text-muted-foreground">Série {index + 1}:</span>
+        <span className="font-semibold">{set.reps} reps</span>
+        {set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+        <div className="ml-auto flex gap-1">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar série">
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir série">
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2">
+      <span className="text-xs text-muted-foreground">S{index + 1}</span>
+      <Input
+        type="number"
+        inputMode="numeric"
+        value={reps}
+        onChange={(e) => setReps(e.target.value)}
+        className="h-8 w-16"
+        placeholder="reps"
+      />
+      <Input
+        type="number"
+        inputMode="decimal"
+        step="0.5"
+        value={weight}
+        onChange={(e) => setWeight(e.target.value)}
+        className="h-8 w-20"
+        placeholder="kg"
+      />
+      <div className="ml-auto flex gap-1">
+        <Button
+          size="icon"
+          className="size-7"
+          onClick={() => {
+            const r = Number(reps);
+            if (!(r > 0)) return;
+            const w = weight === "" ? null : Number(weight);
+            onSave(r, w);
+            setEditing(false);
+          }}
+          aria-label="Salvar"
+        >
+          <Check className="size-3.5" />
+        </Button>
+        <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(false)} aria-label="Cancelar">
+          <X className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
