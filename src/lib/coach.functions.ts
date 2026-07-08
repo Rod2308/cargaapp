@@ -98,6 +98,7 @@ const PlanInput = z.object({
   focus: z.string().max(200).optional(),
   uses_enhancers: z.boolean().default(false),
   replace_existing: z.boolean().default(false),
+  for_user_id: z.string().uuid().optional(),
 });
 
 const PlanSchema = z.object({
