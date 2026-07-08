@@ -104,6 +104,21 @@ function Dashboard() {
         </button>
       </header>
 
+      {/* Frase do dia */}
+      <div className="card-lift mt-5 flex items-start gap-3 p-4 sm:p-5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
+          <Quote className="size-4" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-eyebrow text-muted-foreground">Frase do dia</p>
+          <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
+            &ldquo;{dailyQuote.text}&rdquo;
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">— {dailyQuote.author}</p>
+        </div>
+      </div>
+
+
       {/* Bento */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
         {/* Start workout — hero tile */}
