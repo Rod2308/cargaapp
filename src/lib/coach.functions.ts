@@ -197,7 +197,7 @@ export const generatePlan = createServerFn({ method: "POST" })
       .join("\n");
 
 
-    const { createConfiguredAiModel, getAiFallbackMessage, getAiErrorStatus } = await import("./ai-gateway.server");
+    const { createConfiguredAiModel, getAiFallbackMessage } = await import("./ai-gateway.server");
     const ai = createConfiguredAiModel({
       googleModel: "gemini-flash-latest",
       lovableModel: "google/gemini-3-flash-preview",
