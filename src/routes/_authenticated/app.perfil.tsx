@@ -219,8 +219,9 @@ function PerfilPage() {
         </div>
         <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
           <div>
-            <p className="text-sm font-medium">Uso recursos ergogênicos</p>
-            <p className="text-xs text-muted-foreground">Ajusta as sugestões do coach</p>
+            <p className="text-sm font-medium">Uso anabolizantes ou SARMs</p>
+            <p className="text-xs text-muted-foreground">Substâncias que aceleram ganho de massa (ex: esteroides). O coach aumenta o volume dos treinos.</p>
+
           </div>
           <Switch
             checked={!!profile.uses_enhancers}
