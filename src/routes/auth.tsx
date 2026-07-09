@@ -40,7 +40,7 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
   }
 
   async function signUp(e: React.FormEvent) {
@@ -50,20 +50,20 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${redirectTo}`,
         data: { display_name: name || email.split("@")[0], role },
       },
     });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Conta criada! Verifique seu email se necessário.");
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
   }
 
   async function google() {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}${redirectTo}`,
     });
     if (result.error) {
       setBusy(false);
@@ -72,7 +72,8 @@ function AuthPage() {
     }
     if (result.redirected) return;
     setBusy(false);
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
+
   }
 
   return (
