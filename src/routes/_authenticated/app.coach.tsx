@@ -21,7 +21,6 @@ const suggestions = [
 
 function CoachPage() {
   const ask = useServerFn(askCoach);
-  const ping = useServerFn(pingGemini);
   const [q, setQ] = useState("");
   const [history, setHistory] = useState<{ q: string; a: string }[]>([]);
 
