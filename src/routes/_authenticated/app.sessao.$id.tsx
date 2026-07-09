@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer } from "lucide-react";
+import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -456,6 +456,33 @@ function SessionPage() {
         })}
       </div>
     </div>
+  );
+}
+
+function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: string }) {
+  const [frame, setFrame] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!url || failed) return;
+    const t = setInterval(() => setFrame((f) => (f === 0 ? 1 : 0)), 900);
+    return () => clearInterval(t);
+  }, [url, failed]);
+  if (!url || failed) {
+    return (
+      <div className="grid size-20 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+        <Dumbbell className="size-6" />
+      </div>
+    );
+  }
+  const src = frame === 0 ? url : url.replace(/0\.jpg$/, "1.jpg");
+  return (
+    <img
+      src={src}
+      alt={`Demonstração: ${alt}`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="size-20 shrink-0 rounded-lg bg-secondary object-cover"
+    />
   );
 }
 
