@@ -274,6 +274,9 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
         </div>
       </div>
 
+      <LinkStudentCard userId={userId} />
+
+
       <div className="card-soft mt-6 space-y-5 p-5">
         <h2 className="text-lg font-semibold">Dados profissionais</h2>
 
