@@ -129,14 +129,14 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lift);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-}
-@utility card-lift-hover {
-  transform: translateY(-1px);
-  border-color: oklch(0.88 0.006 90);
-  box-shadow:
-    0 1px 0 0 oklch(1 0 0 / 0.6) inset,
-    0 2px 4px 0 oklch(0.2 0.02 260 / 0.04),
-    0 16px 40px -16px oklch(0.2 0.02 260 / 0.18);
+  &:hover {
+    transform: translateY(-1px);
+    border-color: oklch(0.88 0.006 90);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.6) inset,
+      0 2px 4px 0 oklch(0.2 0.02 260 / 0.04),
+      0 16px 40px -16px oklch(0.2 0.02 260 / 0.18);
+  }
 }
 
 @utility card-ink {
@@ -150,13 +150,13 @@
   position: relative;
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-@utility card-ink-hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 0 oklch(1 0 0 / 0.08) inset,
-    0 40px 100px -30px oklch(0 0 0 / 0.6),
-    0 12px 30px -12px oklch(0.88 0.2 128 / 0.25);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.08) inset,
+      0 40px 100px -30px oklch(0 0 0 / 0.6),
+      0 12px 30px -12px oklch(0.88 0.2 128 / 0.25);
+  }
 }
 
 @utility card-brand {
@@ -168,25 +168,13 @@
   border: 1px solid oklch(0.94 0.18 128 / 0.6);
   box-shadow: var(--shadow-brand);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-@utility card-brand-hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 0 oklch(1 0 0 / 0.5) inset,
-    0 16px 50px -12px oklch(0.86 0.19 128 / 0.65),
-    0 6px 16px -4px oklch(0.86 0.19 128 / 0.4);
-}
-
-@utility btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
-  border-radius: calc(var(--radius) - 2px);
-  font-weight: 600;
-  padding: 0.75rem 1.25rem;
-  transition: opacity 0.15s ease;
-}
-@utility btn-primary-hover {
-  opacity: 0.9;
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.5) inset,
+      0 16px 50px -12px oklch(0.86 0.19 128 / 0.65),
+      0 6px 16px -4px oklch(0.86 0.19 128 / 0.4);
+  }
 }
 
 @utility btn-primary {
@@ -196,9 +184,7 @@
   font-weight: 600;
   padding: 0.75rem 1.25rem;
   transition: opacity 0.15s ease;
-}
-@utility btn-primary-hover {
-  opacity: 0.9;
+  &:hover { opacity: 0.9; }
 }
 
 @utility app-container {
