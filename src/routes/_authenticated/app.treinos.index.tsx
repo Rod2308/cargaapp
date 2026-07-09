@@ -256,8 +256,9 @@ function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
 
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
-              <p className="text-sm font-medium">Uso ergogênicos</p>
-              <p className="text-xs text-muted-foreground">Aumenta volume e frequência</p>
+              <p className="text-sm font-medium">Uso anabolizantes ou SARMs</p>
+              <p className="text-xs text-muted-foreground">Substâncias que aceleram ganho de massa. Aumenta volume e frequência.</p>
+
             </div>
             <Switch checked={enhancers} onCheckedChange={setEnhancers} />
           </div>
