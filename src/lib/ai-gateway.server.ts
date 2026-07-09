@@ -1,42 +1,16 @@
-// Server-only: provider de IA.
-// Ordem de preferência: OpenAI -> Google direto -> Lovable AI Gateway.
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
+// Server-only: provider de IA — usa o Lovable AI Gateway (IA tradicional do Lovable).
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 export function createConfiguredAiModel({
-  googleModel = "gemini-flash-latest",
   lovableModel = "google/gemini-3-flash-preview",
-  openaiModel = "gpt-4o-mini",
-  anthropicModel = "claude-3-5-haiku-latest",
 }: {
   googleModel?: string;
   lovableModel?: string;
   openaiModel?: string;
   anthropicModel?: string;
 } = {}) {
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (anthropicKey) {
-    const anthropic = createAnthropic({ apiKey: anthropicKey });
-    return { model: anthropic(anthropicModel), modelId: anthropicModel, provider: "anthropic" as const };
-  }
-
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
-    const openai = createOpenAI({ apiKey: openaiKey });
-    return { model: openai(openaiModel), modelId: openaiModel, provider: "openai" as const };
-  }
-
-
-  const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-  if (googleKey) {
-    const google = createGoogleGenerativeAI({ apiKey: googleKey });
-    return { model: google(googleModel), modelId: googleModel, provider: "google" as const };
-  }
-
   const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("IA indisponível: nenhuma chave configurada.");
+  if (!apiKey) throw new Error("IA indisponível: LOVABLE_API_KEY não configurada.");
 
   const gateway = createOpenAICompatible({
     name: "lovable",
@@ -49,6 +23,7 @@ export function createConfiguredAiModel({
 
   return { model: gateway(lovableModel), modelId: lovableModel, provider: "lovable" as const };
 }
+
 
 export function createLovableAiGatewayProvider(_ignored?: string) {
   const apiKey = process.env.LOVABLE_API_KEY;
