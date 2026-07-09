@@ -21,6 +21,7 @@ const suggestions = [
 
 function CoachPage() {
   const ask = useServerFn(askCoach);
+  const ping = useServerFn(pingGemini);
   const [q, setQ] = useState("");
   const [history, setHistory] = useState<{ q: string; a: string }[]>([]);
 
@@ -31,6 +32,13 @@ function CoachPage() {
       setQ("");
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao consultar o coach"),
+  });
+
+  const test = useMutation({
+    mutationFn: async () => ping({}),
+    onSuccess: (res) =>
+      toast.success(`Gemini OK — ${res.model} · ${res.ms}ms`, { description: res.reply }),
+    onError: (e: any) => toast.error(e.message ?? "Falha ao conectar no Gemini"),
   });
 
   function submit(text: string) {
