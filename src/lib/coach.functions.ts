@@ -7,15 +7,15 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
-const COACH_GOOGLE_MODEL = "gemini-flash-latest";
-const COACH_LOVABLE_MODEL = "google/gemini-3-flash-preview";
-
 export const pingGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const started = Date.now();
     const { createConfiguredAiModel, getAiFallbackMessage } = await import("./ai-gateway.server");
-    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
+    const ai = createConfiguredAiModel({
+      googleModel: "gemini-flash-latest",
+      lovableModel: "google/gemini-3-flash-preview",
+    });
     try {
       const { text } = await generateText({
         model: ai.model,
@@ -69,7 +69,10 @@ export const askCoach = createServerFn({ method: "POST" })
       .eq("user_id", userId);
 
     const { createConfiguredAiModel, getAiFallbackMessage } = await import("./ai-gateway.server");
-    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
+    const ai = createConfiguredAiModel({
+      googleModel: "gemini-flash-latest",
+      lovableModel: "google/gemini-3-flash-preview",
+    });
 
     const system = `Você é um coach de musculação experiente, direto e motivador, respondendo em português brasileiro.
 Baseie sugestões em ciência do treinamento: princípio da sobrecarga progressiva, ajuste de descanso conforme intensidade (hipertrofia 60-90s, força 2-4min, resistência 30-45s), split adequado à frequência semanal, e alerta para overtraining.
@@ -195,7 +198,10 @@ export const generatePlan = createServerFn({ method: "POST" })
 
 
     const { createConfiguredAiModel, getAiFallbackMessage, getAiErrorStatus } = await import("./ai-gateway.server");
-    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
+    const ai = createConfiguredAiModel({
+      googleModel: "gemini-flash-latest",
+      lovableModel: "google/gemini-3-flash-preview",
+    });
 
     const system = `Você é um coach profissional de musculação com base em ciência do treinamento (princípios de Schoenfeld, ACSM, NSCA).
 Monte um plano REAL e efetivo, com séries, repetições e descanso adequados ao objetivo:
