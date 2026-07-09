@@ -104,18 +104,13 @@ function Dashboard() {
     },
   });
 
-  // Recuperação inteligente (IA)
-  const fetchRecovery = useServerFn(getRecoveryAdvice);
-  const {
-    data: recovery,
-    isFetching: recoveryLoading,
-    refetch: refetchRecovery,
-  } = useQuery({
-    queryKey: ["recovery", user.id],
-    queryFn: () => fetchRecovery(),
-    staleTime: 1000 * 60 * 60,
-    retry: false,
-  });
+  // Recuperação inteligente (IA) — bloqueada, será liberada no plano PRO
+  const recovery = undefined;
+  const recoveryLoading = false;
+  const refetchRecovery = () => {};
+  void getRecoveryAdvice;
+  void useServerFn;
+
 
   // Sono — últimos 7 dias e log de hoje
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -505,65 +500,40 @@ type RecoveryData = {
 };
 
 function RecoveryCard({
-  recovery,
-  loading,
-  onRefresh,
+  recovery: _recovery,
+  loading: _loading,
+  onRefresh: _onRefresh,
 }: {
   recovery: RecoveryData | undefined;
   loading: boolean;
   onRefresh: () => void;
 }) {
-  const styles: Record<RecoveryData["status"], { bar: string; badge: string; label: string }> = {
-    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Recuperado" },
-    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Treino leve" },
-    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Cuidado" },
-    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
-  };
-  const s = recovery ? styles[recovery.status] : styles.leve;
-
   return (
     <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
-      <span className={`absolute inset-y-0 left-0 w-1 ${s.bar}`} aria-hidden />
+      <span className="absolute inset-y-0 left-0 w-1 bg-muted" aria-hidden />
       <div className="flex items-start gap-3 pl-2">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${s.badge}`}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
           <HeartPulse className="size-4" strokeWidth={2.5} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="text-eyebrow text-muted-foreground">Recuperação · IA</p>
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-              aria-label="Recalcular"
-            >
-              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2.5} />
-            </button>
+            <span className="inline-flex items-center rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+              PRO em breve
+            </span>
           </div>
-          {loading && !recovery ? (
-            <p className="mt-1 text-sm text-muted-foreground">Analisando seus últimos treinos…</p>
-          ) : recovery ? (
-            <>
-              <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
-                {recovery.headline}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">{recovery.reason}</p>
-              <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-foreground">
-                <span className={`mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.bar}`} />
-                {recovery.recommendation}
-              </p>
-              <span className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.badge}`}>
-                {s.label}
-              </span>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Sem análise disponível.</p>
-          )}
+          <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
+            Análise por IA temporariamente indisponível
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A recomendação inteligente de recuperação será liberada em breve no plano PRO.
+          </p>
         </div>
       </div>
     </div>
   );
 }
+
 
 function SleepCard({
   todayHours,
