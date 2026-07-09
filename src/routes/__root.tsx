@@ -61,6 +61,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#ffffff" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Carga" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { name: "twitter:title", content: "Carga — seu treino de academia, do seu jeito" },
       { name: "twitter:description", content: "Monte seus treinos A, B, C, registre carga e repetições e receba sugestões inteligentes de descanso e progressão." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/00425b45-eeac-49c1-8a72-fbb87d9cff32/id-preview-84b6e1cb--a45a51fe-d372-477e-98b1-329caa5ebd07.lovable.app-1783396862047.png" },
@@ -70,6 +74,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       // Non-blocking font load: fetch as "print" (ignored on screen), then swap to "all" once loaded.
