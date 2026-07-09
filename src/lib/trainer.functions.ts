@@ -119,3 +119,83 @@ export const getStudentDetails = createServerFn({ method: "POST" })
 
     return { profile, workouts: workouts ?? [] };
   });
+
+// ------- (Aluno) busca o professor vinculado -------
+export const getMyTrainer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: link } = await supabase
+      .from("trainer_students")
+      .select("trainer_id, created_at")
+      .eq("student_id", userId)
+      .maybeSingle();
+    if (!link) return { trainer: null };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, display_name, cref, city, specialties, bio, contact_phone")
+      .eq("id", link.trainer_id)
+      .maybeSingle();
+    return { trainer: profile ? { ...profile, linked_at: link.created_at } : null };
+  });
+
+// ------- (Aluno) vincula-se a um professor pelo código -------
+const LinkTrainerInput = z.object({ invite_code: z.string().trim().min(4).max(20) });
+
+export const linkTrainerByCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => LinkTrainerInput.parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // Bloqueia se o usuário já tem professor
+    const { data: existing } = await supabase
+      .from("trainer_students")
+      .select("trainer_id")
+      .eq("student_id", userId)
+      .maybeSingle();
+    if (existing) throw new Error("Você já está vinculado a um professor. Desvincule antes de trocar.");
+
+    const code = data.invite_code.toUpperCase();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: trainerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, display_name")
+      .eq("invite_code", code)
+      .maybeSingle();
+    if (!trainerProfile) throw new Error("Código não encontrado.");
+    if (trainerProfile.id === userId) throw new Error("Você não pode se vincular a si mesmo.");
+
+    // Confirma que o dono do código é realmente um professor
+    const { data: isTrainer } = await supabaseAdmin.rpc("has_role", {
+      _user_id: trainerProfile.id,
+      _role: "trainer",
+    });
+    if (!isTrainer) throw new Error("Este código não pertence a um professor.");
+
+    // Insert via admin (política do trainer_students exige que quem insere seja o próprio professor)
+    const { error } = await supabaseAdmin
+      .from("trainer_students")
+      .insert({ trainer_id: trainerProfile.id, student_id: userId });
+    if (error) {
+      if (error.code === "23505") throw new Error("Vínculo já existe.");
+      throw error;
+    }
+    return { trainer: trainerProfile };
+  });
+
+// ------- (Aluno) remove o próprio vínculo -------
+export const unlinkMyTrainer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("trainer_students")
+      .delete()
+      .eq("student_id", userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
