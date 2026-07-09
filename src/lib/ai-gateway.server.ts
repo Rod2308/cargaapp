@@ -1,16 +1,24 @@
 // Server-only: provider de IA.
-// Usa a API nativa do Google quando GOOGLE_API_KEY/GEMINI_API_KEY estiver
-// configurada; senão cai no Lovable AI Gateway.
+// Ordem de preferência: OpenAI -> Google direto -> Lovable AI Gateway.
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 export function createConfiguredAiModel({
   googleModel = "gemini-flash-latest",
   lovableModel = "google/gemini-3-flash-preview",
+  openaiModel = "gpt-4o-mini",
 }: {
   googleModel?: string;
   lovableModel?: string;
+  openaiModel?: string;
 } = {}) {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    const openai = createOpenAI({ apiKey: openaiKey });
+    return { model: openai(openaiModel), modelId: openaiModel, provider: "openai" as const };
+  }
+
   const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
   if (googleKey) {
     const google = createGoogleGenerativeAI({ apiKey: googleKey });
