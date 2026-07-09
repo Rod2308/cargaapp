@@ -237,7 +237,15 @@ Retorne JSON no formato:
         output: Output.object({ schema: PlanSchema }),
       });
       plan = output;
-    } catch (error) {
+    } catch (error: any) {
+      // Créditos da IA esgotados / limite de uso
+      const status = error?.statusCode ?? error?.status ?? error?.response?.status;
+      const msg = String(error?.message ?? "");
+      if (status === 402 || status === 429 || /payment required|quota|credit|insufficient/i.test(msg)) {
+        throw new Error(
+          "Os créditos de IA acabaram. Use a opção 'Novo treino manual' para montar e enviar o treino ao aluno — vai direto, sem IA.",
+        );
+      }
       if (NoObjectGeneratedError.isInstance(error) && error.text) {
         const match = error.text.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("A IA não devolveu um plano válido. Tente novamente.");
@@ -246,6 +254,7 @@ Retorne JSON no formato:
         throw error;
       }
     }
+
 
     if (!plan.splits.length) throw new Error("A IA não gerou nenhum treino.");
 
