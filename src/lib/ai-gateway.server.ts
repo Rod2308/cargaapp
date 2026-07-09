@@ -15,7 +15,7 @@ export function createConfiguredAiModel({
 } = {}) {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
-    const openai = createOpenAI({ apiKey: openaiKey, compatibility: "strict" });
+    const openai = createOpenAI({ apiKey: openaiKey });
     return { model: openai(openaiModel), modelId: openaiModel, provider: "openai" as const };
   }
 
