@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut } from "lucide-react";
+import { LogOut, Smartphone, Share, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 
 function calcAge(birth?: string | null) {
@@ -227,6 +227,48 @@ function PerfilPage() {
             onCheckedChange={(v) => update.mutate({ uses_enhancers: v })}
           />
         </div>
+      </div>
+
+      <div className="card-soft mt-6 p-5">
+        <div className="flex items-center gap-2">
+          <div className="grid size-10 place-items-center rounded-lg bg-secondary">
+            <Smartphone className="size-5" />
+          </div>
+          <h2 className="text-lg font-semibold">Instale o Carga como app</h2>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          O Carga funciona como um aplicativo no seu celular — com ícone na tela inicial e abertura em tela cheia, sem baixar nada da loja. Faça uma única vez:
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Smartphone className="size-4" /> No Android (Chrome)
+            </h3>
+            <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+              <li>1. Abra este site no navegador <strong>Chrome</strong>.</li>
+              <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (três pontinhos, canto superior direito).</li>
+              <li>3. Escolha <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong>.</li>
+              <li>4. Confirme. O ícone aparece na tela inicial como qualquer app.</li>
+            </ol>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Smartphone className="size-4" /> No iPhone (Safari)
+            </h3>
+            <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+              <li>1. Abra o site no <strong>Safari</strong> (não funciona pelo Chrome no iPhone).</li>
+              <li>2. Toque em <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com seta pra cima, na barra de baixo).</li>
+              <li>3. Role até <strong>“Adicionar à Tela de Início”</strong> e toque.</li>
+              <li>4. Confirme em <strong>“Adicionar”</strong>. Pronto.</li>
+            </ol>
+          </div>
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Depois de instalado, abra sempre pelo ícone do Carga para ter a experiência em tela cheia.
+        </p>
       </div>
 
       <Button variant="outline" onClick={signOut} className="mt-6 w-full">
