@@ -243,11 +243,11 @@ function PerfilPage() {
         <div className="mt-4 space-y-3">
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Smartphone className="size-4" /> No Android (Chrome)
+              <Smartphone className="size-4" /> No Android
             </h3>
             <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-              <li>1. Abra este site no navegador <strong>Chrome</strong>.</li>
-              <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (três pontinhos, canto superior direito).</li>
+              <li>1. Abra este site no seu navegador (Chrome, Edge, Samsung Internet, Opera, Brave…).</li>
+              <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (geralmente três pontinhos, no canto superior).</li>
               <li>3. Escolha <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong>.</li>
               <li>4. Confirme. O ícone aparece na tela inicial como qualquer app.</li>
             </ol>
@@ -255,14 +255,15 @@ function PerfilPage() {
 
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Smartphone className="size-4" /> No iPhone (Safari)
+              <Smartphone className="size-4" /> No iPhone
             </h3>
             <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-              <li>1. Abra o site no <strong>Safari</strong> (não funciona pelo Chrome no iPhone).</li>
-              <li>2. Toque em <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com seta pra cima, na barra de baixo).</li>
+              <li>1. Abra este site no seu navegador (Safari, Chrome, Edge, Firefox…).</li>
+              <li>2. Toque no botão <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com seta pra cima — no Safari fica na barra de baixo; no Chrome/Edge, dentro do menu <MoreVertical className="inline size-4 align-text-bottom" />).</li>
               <li>3. Role até <strong>“Adicionar à Tela de Início”</strong> e toque.</li>
               <li>4. Confirme em <strong>“Adicionar”</strong>. Pronto.</li>
             </ol>
+
           </div>
         </div>
 
