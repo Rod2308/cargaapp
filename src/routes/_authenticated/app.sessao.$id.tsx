@@ -479,7 +479,10 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
       </div>
     );
   }
-  const src = frame === 0 ? url : url.replace(/0\.jpg$/, "1.jpg");
+  const base = frame === 0 ? url : url.replace(/0\.jpg$/, "1.jpg");
+  // Cache-buster: mobile browsers/PWA installs may hold a stale 404 from
+  // when the bucket was private. Bump this token if bucket state changes again.
+  const src = `${base}${base.includes("?") ? "&" : "?"}v=2`;
   return (
     <img
       src={src}
