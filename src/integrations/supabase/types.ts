@@ -20,6 +20,7 @@ export type Database = {
           created_by: string | null
           equipment: string | null
           id: string
+          image_url: string | null
           instructions: string | null
           is_default: boolean
           muscle_group: string
@@ -30,6 +31,7 @@ export type Database = {
           created_by?: string | null
           equipment?: string | null
           id?: string
+          image_url?: string | null
           instructions?: string | null
           is_default?: boolean
           muscle_group: string
@@ -40,6 +42,7 @@ export type Database = {
           created_by?: string | null
           equipment?: string | null
           id?: string
+          image_url?: string | null
           instructions?: string | null
           is_default?: boolean
           muscle_group?: string
