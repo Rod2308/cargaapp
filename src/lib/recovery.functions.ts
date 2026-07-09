@@ -12,7 +12,7 @@ const RecoverySchema = z.object({
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 
-const RECOVERY_MODEL = "google/gemini-3-flash-preview";
+const RECOVERY_MODEL = "gemini-flash-latest";
 
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

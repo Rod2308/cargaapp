@@ -7,7 +7,7 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
-const COACH_MODEL = "google/gemini-3-flash-preview";
+const COACH_MODEL = "gemini-flash-latest";
 
 export const pingGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
