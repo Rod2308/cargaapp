@@ -161,7 +161,7 @@ Retorne JSON:
 
     try {
       const { output } = await generateText({
-        model: gateway("gemini-2.5-flash"),
+        model: gateway("google/gemini-3-flash-preview"),
         system,
         prompt,
         output: Output.object({ schema: RecoverySchema }),

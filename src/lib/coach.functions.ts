@@ -7,7 +7,7 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "google/gemini-3-flash-preview";
 
 export const pingGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -94,7 +94,7 @@ Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w
 Pergunta: ${data.question}`;
 
     const { text } = await generateText({
-      model: gateway("gemini-2.5-flash"),
+      model: gateway("google/gemini-3-flash-preview"),
       system,
       prompt: context_text,
     });
@@ -248,7 +248,7 @@ Retorne JSON no formato:
     let plan: z.infer<typeof PlanSchema>;
     try {
       const { output } = await generateText({
-        model: gateway("gemini-2.5-flash"),
+        model: gateway("google/gemini-3-flash-preview"),
         system,
         prompt,
         output: Output.object({ schema: PlanSchema }),
