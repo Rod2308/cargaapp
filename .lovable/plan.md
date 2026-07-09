@@ -1,45 +1,57 @@
 ## Objetivo
 
-Permitir escolher no cadastro se a pessoa é **aluno** ou **professor/treinador**. Professores ganham uma área para montar treinos e enviar direto para o perfil de um aluno.
+Analisar as sessões concluídas de cada exercício e sugerir automaticamente ajustes de **carga (kg)** e **descanso (segundos)** para o próximo treino, mostrando um badge dentro do editor de treinos (`/app/treinos/$id`) e permitindo aplicar a sugestão com um clique.
 
-## Fluxo
+## Como a sugestão é calculada (regra determinística, sem IA)
 
-1. **Cadastro (`/auth`)** — novo campo "Sou..." com duas opções: *Aluno* / *Professor(a) / Treinador(a)*. A escolha é salva no perfil.
-2. **Aluno** — app igual ao de hoje. Ganha um código de convite curto (ex: `CRG-7F3A`) visível no perfil, para compartilhar com o professor.
-3. **Professor** — nova aba no menu: **Alunos**.
-   - Adicionar aluno pelo código de convite.
-   - Lista de alunos vinculados.
-   - Abrir um aluno → ver treinos dele + botão **"Montar treino para este aluno"** (manual ou via IA, reaproveita o gerador atual, mas grava no `user_id` do aluno).
-   - Treinos criados pelo professor aparecem no app do aluno normalmente, com uma marca "enviado pelo Prof. Fulano".
+Para cada `workout_exercise`, olhamos as últimas **3 sessões** com séries registradas em `session_sets`:
 
-## Segurança
+**Carga (`target_weight_kg`)**
+- Média das cargas das séries válidas de cada sessão → `avgLoad`.
+- Média das reps por sessão → `avgReps`.
+- Se `avgReps ≥ topoDaFaixa + 1` nas 2 últimas sessões → **subir 2,5 kg** (ou +5% se ≥40 kg).
+- Se `avgReps < baseDaFaixa - 1` nas 2 últimas → **descer 5%**.
+- Caso contrário → **manter**.
+- Faixa lida de `target_reps` (aceita "8-12", "10", "AMRAP"; para AMRAP usa 8-12 como referência).
 
-- Papéis ficam em tabela separada `user_roles` (enum `app_role`: `student`, `trainer`) + função `has_role` — nunca no `profiles`, para evitar escalonamento de privilégio.
-- Vínculo aluno↔professor em `trainer_students` com aprovação implícita: o aluno gera o código, o professor usa o código → cria o vínculo. Aluno pode remover o vínculo a qualquer momento.
-- RLS: professor só lê/escreve dados de alunos vinculados a ele. Aluno sempre lê os próprios dados.
+**Descanso (`target_rest_seconds`)**
+- RPE médio (`session_sets.rpe`) das últimas 2 sessões:
+  - RPE ≥ 9 → sugerir **+15s** (limite 240s).
+  - RPE ≤ 6 → sugerir **-15s** (mínimo 30s, ou 45s p/ compostos).
+  - Entre 7–8 → manter.
+- Sem RPE registrado → não sugerir mudança de descanso.
 
-## Mudanças no banco (uma migração)
+**Sem dados suficientes** (menos de 2 sessões) → não gera sugestão, mostra "poucos dados ainda".
 
-- `app_role` enum: `student`, `trainer`.
-- `user_roles(user_id, role)` + policies + `has_role()` security-definer.
-- `profiles.invite_code text unique` (gerado no signup via trigger, curto e legível).
-- `trainer_students(trainer_id, student_id, created_at)` com policies.
-- `workouts.created_by_trainer_id uuid null` — quando preenchido, indica que foi enviado por um professor.
-- Ajustar policies de `workouts` e `workout_exercises` para permitir que o professor vinculado leia/escreva treinos do aluno.
-- Ajustar `handle_new_user()` para ler `raw_user_meta_data->>'role'` e inserir em `user_roles` + gerar `invite_code`.
+## Onde aparece
 
-## Mudanças no app
+Dentro de `src/routes/_authenticated/app.treinos.$id.tsx`, em cada linha de exercício:
 
-- `/auth` — seletor de papel no cadastro; passa `role` em `options.data`.
-- `src/routes/_authenticated/app.tsx` — mostrar aba **Alunos** só para professor.
-- `src/routes/_authenticated/app.perfil.tsx` — mostrar código de convite (para aluno) ou lista rápida de alunos (para professor).
-- `src/routes/_authenticated/app.alunos.index.tsx` (novo) — lista + adicionar por código.
-- `src/routes/_authenticated/app.alunos.$id.tsx` (novo) — treinos do aluno + botões Novo/IA (reaproveita `AiPlanDialog` e o gerador `generatePlan` com um parâmetro `for_user_id`).
-- `src/lib/coach.functions.ts` — aceitar `for_user_id` opcional; se preenchido, valida vínculo pelo `has_role('trainer')` + `trainer_students` e grava no aluno.
-- `src/lib/trainer.functions.ts` (novo) — `linkStudentByCode`, `listStudents`, `getStudent`, `unlinkStudent`.
-- Hook `useRole()` — lê papel uma vez e disponibiliza no contexto autenticado.
+```text
+Supino reto         3x8-12  ·  60s  ·  40kg
+                    [ ↑ Subir p/ 42,5kg  ·  Manter descanso ]   ← chip clicável
+```
 
-## Confirmação antes de começar
+- Chip verde para subir, âmbar para descer, cinza neutro para "manter".
+- Tooltip mostra a base do cálculo: "Últimas 3 sessões: 10, 11, 12 reps @ 40kg".
+- Clicar aplica o `UPDATE` em `workout_exercises` (mesma mutation que já existe para editar sets/reps).
 
-- Ok fazer a migração do banco descrita acima?
-- Um aluno pode ter **um só** professor por vez, ou **vários**? (Padrão sugerido: **um só**, mais simples.)
+Botão no topo do treino: **"Aplicar todas as sugestões"** — roda um `UPDATE` em lote para os exercícios com sugestão de mudança.
+
+## Arquivos afetados
+
+- **novo** `src/lib/progression.ts` — funções puras: `parseRepRange`, `analyzeExerciseHistory`, `suggestAdjustment`. Zero side-effects, 100% testável.
+- **novo** `src/lib/progression.functions.ts` — `getWorkoutSuggestions({ workout_id })` server fn que:
+  1. Busca `workout_exercises` do treino.
+  2. Para cada um, busca as últimas ~15 `session_sets` via `session_id` das sessões do dono do treino.
+  3. Aplica `suggestAdjustment` e devolve `{ workout_exercise_id, suggested_weight_kg, suggested_rest_seconds, reason, confidence }[]`.
+- **editado** `src/routes/_authenticated/app.treinos.$id.tsx` — nova `useQuery` para sugestões + UI dos chips + mutation "aplicar" (individual e em lote).
+- Sem migration, sem novas tabelas.
+
+## Detalhes técnicos
+
+- Query única: `session_sets.select("weight_kg, reps, rpe, workout_exercise_id, sessions!inner(started_at, user_id)").in("workout_exercise_id", ids).order("completed_at", desc).limit(200)`, agrupada em memória por `workout_exercise_id` e depois por `session_id`.
+- Cálculos ficam em `progression.ts` para poder testar e reusar depois (ex.: em relatórios do trainer).
+- Arredondamento: cargas em múltiplos de 2,5 kg; descanso em múltiplos de 15 s.
+- Confidence: `low` (2 sessões), `medium` (3), `high` (3 com desvio-padrão baixo).
+- RLS já cobre — só usamos o cliente do browser autenticado.
