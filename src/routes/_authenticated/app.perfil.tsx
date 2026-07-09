@@ -356,6 +356,58 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
   );
 }
 
+function LinkStudentCard({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [code, setCode] = useState("");
+  const linkFn = useServerFn(linkStudentByCode);
+
+  const link = useMutation({
+    mutationFn: (invite_code: string) => linkFn({ data: { invite_code } }),
+    onSuccess: (res: any) => {
+      setCode("");
+      qc.invalidateQueries({ queryKey: ["trainer-student-count", userId] });
+      qc.invalidateQueries({ queryKey: ["trainer-students"] });
+      toast.success(`Aluno ${res?.student?.display_name ?? ""} vinculado!`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível vincular."),
+  });
+
+  return (
+    <div className="card-soft mt-5 p-4">
+      <div className="flex items-center gap-2">
+        <UserPlus className="size-4" />
+        <p className="text-eyebrow text-muted-foreground">Vincular um aluno</p>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Peça o código do aluno (formato <b>CRG-XXXX</b>) e insira abaixo para vinculá-lo à sua lista.
+      </p>
+      <form
+        className="mt-3 flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const trimmed = code.trim();
+          if (trimmed.length < 4) {
+            toast.error("Código inválido.");
+            return;
+          }
+          link.mutate(trimmed);
+        }}
+      >
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="CRG-XXXX"
+          maxLength={20}
+          className="uppercase"
+        />
+        <Button type="submit" disabled={link.isPending}>
+          {link.isPending ? "Vinculando..." : "Vincular"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function MyTrainerCard() {
   const qc = useQueryClient();
   const [code, setCode] = useState("");
