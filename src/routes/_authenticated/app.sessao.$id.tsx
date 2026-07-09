@@ -347,16 +347,21 @@ function SessionPage() {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
           return (
             <div key={it.id} className="card-soft p-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
-                <span className="text-xs text-muted-foreground">
-                  {done.length}/{it.target_sets}
-                </span>
+              <div className="flex items-start gap-3">
+                <ExerciseImage url={it.exercises.image_url} alt={it.exercises.name} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {done.length}/{it.target_sets}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Alvo: {it.target_sets}×{it.target_reps}
+                    {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Alvo: {it.target_sets}×{it.target_reps}
-                {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
-              </p>
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
