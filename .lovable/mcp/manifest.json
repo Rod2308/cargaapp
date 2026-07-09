@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://lgxwvmhaaxiymhjqmglk.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "carga-mcp",
+      "version": "0.1.0",
+      "title": "Carga — Treinos & Recuperação"
+    },
+    "tools": [
+      {
+        "name": "list_workouts",
+        "title": "Listar treinos",
+        "description": "Lista os treinos (workouts) do usuário autenticado, com rótulo, nome e observações.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Máximo de treinos a retornar (padrão 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_workout",
+        "title": "Detalhes de um treino",
+        "description": "Retorna os exercícios de um treino específico (séries, reps, carga alvo, descanso).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workout_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID do treino (obtido via list_workouts)."
+            }
+          },
+          "required": [
+            "workout_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recent_sessions",
+        "title": "Sessões recentes de treino",
+        "description": "Lista as sessões de treino concluídas mais recentes do usuário, com esforço percebido, duração e treino associado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90,
+              "description": "Janela em dias (padrão 14)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Máximo de sessões (padrão 20)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_sleep",
+        "title": "Registrar sono",
+        "description": "Registra (ou atualiza) as horas e qualidade do sono do usuário para uma data. Se log_date for omitido, usa hoje.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hours": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24,
+              "description": "Horas dormidas (0-24)."
+            },
+            "quality": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Qualidade do sono (1-5)."
+            },
+            "log_date": {
+              "type": "string",
+              "description": "Data no formato YYYY-MM-DD. Padrão: hoje."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Observações opcionais."
+            }
+          },
+          "required": [
+            "hours"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_sleep_logs",
+        "title": "Histórico de sono",
+        "description": "Lista os registros de sono do usuário nos últimos N dias (padrão 14), do mais recente para o mais antigo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 180,
+              "description": "Janela em dias (padrão 14)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

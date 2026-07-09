@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -10,11 +10,16 @@ import { Dumbbell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
-  const navigate = useNavigate();
+  const { next } = Route.useSearch();
+
+  const redirectTo = next || "/app";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -23,9 +28,11 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app", replace: true });
+      if (data.session) window.location.href = redirectTo;
     });
-  }, [navigate]);
+  }, [redirectTo]);
+
+
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +40,7 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
   }
 
   async function signUp(e: React.FormEvent) {
@@ -43,20 +50,20 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${redirectTo}`,
         data: { display_name: name || email.split("@")[0], role },
       },
     });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Conta criada! Verifique seu email se necessário.");
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
   }
 
   async function google() {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}${redirectTo}`,
     });
     if (result.error) {
       setBusy(false);
@@ -65,7 +72,8 @@ function AuthPage() {
     }
     if (result.redirected) return;
     setBusy(false);
-    navigate({ to: "/app", replace: true });
+    window.location.href = redirectTo;
+
   }
 
   return (
