@@ -20,10 +20,6 @@ function AuthPage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
   const redirectTo = next || "/app";
-
-
-function AuthPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -32,9 +28,11 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app", replace: true });
+      if (data.session) window.location.href = redirectTo;
     });
-  }, [navigate]);
+  }, [redirectTo]);
+
+
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
