@@ -11,8 +11,8 @@ export const askCoach = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CoachInput.parse(input))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Coach indisponível: chave do Gemini ausente.");
 
     const { supabase, userId } = context;
 
@@ -77,7 +77,7 @@ Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w
 Pergunta: ${data.question}`;
 
     const { text } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
+      model: gateway("gemini-flash-latest"),
       system,
       prompt: context_text,
     });
@@ -125,8 +125,8 @@ export const generatePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PlanInput.parse(input))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Coach indisponível: chave da IA ausente.");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Coach indisponível: chave do Gemini ausente.");
     const { supabase, userId } = context;
 
     // Se `for_user_id` foi passado, o professor está gerando para um aluno.
@@ -231,7 +231,7 @@ Retorne JSON no formato:
     let plan: z.infer<typeof PlanSchema>;
     try {
       const { output } = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
+        model: gateway("gemini-flash-latest"),
         system,
         prompt,
         output: Output.object({ schema: PlanSchema }),
