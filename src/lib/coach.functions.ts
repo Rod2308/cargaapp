@@ -255,6 +255,107 @@ Retorne JSON no formato:
   ]
 }`;
 
+    const buildLocalPlan = (reason: string): z.infer<typeof PlanSchema> => {
+      const labels = ["A", "B", "C", "D", "E", "F", "G"];
+      const byGroup = new Map<string, typeof exercisesLib>();
+      for (const exercise of exercisesLib ?? []) {
+        const group = String(exercise.muscle_group || "Outros").toLowerCase();
+        byGroup.set(group, [...(byGroup.get(group) ?? []), exercise]);
+      }
+
+      const pick = (groups: string[], limit = 6) => {
+        const chosen: { name: string; muscle_group: string; sets: number; reps: string; rest_seconds: number }[] = [];
+        const seen = new Set<string>();
+        for (const groupName of groups) {
+          const matches = [...(byGroup.get(groupName.toLowerCase()) ?? [])];
+          if (!matches.length) {
+            matches.push(
+              ...((exercisesLib ?? []).filter((exercise) =>
+                String(exercise.muscle_group || "").toLowerCase().includes(groupName.toLowerCase()),
+              )),
+            );
+          }
+          for (const exercise of matches) {
+            if (chosen.length >= limit) break;
+            if (seen.has(exercise.name)) continue;
+            seen.add(exercise.name);
+            chosen.push({
+              name: exercise.name,
+              muscle_group: exercise.muscle_group || "Outros",
+              sets: data.uses_enhancers ? 5 : data.experience === "iniciante" ? 3 : 4,
+              reps: /força/i.test(data.goal) ? "4-6" : /resist/i.test(data.goal) || /emagrec/i.test(data.goal) ? "12-15" : "8-12",
+              rest_seconds: /força/i.test(data.goal) ? 180 : /resist/i.test(data.goal) || /emagrec/i.test(data.goal) ? 45 : 90,
+            });
+          }
+        }
+
+        if (!chosen.length) {
+          for (const exercise of exercisesLib ?? []) {
+            if (chosen.length >= Math.min(limit, 5)) break;
+            if (seen.has(exercise.name)) continue;
+            seen.add(exercise.name);
+            chosen.push({
+              name: exercise.name,
+              muscle_group: exercise.muscle_group || "Outros",
+              sets: 3,
+              reps: "10-12",
+              rest_seconds: 90,
+            });
+          }
+        }
+        return chosen;
+      };
+
+      const templatesByDays: Record<number, { name: string; groups: string[] }[]> = {
+        1: [{ name: "Full body", groups: ["Peito", "Costas", "Pernas", "Ombros", "Bíceps", "Tríceps"] }],
+        2: [
+          { name: "Full body A", groups: ["Peito", "Costas", "Pernas", "Ombros"] },
+          { name: "Full body B", groups: ["Pernas", "Costas", "Peito", "Bíceps", "Tríceps"] },
+        ],
+        3: [
+          { name: "Push", groups: ["Peito", "Ombros", "Tríceps"] },
+          { name: "Pull", groups: ["Costas", "Bíceps"] },
+          { name: "Legs", groups: ["Pernas", "Glúteos", "Panturrilhas"] },
+        ],
+        4: [
+          { name: "Upper A", groups: ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps"] },
+          { name: "Lower A", groups: ["Pernas", "Glúteos", "Panturrilhas"] },
+          { name: "Upper B", groups: ["Costas", "Peito", "Ombros", "Tríceps", "Bíceps"] },
+          { name: "Lower B", groups: ["Pernas", "Glúteos", "Abdômen"] },
+        ],
+        5: [
+          { name: "Peito e tríceps", groups: ["Peito", "Tríceps"] },
+          { name: "Costas e bíceps", groups: ["Costas", "Bíceps"] },
+          { name: "Pernas", groups: ["Pernas", "Glúteos", "Panturrilhas"] },
+          { name: "Ombros e core", groups: ["Ombros", "Abdômen"] },
+          { name: "Full body leve", groups: ["Peito", "Costas", "Pernas"] },
+        ],
+        6: [
+          { name: "Push A", groups: ["Peito", "Ombros", "Tríceps"] },
+          { name: "Pull A", groups: ["Costas", "Bíceps"] },
+          { name: "Legs A", groups: ["Pernas", "Glúteos", "Panturrilhas"] },
+          { name: "Push B", groups: ["Peito", "Ombros", "Tríceps"] },
+          { name: "Pull B", groups: ["Costas", "Bíceps"] },
+          { name: "Legs B", groups: ["Pernas", "Glúteos", "Panturrilhas"] },
+        ],
+      };
+
+      const baseTemplates = templatesByDays[data.days_per_week] ?? [
+        ...(templatesByDays[6] ?? []),
+        { name: "Mobilidade e core", groups: ["Abdômen", "Mobilidade", "Pernas"] },
+      ];
+
+      return {
+        overview: `${reason} Criei um plano seguro em modo manual/fallback para você revisar e ajustar antes de enviar.`,
+        splits: baseTemplates.slice(0, data.days_per_week).map((template, index) => ({
+          label: labels[index] ?? String(index + 1),
+          name: template.name,
+          notes: `Plano base para ${data.goal.toLowerCase()}, nível ${data.experience}, com descanso e volume conservadores.`,
+          exercises: pick(template.groups, data.experience === "iniciante" ? 5 : 6),
+        })),
+      };
+    };
+
     let plan: z.infer<typeof PlanSchema>;
     try {
       const { output } = await generateText({
@@ -266,25 +367,19 @@ Retorne JSON no formato:
       });
       plan = output;
     } catch (error: any) {
-      // Créditos da IA esgotados / limite de uso
-      const status = getAiErrorStatus(error);
-      const msg = String(error?.message ?? "");
-      if (
-        status === 402 ||
-        status === 429 ||
-        [500, 502, 503, 504].includes(Number(status)) ||
-        /payment required|quota|credit|insufficient|service unavailable|high demand|temporar/i.test(msg)
-      ) {
-        throw new Error(
-          `${getAiFallbackMessage(error, "gerar o plano") } Use a opção 'Novo treino manual' ou o botão de treinos vazios para montar e enviar ao aluno — vai direto, sem IA.`,
-        );
-      }
       if (NoObjectGeneratedError.isInstance(error) && error.text) {
         const match = error.text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("A IA não devolveu um plano válido. Tente novamente.");
-        plan = PlanSchema.parse(JSON.parse(match[0]));
+        if (match) {
+          try {
+            plan = PlanSchema.parse(JSON.parse(match[0]));
+          } catch {
+            plan = buildLocalPlan("A IA não devolveu um plano válido.");
+          }
+        } else {
+          plan = buildLocalPlan("A IA não devolveu um plano válido.");
+        }
       } else {
-        throw error;
+        plan = buildLocalPlan(getAiFallbackMessage(error, "gerar o plano"));
       }
     }
 
