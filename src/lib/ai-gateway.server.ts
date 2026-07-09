@@ -1,10 +1,8 @@
-// Server-only helper: builds the AI SDK provider bound to the Lovable AI Gateway.
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+// Server-only: provider do Google Gemini usando a chave do usuário (GEMINI_API_KEY).
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
-export function createLovableAiGatewayProvider(apiKey: string) {
-  return createOpenAICompatible({
-    name: "lovable-ai-gateway",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    headers: { "Lovable-API-Key": apiKey },
-  });
+export function createLovableAiGatewayProvider(_ignored?: string) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY ausente. Configure a chave da API do Google Gemini.");
+  return createGoogleGenerativeAI({ apiKey });
 }
