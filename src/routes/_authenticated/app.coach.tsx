@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { askCoach, pingGemini } from "@/lib/coach.functions";
+import { askCoach } from "@/lib/coach.functions";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
