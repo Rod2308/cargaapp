@@ -7,6 +7,23 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
+const GEMINI_MODEL = "gemini-flash-latest";
+
+export const pingGemini = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("GEMINI_API_KEY não configurada.");
+    const started = Date.now();
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const gateway = createLovableAiGatewayProvider();
+    const { text } = await generateText({
+      model: gateway(GEMINI_MODEL),
+      prompt: "Responda em uma frase curta: você está online e qual modelo Gemini está respondendo?",
+    });
+    return { model: GEMINI_MODEL, ms: Date.now() - started, reply: text.trim() };
+  });
+
 export const askCoach = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CoachInput.parse(input))
