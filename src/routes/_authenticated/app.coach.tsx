@@ -50,14 +50,7 @@ function CoachPage() {
           <h1 className="text-2xl font-bold tracking-tight">Coach de IA</h1>
           <p className="text-xs text-muted-foreground">Baseado no seu perfil e histórico</p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => test.mutate()}
-          disabled={test.isPending}
-        >
+
           {test.isPending ? <Loader2 className="size-4 animate-spin" /> : "Testar Gemini"}
         </Button>
       </div>
