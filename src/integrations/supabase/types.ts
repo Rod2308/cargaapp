@@ -53,8 +53,12 @@ export type Database = {
       profiles: {
         Row: {
           activity_level: string | null
+          bio: string | null
           birth_date: string | null
+          city: string | null
+          contact_phone: string | null
           created_at: string
+          cref: string | null
           display_name: string | null
           experience_level: string | null
           goal: string | null
@@ -63,15 +67,21 @@ export type Database = {
           injuries: string | null
           invite_code: string | null
           sex: string | null
+          specialties: string | null
           updated_at: string
           uses_enhancers: boolean | null
           weekly_frequency: number | null
           weight_kg: number | null
+          years_experience: number | null
         }
         Insert: {
           activity_level?: string | null
+          bio?: string | null
           birth_date?: string | null
+          city?: string | null
+          contact_phone?: string | null
           created_at?: string
+          cref?: string | null
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
@@ -80,15 +90,21 @@ export type Database = {
           injuries?: string | null
           invite_code?: string | null
           sex?: string | null
+          specialties?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
           weight_kg?: number | null
+          years_experience?: number | null
         }
         Update: {
           activity_level?: string | null
+          bio?: string | null
           birth_date?: string | null
+          city?: string | null
+          contact_phone?: string | null
           created_at?: string
+          cref?: string | null
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
@@ -97,10 +113,12 @@ export type Database = {
           injuries?: string | null
           invite_code?: string | null
           sex?: string | null
+          specialties?: string | null
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
           weight_kg?: number | null
+          years_experience?: number | null
         }
         Relationships: []
       }
