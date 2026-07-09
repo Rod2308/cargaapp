@@ -102,9 +102,13 @@ function StudentProfile({ profile, update }: { profile: any; update: any }) {
               Copiar
             </button>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Envie ao seu professor para receber treinos direto no app.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Envie ao seu professor, ou use o código dele abaixo para vincular vocês dois.</p>
         </div>
       )}
+
+      <MyTrainerCard />
+
+
 
 
 
