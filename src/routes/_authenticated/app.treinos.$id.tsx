@@ -254,6 +254,20 @@ function WorkoutEditor() {
         </Dialog>
       </div>
 
+      {pendingSuggestions.length > 0 && (
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 p-3">
+          <Sparkles className="size-4 shrink-0 text-accent" />
+          <p className="min-w-0 flex-1 text-xs">
+            <span className="font-medium text-foreground">{pendingSuggestions.length} ajuste{pendingSuggestions.length === 1 ? "" : "s"} sugerido{pendingSuggestions.length === 1 ? "" : "s"}</span>
+            <span className="text-muted-foreground"> com base nas últimas sessões.</span>
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => applyAll.mutate()} disabled={applyAll.isPending}>
+            Aplicar tudo
+          </Button>
+        </div>
+      )}
+
+
       <div className="mt-6 grid gap-3 lg:grid-cols-2">
         {items.length === 0 && (
           <div className="card-soft p-6 text-center text-sm text-muted-foreground">
