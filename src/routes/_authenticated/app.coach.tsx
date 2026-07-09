@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { askCoach, pingGemini } from "@/lib/coach.functions";
+import { askCoach } from "@/lib/coach.functions";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -21,7 +21,6 @@ const suggestions = [
 
 function CoachPage() {
   const ask = useServerFn(askCoach);
-  const ping = useServerFn(pingGemini);
   const [q, setQ] = useState("");
   const [history, setHistory] = useState<{ q: string; a: string }[]>([]);
 
@@ -34,12 +33,6 @@ function CoachPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro ao consultar o coach"),
   });
 
-  const test = useMutation({
-    mutationFn: async () => ping({}),
-    onSuccess: (res) =>
-      toast.success(`Gemini OK — ${res.model} · ${res.ms}ms`, { description: res.reply }),
-    onError: (e: any) => toast.error(e.message ?? "Falha ao conectar no Gemini"),
-  });
 
   function submit(text: string) {
     const question = text.trim();
@@ -57,17 +50,8 @@ function CoachPage() {
           <h1 className="text-2xl font-bold tracking-tight">Coach de IA</h1>
           <p className="text-xs text-muted-foreground">Baseado no seu perfil e histórico</p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => test.mutate()}
-          disabled={test.isPending}
-        >
-          {test.isPending ? <Loader2 className="size-4 animate-spin" /> : "Testar Gemini"}
-        </Button>
       </div>
+
 
       <div className="mt-5 flex flex-wrap gap-2">
         {suggestions.map((s) => (
