@@ -378,7 +378,7 @@ function SuggestionRow({
 
   const patch: { target_weight_kg?: number | null; target_rest_seconds?: number } = {};
   if (change.loadChanged) patch.target_weight_kg = suggestion.suggested_weight_kg;
-  if (change.restChanged) patch.target_rest_seconds = suggestion.suggested_rest_seconds;
+  if (change.restChanged && suggestion.suggested_rest_seconds != null) patch.target_rest_seconds = suggestion.suggested_rest_seconds;
 
   const loadIcon =
     suggestion.loadDirection === "up" ? <TrendingUp className="size-3" /> :
