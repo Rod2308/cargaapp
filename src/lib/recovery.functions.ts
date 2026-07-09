@@ -12,9 +12,6 @@ const RecoverySchema = z.object({
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 
-const RECOVERY_GOOGLE_MODEL = "gemini-flash-latest";
-const RECOVERY_LOVABLE_MODEL = "google/gemini-3-flash-preview";
-
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -120,8 +117,8 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
 
     const { createConfiguredAiModel } = await import("./ai-gateway.server");
     const ai = createConfiguredAiModel({
-      googleModel: RECOVERY_GOOGLE_MODEL,
-      lovableModel: RECOVERY_LOVABLE_MODEL,
+      googleModel: "gemini-flash-latest",
+      lovableModel: "google/gemini-3-flash-preview",
     });
 
     const system = `Você é um coach de musculação especialista em recuperação e periodização, respondendo em português brasileiro.
