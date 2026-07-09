@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, Smartphone, Share, MoreVertical } from "lucide-react";
+import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer } from "@/lib/trainer.functions";
+
 
 function calcAge(birth?: string | null) {
   if (!birth) return null;
