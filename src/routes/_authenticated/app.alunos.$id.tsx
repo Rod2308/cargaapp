@@ -342,9 +342,30 @@ function AiPlanForStudentDialog({
           </div>
         </div>
 
+        {aiError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <p className="font-medium text-destructive">A IA falhou</p>
+            <p className="mt-1 text-xs text-muted-foreground">{aiError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full"
+              onClick={() => manual.mutate()}
+              disabled={manual.isPending}
+            >
+              {manual.isPending ? (
+                <><Loader2 className="size-4 animate-spin" /> Criando...</>
+              ) : (
+                <>Enviar {days} treinos vazios para {studentName}</>
+              )}
+            </Button>
+          </div>
+        )}
+
         <DialogFooter>
           <Button onClick={() => m.mutate()} disabled={m.isPending} className="w-full">
-            {m.isPending ? (<><Loader2 className="size-4 animate-spin" /> Gerando...</>) : (<><Sparkles className="size-4" /> Gerar e enviar</>)}
+            {m.isPending ? (<><Loader2 className="size-4 animate-spin" /> Gerando...</>) : (<><Sparkles className="size-4" /> {aiError ? "Tentar de novo" : "Gerar e enviar"}</>)}
           </Button>
         </DialogFooter>
       </DialogContent>
