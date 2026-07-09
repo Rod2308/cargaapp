@@ -166,7 +166,7 @@ Retorne JSON:
         system,
         prompt,
         output: Output.object({ schema: RecoverySchema }),
-        maxRetries: 0,
+        maxRetries: 2,
       });
       return output;
     } catch (error) {

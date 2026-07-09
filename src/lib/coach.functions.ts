@@ -20,7 +20,7 @@ export const pingGemini = createServerFn({ method: "POST" })
       const { text } = await generateText({
         model: ai.model,
         prompt: "Responda em uma frase curta: você está online e qual modelo de IA está respondendo?",
-        maxRetries: 0,
+        maxRetries: 2,
       });
       return { model: ai.modelId, ms: Date.now() - started, reply: text.trim() };
     } catch (error) {
@@ -102,7 +102,7 @@ Pergunta: ${data.question}`;
         model: ai.model,
         system,
         prompt: context_text,
-        maxRetries: 0,
+        maxRetries: 2,
       });
 
       return { answer: text };
@@ -262,7 +262,7 @@ Retorne JSON no formato:
         system,
         prompt,
         output: Output.object({ schema: PlanSchema }),
-        maxRetries: 0,
+        maxRetries: 2,
       });
       plan = output;
     } catch (error: any) {
