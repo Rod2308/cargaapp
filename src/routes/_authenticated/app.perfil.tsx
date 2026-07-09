@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer } from "@/lib/trainer.functions";
+import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 
 
 function calcAge(birth?: string | null) {
