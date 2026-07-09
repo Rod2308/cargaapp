@@ -156,7 +156,9 @@ function TreinosList() {
 }
 
 function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const gen = useServerFn(generatePlan);
   const [goal, setGoal] = useState("Hipertrofia");
   const [days, setDays] = useState(4);
@@ -166,6 +168,7 @@ function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
   const [focus, setFocus] = useState("");
   const [enhancers, setEnhancers] = useState(false);
   const [replace, setReplace] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const m = useMutation({
     mutationFn: () =>
@@ -182,11 +185,45 @@ function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
         },
       }),
     onSuccess: (res) => {
+      setAiError(null);
       qc.invalidateQueries({ queryKey: ["workouts"] });
       toast.success(`${res.workouts.length} treinos criados!`, { description: res.overview });
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(e.message ?? "Falha ao gerar plano"),
+    onError: (e: any) => setAiError(e?.message ?? "Falha ao gerar plano"),
+  });
+
+  const manual = useMutation({
+    mutationFn: async () => {
+      if (replace) {
+        await supabase.from("workouts").delete().eq("user_id", user.id);
+      }
+      const { data: existing } = await supabase
+        .from("workouts")
+        .select("order_idx")
+        .eq("user_id", user.id)
+        .order("order_idx", { ascending: false })
+        .limit(1);
+      const startIdx = (existing?.[0]?.order_idx ?? -1) + 1;
+      const labels = ["A", "B", "C", "D", "E", "F", "G"];
+      const rows = Array.from({ length: days }, (_, i) => ({
+        user_id: user.id,
+        label: labels[i] ?? String(i + 1),
+        name: `${goal} — Treino ${labels[i] ?? i + 1}`,
+        order_idx: startIdx + i,
+      }));
+      const { data, error } = await supabase.from("workouts").insert(rows).select("id");
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      toast.success(`${created.length} treinos vazios criados. Adicione os exercícios manualmente.`);
+      setAiError(null);
+      onOpenChange(false);
+      if (created[0]?.id) navigate({ to: "/app/treinos/$id", params: { id: created[0].id } });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao criar treinos"),
   });
 
   return (
@@ -272,9 +309,30 @@ function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
           </div>
         </div>
 
+        {aiError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <p className="font-medium text-destructive">A IA falhou</p>
+            <p className="mt-1 text-xs text-muted-foreground">{aiError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full"
+              onClick={() => manual.mutate()}
+              disabled={manual.isPending}
+            >
+              {manual.isPending ? (
+                <><Loader2 className="size-4 animate-spin" /> Criando...</>
+              ) : (
+                <>Criar {days} treinos vazios manualmente</>
+              )}
+            </Button>
+          </div>
+        )}
+
         <DialogFooter>
           <Button onClick={() => m.mutate()} disabled={m.isPending} className="w-full">
-            {m.isPending ? (<><Loader2 className="size-4 animate-spin" /> Gerando plano...</>) : (<><Sparkles className="size-4" /> Gerar plano</>)}
+            {m.isPending ? (<><Loader2 className="size-4 animate-spin" /> Gerando plano...</>) : (<><Sparkles className="size-4" /> {aiError ? "Tentar de novo" : "Gerar plano"}</>)}
           </Button>
         </DialogFooter>
       </DialogContent>
