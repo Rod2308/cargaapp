@@ -12,8 +12,6 @@ const RecoverySchema = z.object({
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 
-const RECOVERY_MODEL = "gemini-flash-latest";
-
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -117,8 +115,11 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       ? `média ${sleepAvg!.toFixed(1)}h em ${sleepArr.length} noites${qualityAvg ? `, qualidade média ${qualityAvg.toFixed(1)}/5` : ""}${lastNight != null ? `, última noite ${lastNight}h` : ""}`
       : "sem registros de sono";
 
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider();
+    const { createConfiguredAiModel } = await import("./ai-gateway.server");
+    const ai = createConfiguredAiModel({
+      googleModel: "gemini-flash-latest",
+      lovableModel: "google/gemini-3-flash-preview",
+    });
 
     const system = `Você é um coach de musculação especialista em recuperação e periodização, respondendo em português brasileiro.
 Analise volume, frequência, esforço percebido (RPE), grupos musculares treinados E SONO para decidir se o usuário está:
@@ -161,10 +162,11 @@ Retorne JSON:
 
     try {
       const { output } = await generateText({
-        model: gateway(RECOVERY_MODEL),
+        model: ai.model,
         system,
         prompt,
         output: Output.object({ schema: RecoverySchema }),
+        maxRetries: 0,
       });
       return output;
     } catch (error) {
