@@ -209,10 +209,10 @@
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(oklch(1 0 0 / 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(1 0 0 / 0.06) 1px, transparent 1px);
-    background-size: 22px 22px;
-    mask-image: radial-gradient(ellipse at top right, oklch(0 0 0 / 0.9), transparent 70%);
+      linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at top right, oklch(0 0 0 / 0.85), transparent 72%);
     pointer-events: none;
   }
 }
