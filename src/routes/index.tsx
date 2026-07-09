@@ -88,6 +88,51 @@ function Landing() {
             </div>
           ))}
         </div>
+
+        <section id="instalar" className="mt-20">
+          <div className="card-soft p-6 md:p-8">
+            <div className="flex items-center gap-2">
+              <div className="grid size-10 place-items-center rounded-lg bg-secondary">
+                <Smartphone className="size-5" />
+              </div>
+              <h2 className="text-xl font-semibold md:text-2xl">Instale o Carga como app no seu celular</h2>
+            </div>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              O Carga funciona como um aplicativo direto no seu celular — com ícone na tela inicial,
+              abertura em tela cheia e sem precisar baixar nada da loja. É só seguir o passo a passo abaixo, uma única vez.
+            </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <Smartphone className="size-4" /> No Android (Chrome)
+                </h3>
+                <ol className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                  <li>1. Abra este site no navegador <strong>Chrome</strong>.</li>
+                  <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (três pontinhos, no canto superior direito).</li>
+                  <li>3. Escolha <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong>.</li>
+                  <li>4. Confirme. O ícone do Carga vai aparecer na sua tela inicial, como qualquer outro app.</li>
+                </ol>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <Smartphone className="size-4" /> No iPhone (Safari)
+                </h3>
+                <ol className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                  <li>1. Abra este site no navegador <strong>Safari</strong> (não funciona pelo Chrome no iPhone).</li>
+                  <li>2. Toque no botão <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com uma seta para cima, na barra de baixo).</li>
+                  <li>3. Role até encontrar <strong>“Adicionar à Tela de Início”</strong> e toque.</li>
+                  <li>4. Confirme em <strong>“Adicionar”</strong>. Pronto — o Carga aparece como app no seu iPhone.</li>
+                </ol>
+              </div>
+            </div>
+
+            <p className="mt-5 text-xs text-muted-foreground">
+              Dica: depois de instalado, abra sempre pelo ícone do Carga para ter a experiência de app em tela cheia.
+            </p>
+          </div>
+        </section>
       </main>
     </div>
   );
