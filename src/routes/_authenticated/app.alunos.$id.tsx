@@ -195,7 +195,9 @@ function AiPlanForStudentDialog({
   studentId: string;
   studentName: string;
 }) {
+  const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const gen = useServerFn(generatePlan);
   const [goal, setGoal] = useState("Hipertrofia");
   const [days, setDays] = useState(4);
@@ -205,6 +207,7 @@ function AiPlanForStudentDialog({
   const [focus, setFocus] = useState("");
   const [enhancers, setEnhancers] = useState(false);
   const [replace, setReplace] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const m = useMutation({
     mutationFn: () =>
@@ -222,11 +225,46 @@ function AiPlanForStudentDialog({
         },
       }),
     onSuccess: (res) => {
+      setAiError(null);
       qc.invalidateQueries({ queryKey: ["student", studentId] });
       toast.success(`${res.workouts.length} treinos enviados para ${studentName}!`);
       onOpenChange(false);
     },
-    onError: (e: any) => toast.error(e.message ?? "Falha ao gerar plano"),
+    onError: (e: any) => setAiError(e?.message ?? "Falha ao gerar plano"),
+  });
+
+  const manual = useMutation({
+    mutationFn: async () => {
+      if (replace) {
+        await supabase.from("workouts").delete().eq("user_id", studentId);
+      }
+      const { data: existing } = await supabase
+        .from("workouts")
+        .select("order_idx")
+        .eq("user_id", studentId)
+        .order("order_idx", { ascending: false })
+        .limit(1);
+      const startIdx = (existing?.[0]?.order_idx ?? -1) + 1;
+      const labels = ["A", "B", "C", "D", "E", "F", "G"];
+      const rows = Array.from({ length: days }, (_, i) => ({
+        user_id: studentId,
+        label: labels[i] ?? String(i + 1),
+        name: `${goal} — Treino ${labels[i] ?? i + 1}`,
+        order_idx: startIdx + i,
+        created_by_trainer_id: user.id,
+      }));
+      const { data, error } = await supabase.from("workouts").insert(rows).select("id");
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["student", studentId] });
+      toast.success(`${created.length} treinos vazios enviados para ${studentName}.`);
+      setAiError(null);
+      onOpenChange(false);
+      if (created[0]?.id) navigate({ to: "/app/treinos/$id", params: { id: created[0].id } });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao criar treinos"),
   });
 
   return (
