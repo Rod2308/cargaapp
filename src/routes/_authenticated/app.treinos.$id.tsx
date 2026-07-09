@@ -341,3 +341,87 @@ function FieldText({ label, value, onSave }: { label: string; value: string; onS
     </label>
   );
 }
+
+function SuggestionRow({
+  suggestion,
+  currentWeight,
+  currentRest,
+  onApply,
+}: {
+  suggestion: Suggestion | undefined;
+  currentWeight: number | null;
+  currentRest: number;
+  onApply: (patch: { target_weight_kg?: number | null; target_rest_seconds?: number }) => void;
+}) {
+  if (!suggestion) return null;
+  const change = hasChange(suggestion, currentWeight, currentRest);
+  const noData = suggestion.sessions.length < 2;
+
+  if (noData) {
+    return (
+      <p className="mt-2 text-[11px] text-muted-foreground">Sem dados suficientes ainda — registre pelo menos 2 sessões.</p>
+    );
+  }
+
+  if (!change.any) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <p className="mt-2 inline-flex cursor-help items-center gap-1 text-[11px] text-muted-foreground">
+            <Minus className="size-3" /> Progresso ok — manter carga e descanso
+          </p>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs">{suggestion.reason}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  const patch: { target_weight_kg?: number | null; target_rest_seconds?: number } = {};
+  if (change.loadChanged) patch.target_weight_kg = suggestion.suggested_weight_kg;
+  if (change.restChanged) patch.target_rest_seconds = suggestion.suggested_rest_seconds;
+
+  const loadIcon =
+    suggestion.loadDirection === "up" ? <TrendingUp className="size-3" /> :
+    suggestion.loadDirection === "down" ? <TrendingDown className="size-3" /> : null;
+  const restIcon =
+    suggestion.restDirection === "up" ? <TrendingUp className="size-3" /> :
+    suggestion.restDirection === "down" ? <TrendingDown className="size-3" /> : null;
+
+  const tone =
+    suggestion.loadDirection === "up"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : suggestion.loadDirection === "down"
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      : "border-border bg-secondary/40 text-foreground";
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onApply(patch)}
+          className={`mt-2 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs hover:brightness-110 ${tone}`}
+        >
+          <Sparkles className="size-3 shrink-0" />
+          <span className="min-w-0 flex-1">
+            Sugestão:
+            {change.loadChanged && (
+              <span className="ml-1 inline-flex items-center gap-1 font-medium">
+                {loadIcon} {suggestion.suggested_weight_kg}kg
+              </span>
+            )}
+            {change.loadChanged && change.restChanged && <span className="mx-1 opacity-60">·</span>}
+            {change.restChanged && (
+              <span className="inline-flex items-center gap-1 font-medium">
+                {restIcon} descanso {suggestion.suggested_rest_seconds}s
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-[10px] opacity-70">tocar p/ aplicar</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs">{suggestion.reason}</TooltipContent>
+    </Tooltip>
+  );
+}
+
