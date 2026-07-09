@@ -403,22 +403,27 @@ function SessionPage() {
           const isSport = ex?.muscle_group === "Esportes";
           return (
             <div key={exerciseId} className="card-soft border border-brand/30 p-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold leading-tight">
-                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
-                    {isSport ? "Esporte" : "Extra"}
-                  </span>
-                  {items.length + idx + 1}. {name}
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  {isSport
-                    ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
-                    : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
-                </span>
+              <div className="flex items-start gap-3">
+                {!isSport && <ExerciseImage url={ex?.image_url} alt={name} />}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="font-semibold leading-tight">
+                      <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+                        {isSport ? "Esporte" : "Extra"}
+                      </span>
+                      {items.length + idx + 1}. {name}
+                    </h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {isSport
+                        ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
+                        : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                  {ex?.muscle_group && !isSport && (
+                    <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
+                  )}
+                </div>
               </div>
-              {ex?.muscle_group && !isSport && (
-                <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
-              )}
               <div className="mt-3 space-y-2">
                 {doneSets.map((s: any, i: number) => (
                   <SetRow
