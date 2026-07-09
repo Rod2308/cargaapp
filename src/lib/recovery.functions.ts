@@ -15,7 +15,7 @@ export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("IA indisponível.");
     const { supabase, userId } = context;
 
@@ -161,7 +161,7 @@ Retorne JSON:
 
     try {
       const { output } = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
+        model: gateway("gemini-flash-latest"),
         system,
         prompt,
         output: Output.object({ schema: RecoverySchema }),
