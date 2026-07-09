@@ -33,12 +33,6 @@ function CoachPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro ao consultar o coach"),
   });
 
-  const test = useMutation({
-    mutationFn: async () => ping({}),
-    onSuccess: (res) =>
-      toast.success(`Gemini OK — ${res.model} · ${res.ms}ms`, { description: res.reply }),
-    onError: (e: any) => toast.error(e.message ?? "Falha ao conectar no Gemini"),
-  });
 
   function submit(text: string) {
     const question = text.trim();
