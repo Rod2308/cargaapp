@@ -7,19 +7,25 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
-const COACH_MODEL = "gemini-flash-latest";
+const COACH_GOOGLE_MODEL = "gemini-flash-latest";
+const COACH_LOVABLE_MODEL = "google/gemini-3-flash-preview";
 
 export const pingGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const started = Date.now();
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider();
-    const { text } = await generateText({
-      model: gateway(COACH_MODEL),
-      prompt: "Responda em uma frase curta: você está online e qual modelo de IA está respondendo?",
-    });
-    return { model: COACH_MODEL, ms: Date.now() - started, reply: text.trim() };
+    const { createConfiguredAiModel, getAiFallbackMessage } = await import("./ai-gateway.server");
+    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
+    try {
+      const { text } = await generateText({
+        model: ai.model,
+        prompt: "Responda em uma frase curta: você está online e qual modelo de IA está respondendo?",
+        maxRetries: 0,
+      });
+      return { model: ai.modelId, ms: Date.now() - started, reply: text.trim() };
+    } catch (error) {
+      return { model: ai.modelId, ms: Date.now() - started, reply: getAiFallbackMessage(error, "testar a conexão") };
+    }
   });
 
 export const askCoach = createServerFn({ method: "POST" })
@@ -62,8 +68,8 @@ export const askCoach = createServerFn({ method: "POST" })
       .select("label, name, notes, workout_exercises(target_sets, target_reps, target_weight_kg, target_rest_seconds, exercises(name, muscle_group))")
       .eq("user_id", userId);
 
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider();
+    const { createConfiguredAiModel, getAiFallbackMessage } = await import("./ai-gateway.server");
+    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
 
     const system = `Você é um coach de musculação experiente, direto e motivador, respondendo em português brasileiro.
 Baseie sugestões em ciência do treinamento: princípio da sobrecarga progressiva, ajuste de descanso conforme intensidade (hipertrofia 60-90s, força 2-4min, resistência 30-45s), split adequado à frequência semanal, e alerta para overtraining.
@@ -88,13 +94,18 @@ Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w
 
 Pergunta: ${data.question}`;
 
-    const { text } = await generateText({
-      model: gateway(COACH_MODEL),
-      system,
-      prompt: context_text,
-    });
+    try {
+      const { text } = await generateText({
+        model: ai.model,
+        system,
+        prompt: context_text,
+        maxRetries: 0,
+      });
 
-    return { answer: text };
+      return { answer: text };
+    } catch (error) {
+      return { answer: getAiFallbackMessage(error, "responder o coach") };
+    }
   });
 
 // ============================================================
@@ -183,8 +194,8 @@ export const generatePlan = createServerFn({ method: "POST" })
       .join("\n");
 
 
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider();
+    const { createConfiguredAiModel, getAiFallbackMessage, getAiErrorStatus } = await import("./ai-gateway.server");
+    const ai = createConfiguredAiModel({ googleModel: COACH_GOOGLE_MODEL, lovableModel: COACH_LOVABLE_MODEL });
 
     const system = `Você é um coach profissional de musculação com base em ciência do treinamento (princípios de Schoenfeld, ACSM, NSCA).
 Monte um plano REAL e efetivo, com séries, repetições e descanso adequados ao objetivo:
@@ -241,19 +252,25 @@ Retorne JSON no formato:
     let plan: z.infer<typeof PlanSchema>;
     try {
       const { output } = await generateText({
-        model: gateway(COACH_MODEL),
+        model: ai.model,
         system,
         prompt,
         output: Output.object({ schema: PlanSchema }),
+        maxRetries: 0,
       });
       plan = output;
     } catch (error: any) {
       // Créditos da IA esgotados / limite de uso
-      const status = error?.statusCode ?? error?.status ?? error?.response?.status;
+      const status = getAiErrorStatus(error);
       const msg = String(error?.message ?? "");
-      if (status === 402 || status === 429 || /payment required|quota|credit|insufficient/i.test(msg)) {
+      if (
+        status === 402 ||
+        status === 429 ||
+        [500, 502, 503, 504].includes(Number(status)) ||
+        /payment required|quota|credit|insufficient|service unavailable|high demand|temporar/i.test(msg)
+      ) {
         throw new Error(
-          "Os créditos de IA acabaram. Use a opção 'Novo treino manual' para montar e enviar o treino ao aluno — vai direto, sem IA.",
+          `${getAiFallbackMessage(error, "gerar o plano") } Use a opção 'Novo treino manual' ou o botão de treinos vazios para montar e enviar ao aluno — vai direto, sem IA.`,
         );
       }
       if (NoObjectGeneratedError.isInstance(error) && error.text) {
