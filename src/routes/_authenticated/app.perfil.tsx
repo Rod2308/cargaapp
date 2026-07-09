@@ -353,7 +353,116 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
   );
 }
 
+function MyTrainerCard() {
+  const qc = useQueryClient();
+  const [code, setCode] = useState("");
+  const [confirmingUnlink, setConfirmingUnlink] = useState(false);
+
+  const getFn = useServerFn(getMyTrainer);
+  const linkFn = useServerFn(linkTrainerByCode);
+  const unlinkFn = useServerFn(unlinkMyTrainer);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-trainer"],
+    queryFn: () => getFn(),
+  });
+
+  const link = useMutation({
+    mutationFn: (invite_code: string) => linkFn({ data: { invite_code } }),
+    onSuccess: () => {
+      setCode("");
+      qc.invalidateQueries({ queryKey: ["my-trainer"] });
+      toast.success("Professor vinculado!");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível vincular."),
+  });
+
+  const unlink = useMutation({
+    mutationFn: () => unlinkFn(),
+    onSuccess: () => {
+      setConfirmingUnlink(false);
+      qc.invalidateQueries({ queryKey: ["my-trainer"] });
+      toast.success("Vínculo removido.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao desvincular."),
+  });
+
+  if (isLoading) {
+    return <div className="card-soft mt-5 p-4 text-sm text-muted-foreground">Carregando...</div>;
+  }
+
+  const trainer = data?.trainer;
+
+  if (trainer) {
+    return (
+      <div className="card-soft mt-5 p-4">
+        <p className="text-eyebrow text-muted-foreground">Seu professor</p>
+        <div className="mt-2 flex items-start gap-3">
+          <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground text-lg">👨‍🏫</div>
+          <div className="flex-1">
+            <p className="font-semibold">{trainer.display_name ?? "Professor(a)"}</p>
+            {trainer.cref && <p className="text-xs text-muted-foreground">CREF {trainer.cref}</p>}
+            {trainer.city && <p className="text-xs text-muted-foreground">{trainer.city}</p>}
+            {trainer.specialties && <p className="mt-1 text-xs text-muted-foreground">Especialidades: {trainer.specialties}</p>}
+            {trainer.contact_phone && <p className="mt-1 text-xs text-muted-foreground">Contato: {trainer.contact_phone}</p>}
+          </div>
+        </div>
+        {confirmingUnlink ? (
+          <div className="mt-3 flex items-center gap-2">
+            <Button variant="destructive" size="sm" disabled={unlink.isPending} onClick={() => unlink.mutate()}>
+              Confirmar desvincular
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmingUnlink(false)}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingUnlink(true)}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
+          >
+            <Unlink className="size-3.5" /> Desvincular professor
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card-soft mt-5 p-4">
+      <div className="flex items-center gap-2">
+        <UserPlus className="size-4" />
+        <p className="text-eyebrow text-muted-foreground">Vincular um professor</p>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Insira o código do seu professor (formato <b>CRG-XXXX</b>) para receber treinos direto no app.
+      </p>
+      <form
+        className="mt-3 flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const c = code.trim().toUpperCase();
+          if (c.length < 4) return toast.error("Código inválido.");
+          link.mutate(c);
+        }}
+      >
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="CRG-XXXX"
+          maxLength={20}
+          className="font-mono tracking-widest uppercase"
+        />
+        <Button type="submit" disabled={link.isPending || code.trim().length < 4}>
+          {link.isPending ? "Vinculando..." : "Vincular"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function InstallInstructions() {
+
   return (
     <div className="card-soft mt-6 p-5">
       <div className="flex items-center gap-2">
