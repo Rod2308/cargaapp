@@ -297,12 +297,20 @@ function WorkoutEditor() {
               <FieldNum label="Carga (kg)" step={0.5} value={it.target_weight_kg ?? ""} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_weight_kg: v || null } })} />
               <FieldNum label="Desc. (s)" value={it.target_rest_seconds} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_rest_seconds: v } })} />
             </div>
+            <SuggestionRow
+              suggestion={suggestionsByItem.get(it.id)}
+              currentWeight={it.target_weight_kg ?? null}
+              currentRest={it.target_rest_seconds}
+              onApply={(patch) => updateItem.mutate({ itemId: it.id, patch })}
+            />
           </div>
         ))}
       </div>
     </div>
+    </TooltipProvider>
   );
 }
+
 
 function FieldNum({ label, value, onSave, step }: { label: string; value: any; step?: number; onSave: (v: number) => void }) {
   return (
