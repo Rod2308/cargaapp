@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer } from "lucide-react";
+import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -142,7 +142,7 @@ function SessionPage() {
   const { data: allExercises = [] } = useQuery({
     queryKey: ["all-exercises"],
     queryFn: async () => {
-      const { data } = await supabase.from("exercises").select("id, name, muscle_group").order("name");
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group, image_url").order("name");
       return data ?? [];
     },
   });
@@ -347,16 +347,21 @@ function SessionPage() {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
           return (
             <div key={it.id} className="card-soft p-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
-                <span className="text-xs text-muted-foreground">
-                  {done.length}/{it.target_sets}
-                </span>
+              <div className="flex items-start gap-3">
+                <ExerciseImage url={it.exercises.image_url} alt={it.exercises.name} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {done.length}/{it.target_sets}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Alvo: {it.target_sets}×{it.target_reps}
+                    {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Alvo: {it.target_sets}×{it.target_reps}
-                {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
-              </p>
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
@@ -398,22 +403,27 @@ function SessionPage() {
           const isSport = ex?.muscle_group === "Esportes";
           return (
             <div key={exerciseId} className="card-soft border border-brand/30 p-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold leading-tight">
-                  <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
-                    {isSport ? "Esporte" : "Extra"}
-                  </span>
-                  {items.length + idx + 1}. {name}
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  {isSport
-                    ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
-                    : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
-                </span>
+              <div className="flex items-start gap-3">
+                {!isSport && <ExerciseImage url={ex?.image_url} alt={name} />}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="font-semibold leading-tight">
+                      <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+                        {isSport ? "Esporte" : "Extra"}
+                      </span>
+                      {items.length + idx + 1}. {name}
+                    </h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {isSport
+                        ? `${doneSets.reduce((a: number, s: any) => a + (s.reps ?? 0), 0)} min`
+                        : `${doneSets.length} série${doneSets.length === 1 ? "" : "s"}`}
+                    </span>
+                  </div>
+                  {ex?.muscle_group && !isSport && (
+                    <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
+                  )}
+                </div>
               </div>
-              {ex?.muscle_group && !isSport && (
-                <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
-              )}
               <div className="mt-3 space-y-2">
                 {doneSets.map((s: any, i: number) => (
                   <SetRow
@@ -451,6 +461,33 @@ function SessionPage() {
         })}
       </div>
     </div>
+  );
+}
+
+function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: string }) {
+  const [frame, setFrame] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!url || failed) return;
+    const t = setInterval(() => setFrame((f) => (f === 0 ? 1 : 0)), 900);
+    return () => clearInterval(t);
+  }, [url, failed]);
+  if (!url || failed) {
+    return (
+      <div className="grid size-20 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+        <Dumbbell className="size-6" />
+      </div>
+    );
+  }
+  const src = frame === 0 ? url : url.replace(/0\.jpg$/, "1.jpg");
+  return (
+    <img
+      src={src}
+      alt={`Demonstração: ${alt}`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="size-20 shrink-0 rounded-lg bg-secondary object-cover"
+    />
   );
 }
 
