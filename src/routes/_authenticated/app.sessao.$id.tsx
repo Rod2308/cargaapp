@@ -142,7 +142,7 @@ function SessionPage() {
   const { data: allExercises = [] } = useQuery({
     queryKey: ["all-exercises"],
     queryFn: async () => {
-      const { data } = await supabase.from("exercises").select("id, name, muscle_group").order("name");
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group, image_url").order("name");
       return data ?? [];
     },
   });
