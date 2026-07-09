@@ -42,9 +42,14 @@ function Landing() {
         </Link>
 
 
-        <Link to="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-          Entrar
-        </Link>
+        <div className="flex items-center gap-4">
+          <a href="#instalar" className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline">
+            Instalar app
+          </a>
+          <Link to="/auth" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            Entrar
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pt-8 pb-24 md:pt-20">
@@ -69,6 +74,9 @@ function Landing() {
             </Link>
             <a href="#recursos" className="inline-flex items-center rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary">
               Ver recursos
+            </a>
+            <a href="#instalar" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary">
+              <Smartphone className="size-4" /> Instalar como app
             </a>
           </div>
         </div>
