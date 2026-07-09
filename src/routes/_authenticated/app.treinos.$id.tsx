@@ -101,6 +101,69 @@ function WorkoutEditor() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
   });
 
+  const itemIds = useMemo(() => items.map((it: any) => it.id), [items]);
+  const { data: recentSets = [] } = useQuery({
+    enabled: itemIds.length > 0,
+    queryKey: ["workout-recent-sets", id, itemIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("session_sets")
+        .select("weight_kg, reps, rpe, session_id, completed_at, workout_exercise_id")
+        .in("workout_exercise_id", itemIds)
+        .order("completed_at", { ascending: false })
+        .limit(300);
+      return data ?? [];
+    },
+  });
+
+  const suggestionsByItem = useMemo(() => {
+    const map = new Map<string, Suggestion>();
+    for (const it of items as any[]) {
+      const rows = (recentSets as any[]).filter((r) => r.workout_exercise_id === it.id);
+      map.set(
+        it.id,
+        suggestAdjustment({
+          currentWeight: it.target_weight_kg ?? null,
+          currentRest: it.target_rest_seconds,
+          repRange: it.target_reps,
+          rows,
+        }),
+      );
+    }
+    return map;
+  }, [items, recentSets]);
+
+  const pendingSuggestions = useMemo(() => {
+    const out: { itemId: string; patch: any }[] = [];
+    for (const it of items as any[]) {
+      const s = suggestionsByItem.get(it.id);
+      if (!s) continue;
+      const change = hasChange(s, it.target_weight_kg ?? null, it.target_rest_seconds);
+      if (!change.any) continue;
+      const patch: any = {};
+      if (change.loadChanged) patch.target_weight_kg = s.suggested_weight_kg;
+      if (change.restChanged) patch.target_rest_seconds = s.suggested_rest_seconds;
+      out.push({ itemId: it.id, patch });
+    }
+    return out;
+  }, [items, suggestionsByItem]);
+
+  const applyAll = useMutation({
+    mutationFn: async () => {
+      for (const { itemId, patch } of pendingSuggestions) {
+        const { error } = await supabase.from("workout_exercises").update(patch).eq("id", itemId);
+        if (error) throw error;
+      }
+      return pendingSuggestions.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
+      toast.success(`${n} ajuste${n === 1 ? "" : "s"} aplicado${n === 1 ? "" : "s"}.`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao aplicar sugestões"),
+  });
+
+
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase.from("workout_exercises").delete().eq("id", itemId);
