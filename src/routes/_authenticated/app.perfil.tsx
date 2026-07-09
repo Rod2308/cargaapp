@@ -66,33 +66,42 @@ function PerfilPage() {
       <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
 
       {isTrainer ? (
-        <div className="card-soft mt-5 flex items-center gap-3 p-4">
-          <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground text-lg">👨‍🏫</div>
-          <div className="flex-1">
-            <p className="font-semibold">Você é professor(a)</p>
-            <p className="text-xs text-muted-foreground">Acesse a aba <b>Alunos</b> para vincular e enviar treinos.</p>
-          </div>
-        </div>
+        <TrainerProfile profile={profile} update={update} userId={user.id} />
       ) : (
-        profile.invite_code && (
-          <div className="card-soft mt-5 p-4">
-            <p className="text-eyebrow text-muted-foreground">Seu código de convite</p>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="font-display text-2xl font-black tracking-widest">{profile.invite_code}</p>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(profile.invite_code!);
-                  toast.success("Código copiado");
-                }}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-              >
-                Copiar
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">Envie ao seu professor para receber treinos direto no app.</p>
-          </div>
-        )
+        <StudentProfile profile={profile} update={update} />
       )}
+
+      <InstallInstructions />
+
+      <Button variant="outline" onClick={signOut} className="mt-6 w-full">
+        <LogOut className="size-4" /> Sair da conta
+      </Button>
+    </div>
+  );
+}
+
+function StudentProfile({ profile, update }: { profile: any; update: any }) {
+  return (
+    <>
+      {profile.invite_code && (
+        <div className="card-soft mt-5 p-4">
+          <p className="text-eyebrow text-muted-foreground">Seu código de convite</p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="font-display text-2xl font-black tracking-widest">{profile.invite_code}</p>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(profile.invite_code!);
+                toast.success("Código copiado");
+              }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
+            >
+              Copiar
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Envie ao seu professor para receber treinos direto no app.</p>
+        </div>
+      )}
+
 
 
       <div className="card-soft mt-6 space-y-5 p-5">
@@ -229,53 +238,156 @@ function PerfilPage() {
           />
         </div>
       </div>
+    </>
+  );
+}
 
-      <div className="card-soft mt-6 p-5">
-        <div className="flex items-center gap-2">
-          <div className="grid size-10 place-items-center rounded-lg bg-secondary">
-            <Smartphone className="size-5" />
-          </div>
-          <h2 className="text-lg font-semibold">Instale o Carga como app</h2>
+function TrainerProfile({ profile, update, userId }: { profile: any; update: any; userId: string }) {
+  const { data: studentCount } = useQuery({
+    queryKey: ["trainer-student-count", userId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("trainer_students")
+        .select("*", { count: "exact", head: true })
+        .eq("trainer_id", userId);
+      return count ?? 0;
+    },
+  });
+
+  return (
+    <>
+      <div className="card-soft mt-5 flex items-center gap-3 p-4">
+        <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground text-lg">👨‍🏫</div>
+        <div className="flex-1">
+          <p className="font-semibold">Você é professor(a)</p>
+          <p className="text-xs text-muted-foreground">
+            {studentCount ?? 0} {studentCount === 1 ? "aluno vinculado" : "alunos vinculados"} · use a aba <b>Alunos</b> para gerenciar.
+          </p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          O Carga funciona como um aplicativo no seu celular — com ícone na tela inicial e abertura em tela cheia, sem baixar nada da loja. Faça uma única vez:
-        </p>
-
-        <div className="mt-4 space-y-3">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Smartphone className="size-4" /> No Android
-            </h3>
-            <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-              <li>1. Abra este site no seu navegador (Chrome, Edge, Samsung Internet, Opera, Brave…).</li>
-              <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (geralmente três pontinhos, no canto superior).</li>
-              <li>3. Escolha <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong>.</li>
-              <li>4. Confirme. O ícone aparece na tela inicial como qualquer app.</li>
-            </ol>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Smartphone className="size-4" /> No iPhone
-            </h3>
-            <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-              <li>1. Abra este site no seu navegador (Safari, Chrome, Edge, Firefox…).</li>
-              <li>2. Toque no botão <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com seta pra cima — no Safari fica na barra de baixo; no Chrome/Edge, dentro do menu <MoreVertical className="inline size-4 align-text-bottom" />).</li>
-              <li>3. Role até <strong>“Adicionar à Tela de Início”</strong> e toque.</li>
-              <li>4. Confirme em <strong>“Adicionar”</strong>. Pronto.</li>
-            </ol>
-
-          </div>
-        </div>
-
-        <p className="mt-4 text-xs text-muted-foreground">
-          Depois de instalado, abra sempre pelo ícone do Carga para ter a experiência em tela cheia.
-        </p>
       </div>
 
-      <Button variant="outline" onClick={signOut} className="mt-6 w-full">
-        <LogOut className="size-4" /> Sair da conta
-      </Button>
+      <div className="card-soft mt-6 space-y-5 p-5">
+        <h2 className="text-lg font-semibold">Dados profissionais</h2>
+
+        <div className="space-y-1.5">
+          <Label>Nome público</Label>
+          <Input
+            defaultValue={profile.display_name ?? ""}
+            placeholder="Como seus alunos te encontram"
+            onBlur={(e) => e.target.value !== (profile.display_name ?? "") && update.mutate({ display_name: e.target.value })}
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>CREF (opcional)</Label>
+            <Input
+              defaultValue={profile.cref ?? ""}
+              placeholder="Ex.: 123456-G/SP"
+              onBlur={(e) => e.target.value !== (profile.cref ?? "") && update.mutate({ cref: e.target.value || null })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Anos de experiência</Label>
+            <Input
+              type="number"
+              min={0}
+              max={70}
+              defaultValue={profile.years_experience ?? ""}
+              onBlur={(e) => {
+                const n = e.target.value ? Number(e.target.value) : null;
+                if (n !== profile.years_experience && (n === null || (n >= 0 && n <= 70))) update.mutate({ years_experience: n });
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Cidade</Label>
+            <Input
+              defaultValue={profile.city ?? ""}
+              placeholder="Ex.: São Paulo, SP"
+              onBlur={(e) => e.target.value !== (profile.city ?? "") && update.mutate({ city: e.target.value || null })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>WhatsApp / contato</Label>
+            <Input
+              defaultValue={profile.contact_phone ?? ""}
+              placeholder="Ex.: (11) 99999-9999"
+              onBlur={(e) => e.target.value !== (profile.contact_phone ?? "") && update.mutate({ contact_phone: e.target.value || null })}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Especialidades</Label>
+          <Input
+            defaultValue={profile.specialties ?? ""}
+            placeholder="Ex.: hipertrofia, emagrecimento, reabilitação"
+            onBlur={(e) => e.target.value !== (profile.specialties ?? "") && update.mutate({ specialties: e.target.value || null })}
+          />
+          <p className="text-xs text-muted-foreground">Separe por vírgulas.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Bio</Label>
+          <Textarea
+            rows={4}
+            placeholder="Fale um pouco sobre sua abordagem, formação e como você trabalha com os alunos…"
+            defaultValue={profile.bio ?? ""}
+            onBlur={(e) => e.target.value !== (profile.bio ?? "") && update.mutate({ bio: e.target.value || null })}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function InstallInstructions() {
+  return (
+    <div className="card-soft mt-6 p-5">
+      <div className="flex items-center gap-2">
+        <div className="grid size-10 place-items-center rounded-lg bg-secondary">
+          <Smartphone className="size-5" />
+        </div>
+        <h2 className="text-lg font-semibold">Instale o Carga como app</h2>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        O Carga funciona como um aplicativo no seu celular — com ícone na tela inicial e abertura em tela cheia, sem baixar nada da loja. Faça uma única vez:
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Smartphone className="size-4" /> No Android
+          </h3>
+          <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+            <li>1. Abra este site no seu navegador (Chrome, Edge, Samsung Internet, Opera, Brave…).</li>
+            <li>2. Toque no menu <MoreVertical className="inline size-4 align-text-bottom" /> (geralmente três pontinhos, no canto superior).</li>
+            <li>3. Escolha <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong>.</li>
+            <li>4. Confirme. O ícone aparece na tela inicial como qualquer app.</li>
+          </ol>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Smartphone className="size-4" /> No iPhone
+          </h3>
+          <ol className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
+            <li>1. Abra este site no seu navegador (Safari, Chrome, Edge, Firefox…).</li>
+            <li>2. Toque no botão <strong>Compartilhar</strong> <Share className="inline size-4 align-text-bottom" /> (quadrado com seta pra cima — no Safari fica na barra de baixo; no Chrome/Edge, dentro do menu <MoreVertical className="inline size-4 align-text-bottom" />).</li>
+            <li>3. Role até <strong>“Adicionar à Tela de Início”</strong> e toque.</li>
+            <li>4. Confirme em <strong>“Adicionar”</strong>. Pronto.</li>
+          </ol>
+        </div>
+      </div>
+
+      <p className="mt-4 text-xs text-muted-foreground">
+        Depois de instalado, abra sempre pelo ícone do Carga para ter a experiência em tela cheia.
+      </p>
     </div>
   );
 }
+
