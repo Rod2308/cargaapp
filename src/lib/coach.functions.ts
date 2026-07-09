@@ -7,30 +7,25 @@ const CoachInput = z.object({
   question: z.string().min(1).max(500),
 });
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const COACH_MODEL = "google/gemini-3-flash-preview";
 
 export const pingGemini = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY não configurada.");
     const started = Date.now();
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
     const gateway = createLovableAiGatewayProvider();
     const { text } = await generateText({
-      model: gateway(GEMINI_MODEL),
-      prompt: "Responda em uma frase curta: você está online e qual modelo Gemini está respondendo?",
+      model: gateway(COACH_MODEL),
+      prompt: "Responda em uma frase curta: você está online e qual modelo de IA está respondendo?",
     });
-    return { model: GEMINI_MODEL, ms: Date.now() - started, reply: text.trim() };
+    return { model: COACH_MODEL, ms: Date.now() - started, reply: text.trim() };
   });
 
 export const askCoach = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CoachInput.parse(input))
   .handler(async ({ data, context }) => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("Coach indisponível: chave do Gemini ausente.");
-
     const { supabase, userId } = context;
 
     const { data: profile } = await supabase
@@ -68,7 +63,7 @@ export const askCoach = createServerFn({ method: "POST" })
       .eq("user_id", userId);
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
+    const gateway = createLovableAiGatewayProvider();
 
     const system = `Você é um coach de musculação experiente, direto e motivador, respondendo em português brasileiro.
 Baseie sugestões em ciência do treinamento: princípio da sobrecarga progressiva, ajuste de descanso conforme intensidade (hipertrofia 60-90s, força 2-4min, resistência 30-45s), split adequado à frequência semanal, e alerta para overtraining.
@@ -94,7 +89,7 @@ Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w
 Pergunta: ${data.question}`;
 
     const { text } = await generateText({
-      model: gateway("gemini-2.0-flash"),
+      model: gateway(COACH_MODEL),
       system,
       prompt: context_text,
     });
@@ -142,8 +137,6 @@ export const generatePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PlanInput.parse(input))
   .handler(async ({ data, context }) => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("Coach indisponível: chave do Gemini ausente.");
     const { supabase, userId } = context;
 
     // Se `for_user_id` foi passado, o professor está gerando para um aluno.
@@ -191,7 +184,7 @@ export const generatePlan = createServerFn({ method: "POST" })
 
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
+    const gateway = createLovableAiGatewayProvider();
 
     const system = `Você é um coach profissional de musculação com base em ciência do treinamento (princípios de Schoenfeld, ACSM, NSCA).
 Monte um plano REAL e efetivo, com séries, repetições e descanso adequados ao objetivo:
@@ -248,7 +241,7 @@ Retorne JSON no formato:
     let plan: z.infer<typeof PlanSchema>;
     try {
       const { output } = await generateText({
-        model: gateway("gemini-2.0-flash"),
+        model: gateway(COACH_MODEL),
         system,
         prompt,
         output: Output.object({ schema: PlanSchema }),

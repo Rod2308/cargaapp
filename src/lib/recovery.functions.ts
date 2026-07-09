@@ -12,11 +12,11 @@ const RecoverySchema = z.object({
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 
+const RECOVERY_MODEL = "google/gemini-3-flash-preview";
+
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("IA indisponível.");
     const { supabase, userId } = context;
 
     const now = new Date();
@@ -118,7 +118,7 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       : "sem registros de sono";
 
     const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
+    const gateway = createLovableAiGatewayProvider();
 
     const system = `Você é um coach de musculação especialista em recuperação e periodização, respondendo em português brasileiro.
 Analise volume, frequência, esforço percebido (RPE), grupos musculares treinados E SONO para decidir se o usuário está:
@@ -161,7 +161,7 @@ Retorne JSON:
 
     try {
       const { output } = await generateText({
-        model: gateway("gemini-2.0-flash"),
+        model: gateway(RECOVERY_MODEL),
         system,
         prompt,
         output: Output.object({ schema: RecoverySchema }),
