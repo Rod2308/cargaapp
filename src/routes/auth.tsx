@@ -10,8 +10,17 @@ import { Dumbbell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+  }),
   component: AuthPage,
 });
+
+function AuthPage() {
+  const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const redirectTo = next || "/app";
+
 
 function AuthPage() {
   const navigate = useNavigate();
