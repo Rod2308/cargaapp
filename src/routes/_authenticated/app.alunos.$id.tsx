@@ -289,8 +289,9 @@ function AiPlanForStudentDialog({
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
-              <p className="text-sm font-medium">Usa ergogênicos</p>
-              <p className="text-xs text-muted-foreground">Aumenta volume e frequência</p>
+              <p className="text-sm font-medium">Usa anabolizantes ou SARMs</p>
+              <p className="text-xs text-muted-foreground">Substâncias que aceleram ganho de massa. Aumenta volume e frequência.</p>
+
             </div>
             <Switch checked={enhancers} onCheckedChange={setEnhancers} />
           </div>
