@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/app/coach")({
 const suggestions = [
   "Como devo descansar entre séries se meu objetivo é hipertrofia?",
   "Fiz um treino de perna pesado ontem. O que faço amanhã?",
-  "Uso ergogênicos. Como estruturar minha semana?",
+  "Uso anabolizantes. Como estruturar minha semana?",
   "Estou estagnado no supino em 80kg. Como progredir?",
   "Tenho 4 dias por semana. Como dividir o treino?",
 ];
