@@ -20,6 +20,7 @@ import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload } from "lucide-r
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
+import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
@@ -119,7 +120,15 @@ function HistoryPage() {
                           )}
                         </p>
                       </div>
-                      <div className="flex shrink-0 gap-2">
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        {imported && done && (
+                          <LinkToWorkoutButton
+                            sessionId={s.id}
+                            userId={user.id}
+                            currentWorkoutId={s.workout_id ?? null}
+                            currentWorkoutLabel={s.workouts?.label ?? s.workouts?.name ?? null}
+                          />
+                        )}
                         {!done ? (
                           <Button size="sm" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
                             <Play className="size-3.5 fill-current" /> Continuar

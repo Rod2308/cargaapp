@@ -9,11 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check, HeartPulse } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { suggestAdjustment, hasChange, type Suggestion } from "@/lib/progression";
+import { suggestAdjustment, hasChange, type Suggestion, type CardioLoad } from "@/lib/progression";
 
 
 export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
@@ -130,6 +130,23 @@ function WorkoutEditor() {
     },
   });
 
+  // Cardio sessions imported from watch/app linked to THIS workout — last 14 days.
+  const { data: cardioLoads = [] } = useQuery({
+    queryKey: ["workout-recent-cardio", id, user.id],
+    queryFn: async (): Promise<CardioLoad[]> => {
+      const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+      const { data } = await supabase
+        .from("sessions")
+        .select("started_at, ended_at, avg_hr, max_hr, calories, distance_m, activity_type")
+        .eq("user_id", user.id)
+        .eq("workout_id", id)
+        .neq("source", "manual")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false });
+      return (data ?? []) as CardioLoad[];
+    },
+  });
+
   const suggestionsByItem = useMemo(() => {
     const map = new Map<string, Suggestion>();
     for (const it of items as any[]) {
@@ -141,11 +158,12 @@ function WorkoutEditor() {
           currentRest: it.target_rest_seconds,
           repRange: it.target_reps,
           rows,
+          cardioLoads,
         }),
       );
     }
     return map;
-  }, [items, recentSets]);
+  }, [items, recentSets, cardioLoads]);
 
   const pendingSuggestions = useMemo(() => {
     const out: { itemId: string; patch: any }[] = [];
@@ -286,6 +304,24 @@ function WorkoutEditor() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {cardioLoads.length > 0 && (() => {
+        const first = suggestionsByItem.values().next().value;
+        const fatigue = first?.cardioFatigue;
+        if (!fatigue || fatigue.level === "none") return null;
+        const isHigh = fatigue.level === "high";
+        return (
+          <div className={`mt-3 flex items-center gap-3 rounded-xl border p-3 ${isHigh ? "border-destructive/40 bg-destructive/10" : "border-amber-500/40 bg-amber-500/10"}`}>
+            <HeartPulse className={`size-4 shrink-0 ${isHigh ? "text-destructive" : "text-amber-600"}`} />
+            <p className="min-w-0 flex-1 text-xs">
+              <span className="font-semibold text-foreground">
+                {isHigh ? "Recuperação recomendada" : "Cardio recente moderado"}
+              </span>
+              <span className="text-muted-foreground"> · {fatigue.summary}. Ajustes de descanso já refletem isso.</span>
+            </p>
+          </div>
+        );
+      })()}
 
       {pendingSuggestions.length > 0 && (
         <div className="mt-3 flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 p-3">
