@@ -20,5 +20,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listWorkouts, getWorkout, listRecentSessions, logSleep, listSleepLogs],
+  tools: [listWorkouts, getWorkout, upsertWorkoutExercise, listRecentSessions, logSleep, listSleepLogs],
 });
