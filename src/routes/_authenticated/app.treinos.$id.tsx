@@ -105,6 +105,7 @@ function WorkoutEditor() {
   });
 
   const addedIds = useMemo(() => new Set((items as any[]).map((it) => it.exercise_id)), [items]);
+  useEffect(() => { pendingAddsRef.current = 0; }, [items]);
 
   const updateItem = useMutation({
     mutationFn: async ({ itemId, patch }: { itemId: string; patch: any }) => {
