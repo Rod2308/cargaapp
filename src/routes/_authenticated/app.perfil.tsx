@@ -13,6 +13,7 @@ import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink } from "lucid
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
+import { computeCyclePhase } from "@/lib/cycle";
 
 
 function calcAge(birth?: string | null) {
