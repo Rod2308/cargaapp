@@ -475,6 +475,6 @@ Retorne JSON no formato:
         .eq("id", userId);
     }
 
-    return { overview: plan.overview, workouts: created };
+    return { overview: plan.overview, workouts: created, usedFallback, fallbackReason };
   });
 
