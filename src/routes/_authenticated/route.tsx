@@ -111,18 +111,26 @@ function Layout() {
         <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md sm:max-w-lg">
           {tabs.map(({ to, label, icon: Icon }) => {
             const active = to === "/app" ? location.pathname === "/app" : location.pathname.startsWith(to);
+            const showBadge = to === "/app/mensagens" && unread > 0;
             return (
               <button
                 key={to}
                 onClick={() => navigate({ to })}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold transition-all",
+                  "relative flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold transition-all",
                   active
                     ? "bg-primary text-primary-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="size-4 shrink-0" />
+                <span className="relative">
+                  <Icon className="size-4 shrink-0" />
+                  {showBadge && (
+                    <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </span>
                 {active && <span className="font-display">{label}</span>}
               </button>
             );
