@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output, NoObjectGeneratedError } from "ai";
+import { generateText, Output, NoObjectGeneratedError, tool, stepCountIs } from "ai";
 import { z } from "zod";
+
 
 const CoachInput = z.object({
   question: z.string().min(1).max(500),
