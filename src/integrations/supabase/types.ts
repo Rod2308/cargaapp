@@ -59,6 +59,10 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           cref: string | null
+          cycle_last_period_start: string | null
+          cycle_length_days: number
+          cycle_period_length_days: number
+          cycle_tracking_enabled: boolean
           display_name: string | null
           experience_level: string | null
           goal: string | null
@@ -82,6 +86,10 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           cref?: string | null
+          cycle_last_period_start?: string | null
+          cycle_length_days?: number
+          cycle_period_length_days?: number
+          cycle_tracking_enabled?: boolean
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
@@ -105,6 +113,10 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           cref?: string | null
+          cycle_last_period_start?: string | null
+          cycle_length_days?: number
+          cycle_period_length_days?: number
+          cycle_tracking_enabled?: boolean
           display_name?: string | null
           experience_level?: string | null
           goal?: string | null
