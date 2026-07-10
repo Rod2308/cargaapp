@@ -78,31 +78,122 @@ export const askCoach = createServerFn({ method: "POST" })
     const system = `Você é um coach de musculação experiente, direto e motivador, respondendo em português brasileiro.
 Baseie sugestões em ciência do treinamento: princípio da sobrecarga progressiva, ajuste de descanso conforme intensidade (hipertrofia 60-90s, força 2-4min, resistência 30-45s), split adequado à frequência semanal, e alerta para overtraining.
 Se o usuário mencionar uso de recursos ergogênicos (esteroides / SARMs), aumente o volume e a frequência com responsabilidade e recomende acompanhamento médico.
+
+VOCÊ TEM FERRAMENTAS para consultar o histórico REAL do usuário — use-as sempre que a pergunta envolver:
+- sugerir treino/exercício para hoje → chame get_recovery_status e list_user_workouts
+- sugerir carga ou progressão em um exercício → chame get_exercise_history com o nome do exercício
+- ajustar descanso/volume → cheque get_sleep_summary e get_recent_sessions
+- avaliar se deve treinar hoje → chame get_recovery_status
+Chame as ferramentas necessárias ANTES de responder. Baseie a resposta em números REAIS do histórico, não invente.
 Responda em no máximo 6 frases, use bullets quando fizer sentido, e cite números concretos (kg, reps, séries, min de descanso).`;
 
-    const context_text = `Perfil do usuário:
-- Nome: ${profile?.display_name ?? "-"}
-- Sexo: ${profile?.sex ?? "-"} · Idade: ${age ?? "-"}${age != null ? " anos" : ""}
-- Altura: ${profile?.height_cm ?? "-"}${profile?.height_cm ? " cm" : ""} · Peso: ${profile?.weight_kg ?? "-"}${profile?.weight_kg ? " kg" : ""}${bmi ? ` · IMC ${bmi}` : ""}
-- Nível: ${profile?.experience_level ?? "iniciante"}
-- Objetivo: ${profile?.goal ?? "hipertrofia"}
-- Atividade diária fora do treino: ${profile?.activity_level ?? "-"}
-- Frequência semanal: ${profile?.weekly_frequency ?? "-"} dias
-- Usa recursos ergogênicos: ${profile?.uses_enhancers ? "sim" : "não"}
-- Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma informada"}
-
-
-Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w.workout_exercises?.length ?? 0} exercícios`).join("; ") || "nenhum"}
-
-Últimas sessões: ${sessions?.map((s: any) => `${s.workouts?.label ?? "?"} em ${new Date(s.started_at).toLocaleDateString("pt-BR")} (esforço ${s.perceived_effort ?? "?"})`).join("; ") || "nenhuma"}
-
-Pergunta: ${data.question}`;
+    const tools = {
+      list_user_workouts: tool({
+        description: "Lista os treinos cadastrados do usuário com quantidade de exercícios de cada um.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          const { data } = await supabase
+            .from("workouts")
+            .select("id, label, name, notes, workout_exercises(id)")
+            .eq("user_id", userId)
+            .order("order_idx", { ascending: true });
+          return (data ?? []).map((w: any) => ({
+            id: w.id, label: w.label, name: w.name, notes: w.notes,
+            exercise_count: w.workout_exercises?.length ?? 0,
+          }));
+        },
+      }),
+      get_workout_details: tool({
+        description: "Retorna os exercícios de um treino específico com séries, reps, carga alvo e descanso alvo.",
+        inputSchema: z.object({ workout_id: z.string().uuid() }),
+        execute: async ({ workout_id }) => {
+          const { data } = await supabase
+            .from("workout_exercises")
+            .select("target_sets, target_reps, target_weight_kg, target_rest_seconds, notes, exercises(name, muscle_group)")
+            .eq("workout_id", workout_id)
+            .order("order_idx", { ascending: true });
+          return data ?? [];
+        },
+      }),
+      get_recent_sessions: tool({
+        description: "Últimas sessões de treino do usuário (padrão 10) com esforço percebido e treino associado.",
+        inputSchema: z.object({ limit: z.number().int().min(1).max(30).optional() }),
+        execute: async ({ limit }) => {
+          const { data } = await supabase
+            .from("sessions")
+            .select("started_at, ended_at, perceived_effort, notes, workouts(label, name)")
+            .eq("user_id", userId)
+            .order("started_at", { ascending: false })
+            .limit(limit ?? 10);
+          return data ?? [];
+        },
+      }),
+      get_exercise_history: tool({
+        description: "Histórico das últimas séries feitas em um exercício (por nome, case-insensitive). Retorna reps, carga (kg) e RPE por sessão — use para sugerir progressão de carga.",
+        inputSchema: z.object({
+          exercise_name: z.string().min(2),
+          sessions: z.number().int().min(1).max(10).optional().describe("Quantas sessões trazer (padrão 5)."),
+        }),
+        execute: async ({ exercise_name, sessions: sessLimit }) => {
+          const { data: ex } = await supabase
+            .from("exercises").select("id, name, muscle_group")
+            .ilike("name", `%${exercise_name}%`).limit(1).maybeSingle();
+          if (!ex) return { found: false, message: `Exercício "${exercise_name}" não encontrado no catálogo.` };
+          const { data } = await supabase
+            .from("session_sets")
+            .select("reps, weight_kg, rpe, completed_at, session_id, sessions!inner(user_id, started_at)")
+            .eq("exercise_id", ex.id)
+            .eq("sessions.user_id", userId)
+            .order("completed_at", { ascending: false })
+            .limit((sessLimit ?? 5) * 6);
+          const bySession = new Map<string, any[]>();
+          for (const s of data ?? []) {
+            const arr = bySession.get(s.session_id) ?? [];
+            arr.push({ reps: s.reps, weight_kg: s.weight_kg, rpe: s.rpe });
+            bySession.set(s.session_id, arr);
+          }
+          const grouped = Array.from(bySession.entries()).slice(0, sessLimit ?? 5).map(([session_id, sets]) => {
+            const date = (data ?? []).find((r: any) => r.session_id === session_id)?.sessions?.started_at;
+            return { date, sets };
+          });
+          return { found: true, exercise: ex, sessions: grouped };
+        },
+      }),
+      get_sleep_summary: tool({
+        description: "Resumo do sono nos últimos N dias (padrão 7): média de horas, qualidade e última noite.",
+        inputSchema: z.object({ days: z.number().int().min(1).max(30).optional() }),
+        execute: async ({ days }) => {
+          const d = days ?? 7;
+          const since = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+          const { data } = await supabase
+            .from("sleep_logs").select("log_date, hours, quality")
+            .eq("user_id", userId).gte("log_date", since)
+            .order("log_date", { ascending: false });
+          const arr = data ?? [];
+          if (!arr.length) return { has_data: false };
+          const avg = arr.reduce((a, s: any) => a + Number(s.hours), 0) / arr.length;
+          const qArr = arr.filter((s: any) => s.quality != null);
+          const qAvg = qArr.length ? qArr.reduce((a, s: any) => a + Number(s.quality), 0) / qArr.length : null;
+          return { has_data: true, nights: arr.length, avg_hours: Number(avg.toFixed(1)), avg_quality: qAvg, last_night: arr[0], logs: arr };
+        },
+      }),
+      get_recovery_status: tool({
+        description: "Análise consolidada de recuperação do usuário (status, motivo, recomendação) — considera sessões, sono, ciclo menstrual se aplicável.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          const { getRecoveryAdvice } = await import("./recovery.functions");
+          return await (getRecoveryAdvice as any)({ context });
+        },
+      }),
+    };
 
     try {
       const { text } = await generateText({
         model: ai.model,
         system,
         prompt: context_text,
+        tools,
+        stopWhen: stepCountIs(8),
         maxRetries: 2,
       });
 
@@ -111,6 +202,7 @@ Pergunta: ${data.question}`;
       return { answer: getAiFallbackMessage(error, "responder o coach") };
     }
   });
+
 
 // ============================================================
 // Gerar plano de treino personalizado com IA
