@@ -711,3 +711,70 @@ function SleepCard({
     </div>
   );
 }
+
+function CycleCard({ profile }: { profile: any }) {
+  if (!profile?.cycle_tracking_enabled) return null;
+  const info = computeCyclePhase({
+    lastPeriodStart: profile.cycle_last_period_start,
+    cycleLength: profile.cycle_length_days,
+    periodLength: profile.cycle_period_length_days,
+  });
+  if (!info) {
+    return (
+      <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+        <span className="absolute inset-y-0 left-0 w-1 bg-muted" aria-hidden />
+        <div className="flex items-start gap-3 pl-2">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
+            <Moon className="size-4" strokeWidth={2.5} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-eyebrow text-muted-foreground">Ciclo · Fase atual</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Informe a data do último início da menstruação no Perfil pra ver sua fase.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const bar: Record<string, string> = {
+    menstrual: "bg-destructive",
+    folicular: "bg-emerald-500",
+    ovulacao: "bg-brand",
+    lutea: "bg-amber-500",
+  };
+  const badge: Record<string, string> = {
+    menstrual: "bg-destructive/15 text-destructive",
+    folicular: "bg-emerald-500/15 text-emerald-500",
+    ovulacao: "bg-brand/20 text-foreground",
+    lutea: "bg-amber-500/15 text-amber-500",
+  };
+
+  return (
+    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+      <span className={`absolute inset-y-0 left-0 w-1 ${bar[info.phase]}`} aria-hidden />
+      <div className="flex items-start gap-3 pl-2">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${badge[info.phase]}`}>
+          <Moon className="size-4" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-eyebrow text-muted-foreground">Ciclo · Fase atual</p>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              dia {info.dayInCycle}/{info.cycleLength}
+            </span>
+          </div>
+          <p className="mt-1 font-display text-base leading-snug text-foreground sm:text-lg">
+            {info.headline}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{info.recommendation}</p>
+          <span className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge[info.phase]}`}>
+            {info.phaseLabel}
+            {info.isLatePhaseLutea ? " · TPM" : ""}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
