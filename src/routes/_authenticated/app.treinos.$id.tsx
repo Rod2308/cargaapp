@@ -256,7 +256,8 @@ function WorkoutEditor() {
                     key={e.id}
                     onClick={() => {
                       if (added) return;
-                      addExercise.mutate({ exerciseId: e.id, orderIdx: items.length + addExercise.submittedAt ? 0 : 0 });
+                      const maxIdx = (items as any[]).reduce((m, it) => Math.max(m, it.order_idx ?? 0), -1);
+                      addExercise.mutate({ exerciseId: e.id, orderIdx: maxIdx + 1 + pendingAddsRef.current++ });
                     }}
                     disabled={added || addExercise.isPending}
                     className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary disabled:cursor-default"
