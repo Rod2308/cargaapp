@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2 } from "lucide-react";
+import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +28,7 @@ type ChatPartner = { id: string; display_name: string | null };
 function MensagensPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
   const [activeStudent, setActiveStudent] = useState<ChatPartner | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
 
   // Aluno: busca professor vinculado
   const { data: myTrainer, isLoading: loadingTrainer } = useQuery({
@@ -101,14 +102,36 @@ function MensagensPage() {
         </div>
       </div>
 
-      <div className="mt-5 space-y-2">
+      {students.length > 0 && (
+        <div className="relative mt-5">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            value={studentSearch}
+            onChange={(e) => setStudentSearch(e.target.value)}
+            placeholder="Buscar aluno pelo nome..."
+            className="h-11 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
+      )}
+
+      <div className="mt-3 space-y-2">
         {loadingStudents && <p className="text-sm text-muted-foreground">Carregando...</p>}
         {!loadingStudents && students.length === 0 && (
           <EmptyState title="Nenhum aluno vinculado" message="Vincule alunos pelo código de convite em Alunos." />
         )}
-        {students.map((s) => (
-          <StudentRow key={s.id} student={s} meId={user.id} onOpen={() => setActiveStudent(s)} />
-        ))}
+        {(() => {
+          const q = studentSearch.trim().toLowerCase();
+          const filtered = q
+            ? students.filter((s) => (s.display_name ?? "").toLowerCase().includes(q))
+            : students;
+          if (students.length > 0 && filtered.length === 0) {
+            return <p className="p-4 text-center text-sm text-muted-foreground">Nenhum aluno encontrado para "{studentSearch}".</p>;
+          }
+          return filtered.map((s) => (
+            <StudentRow key={s.id} student={s} meId={user.id} onOpen={() => setActiveStudent(s)} />
+          ));
+        })()}
       </div>
     </div>
   );
