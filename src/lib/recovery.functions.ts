@@ -130,8 +130,9 @@ Analise volume, frequência, esforço percebido (RPE), grupos musculares treinad
 Considere: >5 treinos em 7 dias sem folga = alerta; RPE médio >8.5 sustentado = fadiga; mesmo grupo muscular treinado sem 48h de intervalo = risco.
 ESPORTES (futebol, vôlei, corrida etc — grupo "Esportes", medidos em minutos) somam carga cardiovascular/sistêmica e fadiga de MMII: >90min de esporte intenso nas últimas 48h ou esporte + treino de perna no mesmo/dia seguinte = fadiga acumulada, reduzir volume de pernas/glúteos; contam também na contagem semanal de "treinos".
 SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir intensidade ou descansar; 6-7h = treino leve/moderado; 7-9h = ideal; qualidade baixa (≤2/5) sustentada = alerta.
+CICLO MENSTRUAL (quando fornecido) é um fator adicional: fase MENSTRUAL e últimos 3 dias da fase LÚTEA (TPM) reduzem tolerância ao esforço — some ~10% de redução de carga e ~15s a mais de descanso, igual à mecânica de sono baixo/dor muscular alta; fase FOLICULAR e OVULAÇÃO favorecem cargas mais altas e progressão.
 Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador. Ajuste também para idade (>40 anos: janela de recuperação maior), sexo, IMC e nível de atividade diária fora do treino. Considere lesões/limitações para sugerir grupos alternativos.
-Seja direto, cite números concretos do sono e dos esportes quando relevante, use tom motivador mas honesto.`;
+Seja direto, cite números concretos do sono, esportes e ciclo quando relevante, use tom motivador mas honesto.`;
 
     const recAge = profile?.birth_date
       ? (() => {
