@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Exercise images are publicly viewable" ON storage.objects;
