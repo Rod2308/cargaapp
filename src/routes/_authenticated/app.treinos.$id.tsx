@@ -30,6 +30,7 @@ function WorkoutEditor() {
   const [addOpen, setAddOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const pendingAddsRef = useRef(0);
   useEffect(() => {
     if (routeSearch.add) {
       setAddOpen(true);
