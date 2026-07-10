@@ -264,6 +264,9 @@ function Dashboard() {
         onRefresh={() => refetchRecovery()}
       />
 
+      {/* Ciclo menstrual (se ativado) */}
+      <CycleCard profile={profile} />
+
       {/* Sono de hoje */}
       <SleepCard
         todayHours={todaySleep?.hours ?? null}
