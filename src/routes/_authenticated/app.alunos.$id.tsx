@@ -25,7 +25,6 @@ function AlunoDetail() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const getDetails = useServerFn(getStudentDetails);
-  const [aiOpen, setAiOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
