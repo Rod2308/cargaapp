@@ -1,7 +1,6 @@
 // Parses .gpx / .tcx (XML) and .fit (binary) workout files entirely in the browser.
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 
-// @ts-expect-error - no bundled types
 import FitParser from "fit-file-parser";
 
 export type ParsedWorkout = {
