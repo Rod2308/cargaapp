@@ -145,10 +145,23 @@ Seja direto, cite números concretos do sono, esportes e ciclo quando relevante,
         })()
       : null;
 
+    const { computeCyclePhase } = await import("./cycle");
+    const cycle = profile?.cycle_tracking_enabled
+      ? computeCyclePhase({
+          lastPeriodStart: profile.cycle_last_period_start,
+          cycleLength: profile.cycle_length_days,
+          periodLength: profile.cycle_period_length_days,
+        })
+      : null;
+    const cycleSummary = cycle
+      ? `${cycle.phaseLabel} · dia ${cycle.dayInCycle}/${cycle.cycleLength}${cycle.isLatePhaseLutea ? " (TPM — fim da lútea)" : ""} · ajuste sugerido: carga x${cycle.loadMultiplier.toFixed(2)}, +${cycle.restBonusSeconds}s descanso`
+      : "não acompanhado";
+
     const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
 Antropometria: ${profile?.sex ?? "-"}, ${recAge ?? "-"} anos, ${profile?.height_cm ?? "-"}cm, ${profile?.weight_kg ?? "-"}kg · atividade fora do treino: ${profile?.activity_level ?? "-"}
 Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma"}
 Sono (últimos 7 dias): ${sleepSummary}
+Ciclo menstrual: ${cycleSummary}
 Treinos nos últimos 7 dias: ${sessionsThisWeek}
 Últimas sessões (14 dias):
 ${summary.join("\n")}
