@@ -28,8 +28,12 @@ type ChatPartner = { id: string; display_name: string | null };
 
 function MensagensPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
+  const qc = useQueryClient();
   const [activeStudent, setActiveStudent] = useState<ChatPartner | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Aluno: busca professor vinculado
   const { data: myTrainer, isLoading: loadingTrainer } = useQuery({
