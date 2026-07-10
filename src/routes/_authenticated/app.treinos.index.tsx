@@ -44,7 +44,7 @@ function TreinosList() {
       qc.invalidateQueries({ queryKey: ["workouts"] });
       setOpen(false);
       setName("");
-      navigate({ to: "/app/treinos/$id", params: { id: w.id } });
+      navigate({ to: "/app/treinos/$id", params: { id: w.id }, search: { add: 1 } });
     },
     onError: (e: any) => toast.error(e.message),
   });
