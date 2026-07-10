@@ -249,21 +249,37 @@ function WorkoutEditor() {
               </Select>
             </div>
             <div className="max-h-[50vh] space-y-1 overflow-y-auto">
-              {filtered.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => addExercise.mutate(e.id)}
-                  className="flex w-full items-center justify-between rounded-lg p-3 text-left hover:bg-secondary"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{e.name}</p>
-                    <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
-                  </div>
-                  <Plus className="size-4 text-muted-foreground" />
-                </button>
-              ))}
+              {filtered.map((e) => {
+                const added = addedIds.has(e.id);
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => {
+                      if (added) return;
+                      addExercise.mutate({ exerciseId: e.id, orderIdx: items.length + addExercise.submittedAt ? 0 : 0 });
+                    }}
+                    disabled={added || addExercise.isPending}
+                    className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary disabled:cursor-default"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{e.name}</p>
+                      <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
+                    </div>
+                    {added ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                        <Check className="size-3" /> Adicionado
+                      </span>
+                    ) : (
+                      <Plus className="size-4 text-muted-foreground" />
+                    )}
+                  </button>
+                );
+              })}
               {filtered.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Nenhum exercício encontrado.</p>}
             </div>
+            <DialogFooter>
+              <Button onClick={() => setAddOpen(false)} className="w-full sm:w-auto">Concluir</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
