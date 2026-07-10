@@ -2,6 +2,9 @@ import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } fro
 import { supabase } from "@/integrations/supabase/client";
 import { Home, Dumbbell, MessageCircle, User, History, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
