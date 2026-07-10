@@ -393,5 +393,6 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
         </Button>
       </form>
     </div>
+    </>
   );
 }
