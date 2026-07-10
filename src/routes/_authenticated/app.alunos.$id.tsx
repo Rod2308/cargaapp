@@ -95,22 +95,10 @@ function AlunoDetail() {
             )}
           </header>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <button
-              onClick={() => setAiOpen(true)}
-              className="card-soft flex items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
-            >
-              <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
-                <Sparkles className="size-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold">Montar treino com IA</p>
-                <p className="text-xs text-muted-foreground">Gera plano completo e envia direto</p>
-              </div>
-            </button>
+          <div className="mt-5">
             <button
               onClick={() => setManualOpen(true)}
-              className="card-soft flex items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
+              className="card-soft flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
             >
               <div className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
                 <Plus className="size-5" />
