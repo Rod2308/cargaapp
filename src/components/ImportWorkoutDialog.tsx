@@ -208,6 +208,30 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
               {fileName && <p className="mt-3 truncate text-[11px] text-muted-foreground">Arquivo: {fileName}</p>}
             </div>
 
+            {workouts.length > 0 && (
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-semibold">
+                  <LinkIcon className="size-3.5" /> Vincular ao plano (opcional)
+                </label>
+                <Select value={workoutId} onValueChange={setWorkoutId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Escolha um dia do plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {workouts.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.label ? `Treino ${w.label} — ` : ""}{w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Vincular faz o Carga usar FC e volume para ajustar carga e descanso do plano.
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-semibold">Observações (opcional)</label>
               <textarea
