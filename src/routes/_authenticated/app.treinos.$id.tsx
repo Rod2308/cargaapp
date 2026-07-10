@@ -23,19 +23,20 @@ export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
 
 function WorkoutEditor() {
   const { id } = Route.useParams();
-  const search = Route.useSearch();
+  const routeSearch = Route.useSearch();
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
-  const [search_, setSearch] = useState("");
+  const [search, setSearch] = useState("");
   useEffect(() => {
-    if (search.add) {
+    if (routeSearch.add) {
       setAddOpen(true);
       navigate({ to: "/app/treinos/$id", params: { id }, search: {}, replace: true });
     }
-  }, [search.add, id, navigate]);
+  }, [routeSearch.add, id, navigate]);
+
 
 
   const { data: workout } = useQuery({
