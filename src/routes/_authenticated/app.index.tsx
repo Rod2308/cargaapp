@@ -318,13 +318,6 @@ function Dashboard() {
           <Flame className="mt-auto size-5 self-end text-brand" strokeWidth={2.5} />
         </div>
 
-        {/* Montar treino automático com IA */}
-        <Link to="/app/treinos" search={{ ai: 1 }} className="card-brand relative flex flex-col overflow-hidden p-4 sm:p-5">
-          <span className="text-eyebrow opacity-70">Coach IA</span>
-          <p className="mt-2 font-display text-lg leading-tight">Montar treino automático</p>
-          <ArrowUpRight className="mt-auto size-5 self-end" strokeWidth={2.5} />
-          <Sparkles className="pointer-events-none absolute -right-2 -top-2 size-16 opacity-15" />
-        </Link>
 
         {/* Registrar esporte do dia */}
         <button
