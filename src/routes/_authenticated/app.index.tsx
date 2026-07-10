@@ -104,12 +104,19 @@ function Dashboard() {
     },
   });
 
-  // Recuperação inteligente (IA) — bloqueada, será liberada no plano PRO
-  const recovery = undefined;
-  const recoveryLoading = false;
-  const refetchRecovery = () => {};
-  void getRecoveryAdvice;
-  void useServerFn;
+  // Recuperação inteligente (IA)
+  const fetchRecovery = useServerFn(getRecoveryAdvice);
+  const {
+    data: recovery,
+    isFetching: recoveryLoading,
+    refetch: refetchRecovery,
+  } = useQuery({
+    queryKey: ["recovery", user.id],
+    queryFn: () => fetchRecovery(),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+
 
 
   // Sono — últimos 7 dias e log de hoje
