@@ -86,11 +86,11 @@ function WorkoutEditor() {
   });
 
   const addExercise = useMutation({
-    mutationFn: async (exerciseId: string) => {
+    mutationFn: async ({ exerciseId, orderIdx }: { exerciseId: string; orderIdx: number }) => {
       const { error } = await supabase.from("workout_exercises").insert({
         workout_id: id,
         exercise_id: exerciseId,
-        order_idx: items.length,
+        order_idx: orderIdx,
         target_sets: 3,
         target_reps: "10",
         target_rest_seconds: 90,
@@ -99,10 +99,11 @@ function WorkoutEditor() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
-      setAddOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const addedIds = useMemo(() => new Set((items as any[]).map((it) => it.exercise_id)), [items]);
 
   const updateItem = useMutation({
     mutationFn: async ({ itemId, patch }: { itemId: string; patch: any }) => {
