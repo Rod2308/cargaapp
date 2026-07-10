@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check, HeartPulse } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
