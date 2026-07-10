@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Pencil, Trash2, Play } from "lucide-react";
+import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
+import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
