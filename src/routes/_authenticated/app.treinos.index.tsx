@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
   component: TreinosList,
@@ -88,6 +89,10 @@ function TreinosList() {
           </DialogContent>
         </Dialog>
       </header>
+
+      <div className="mt-5">
+        <CardioRecoveryAlert userId={user.id} />
+      </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
