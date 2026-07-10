@@ -87,7 +87,25 @@ VOCÊ TEM FERRAMENTAS para consultar o histórico REAL do usuário — use-as se
 Chame as ferramentas necessárias ANTES de responder. Baseie a resposta em números REAIS do histórico, não invente.
 Responda em no máximo 6 frases, use bullets quando fizer sentido, e cite números concretos (kg, reps, séries, min de descanso).`;
 
+    const context_text = `Perfil do usuário:
+- Nome: ${profile?.display_name ?? "-"}
+- Sexo: ${profile?.sex ?? "-"} · Idade: ${age ?? "-"}${age != null ? " anos" : ""}
+- Altura: ${profile?.height_cm ?? "-"}${profile?.height_cm ? " cm" : ""} · Peso: ${profile?.weight_kg ?? "-"}${profile?.weight_kg ? " kg" : ""}${bmi ? ` · IMC ${bmi}` : ""}
+- Nível: ${profile?.experience_level ?? "iniciante"}
+- Objetivo: ${profile?.goal ?? "hipertrofia"}
+- Frequência semanal: ${profile?.weekly_frequency ?? "-"} dias
+- Usa recursos ergogênicos: ${profile?.uses_enhancers ? "sim" : "não"}
+- Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma informada"}
+
+Treinos cadastrados: ${workouts?.map((w: any) => `${w.label} (${w.name}) — ${w.workout_exercises?.length ?? 0} exercícios`).join("; ") || "nenhum"}
+Últimas sessões: ${sessions?.map((s: any) => `${s.workouts?.label ?? "?"} em ${new Date(s.started_at).toLocaleDateString("pt-BR")} (esforço ${s.perceived_effort ?? "?"})`).join("; ") || "nenhuma"}
+
+Pergunta do usuário: ${data.question}
+
+Use as ferramentas disponíveis quando precisar de números específicos do histórico (progressão de carga, sono, recuperação, exercícios de um treino).`;
+
     const tools = {
+
       list_user_workouts: tool({
         description: "Lista os treinos cadastrados do usuário com quantidade de exercícios de cada um.",
         inputSchema: z.object({}),
