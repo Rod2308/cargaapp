@@ -13,6 +13,7 @@ import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink } from "lucid
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
+import { computeCyclePhase } from "@/lib/cycle";
 
 
 function calcAge(birth?: string | null) {
@@ -246,7 +247,102 @@ function StudentProfile({ profile, update }: { profile: any; update: any }) {
           />
         </div>
       </div>
+
+      {profile.sex === "feminino" && <CycleCard profile={profile} update={update} />}
     </>
+  );
+}
+
+function CycleCard({ profile, update }: { profile: any; update: any }) {
+  const enabled = !!profile.cycle_tracking_enabled;
+  const info = enabled
+    ? computeCyclePhase({
+        lastPeriodStart: profile.cycle_last_period_start,
+        cycleLength: profile.cycle_length_days,
+        periodLength: profile.cycle_period_length_days,
+      })
+    : null;
+
+  return (
+    <div className="card-soft relative mt-5 overflow-hidden p-5">
+      <span className="absolute inset-y-0 left-0 w-1 bg-brand" aria-hidden />
+      <div className="pl-2 space-y-5">
+        <div>
+          <p className="text-eyebrow text-muted-foreground">Ciclo menstrual</p>
+          <p className="mt-1 font-display text-lg font-bold leading-tight">Acompanhamento do ciclo</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O coach ajusta carga e descanso conforme sua fase (menstrual, folicular, ovulação, lútea).
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
+          <div>
+            <p className="text-sm font-medium">Acompanhar ciclo menstrual</p>
+            <p className="text-xs text-muted-foreground">Ative pra ver a fase atual no Início e ter treinos adaptados.</p>
+          </div>
+          <Switch
+            checked={enabled}
+            onCheckedChange={(v) => update.mutate({ cycle_tracking_enabled: v })}
+          />
+        </div>
+
+        {enabled && (
+          <>
+            <div className="space-y-1.5">
+              <Label>Último início da menstruação</Label>
+              <Input
+                type="date"
+                defaultValue={profile.cycle_last_period_start ?? ""}
+                max={new Date().toISOString().slice(0, 10)}
+                onBlur={(e) =>
+                  e.target.value !== (profile.cycle_last_period_start ?? "") &&
+                  update.mutate({ cycle_last_period_start: e.target.value || null })
+                }
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Duração do ciclo (dias)</Label>
+                <Input
+                  type="number"
+                  min={20}
+                  max={45}
+                  defaultValue={profile.cycle_length_days ?? 28}
+                  onBlur={(e) => {
+                    const n = Number(e.target.value);
+                    if (n >= 20 && n <= 45 && n !== profile.cycle_length_days) update.mutate({ cycle_length_days: n });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Duração da menstruação (dias)</Label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={10}
+                  defaultValue={profile.cycle_period_length_days ?? 5}
+                  onBlur={(e) => {
+                    const n = Number(e.target.value);
+                    if (n >= 2 && n <= 10 && n !== profile.cycle_period_length_days)
+                      update.mutate({ cycle_period_length_days: n });
+                  }}
+                />
+              </div>
+            </div>
+
+            {info && (
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-eyebrow text-muted-foreground">Fase atual</p>
+                <p className="mt-1 font-display text-base font-bold">
+                  {info.phaseLabel} · dia {info.dayInCycle}/{info.cycleLength}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{info.recommendation}</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -24,7 +24,7 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
     const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency, sex, birth_date, height_cm, weight_kg, activity_level, injuries")
+        .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency, sex, birth_date, height_cm, weight_kg, activity_level, injuries, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days")
         .eq("id", userId)
         .maybeSingle(),
 
@@ -130,8 +130,9 @@ Analise volume, frequência, esforço percebido (RPE), grupos musculares treinad
 Considere: >5 treinos em 7 dias sem folga = alerta; RPE médio >8.5 sustentado = fadiga; mesmo grupo muscular treinado sem 48h de intervalo = risco.
 ESPORTES (futebol, vôlei, corrida etc — grupo "Esportes", medidos em minutos) somam carga cardiovascular/sistêmica e fadiga de MMII: >90min de esporte intenso nas últimas 48h ou esporte + treino de perna no mesmo/dia seguinte = fadiga acumulada, reduzir volume de pernas/glúteos; contam também na contagem semanal de "treinos".
 SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir intensidade ou descansar; 6-7h = treino leve/moderado; 7-9h = ideal; qualidade baixa (≤2/5) sustentada = alerta.
+CICLO MENSTRUAL (quando fornecido) é um fator adicional: fase MENSTRUAL e últimos 3 dias da fase LÚTEA (TPM) reduzem tolerância ao esforço — some ~10% de redução de carga e ~15s a mais de descanso, igual à mecânica de sono baixo/dor muscular alta; fase FOLICULAR e OVULAÇÃO favorecem cargas mais altas e progressão.
 Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador. Ajuste também para idade (>40 anos: janela de recuperação maior), sexo, IMC e nível de atividade diária fora do treino. Considere lesões/limitações para sugerir grupos alternativos.
-Seja direto, cite números concretos do sono e dos esportes quando relevante, use tom motivador mas honesto.`;
+Seja direto, cite números concretos do sono, esportes e ciclo quando relevante, use tom motivador mas honesto.`;
 
     const recAge = profile?.birth_date
       ? (() => {
@@ -144,10 +145,23 @@ Seja direto, cite números concretos do sono e dos esportes quando relevante, us
         })()
       : null;
 
+    const { computeCyclePhase } = await import("./cycle");
+    const cycle = profile?.cycle_tracking_enabled
+      ? computeCyclePhase({
+          lastPeriodStart: profile.cycle_last_period_start,
+          cycleLength: profile.cycle_length_days,
+          periodLength: profile.cycle_period_length_days,
+        })
+      : null;
+    const cycleSummary = cycle
+      ? `${cycle.phaseLabel} · dia ${cycle.dayInCycle}/${cycle.cycleLength}${cycle.isLatePhaseLutea ? " (TPM — fim da lútea)" : ""} · ajuste sugerido: carga x${cycle.loadMultiplier.toFixed(2)}, +${cycle.restBonusSeconds}s descanso`
+      : "não acompanhado";
+
     const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
 Antropometria: ${profile?.sex ?? "-"}, ${recAge ?? "-"} anos, ${profile?.height_cm ?? "-"}cm, ${profile?.weight_kg ?? "-"}kg · atividade fora do treino: ${profile?.activity_level ?? "-"}
 Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma"}
 Sono (últimos 7 dias): ${sleepSummary}
+Ciclo menstrual: ${cycleSummary}
 Treinos nos últimos 7 dias: ${sessionsThisWeek}
 Últimas sessões (14 dias):
 ${summary.join("\n")}
