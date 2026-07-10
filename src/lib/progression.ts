@@ -147,11 +147,13 @@ export function suggestAdjustment(args: {
   currentRest: number;
   repRange: string | number | null | undefined;
   rows: SetRow[];
+  cardioLoads?: CardioLoad[];
 }): Suggestion {
   const range = parseRepRange(args.repRange);
   const sessions = groupBySession(args.rows, 3);
   const last = sessions[0];
   const prev = sessions[1];
+  const cardioFatigue = args.cardioLoads ? computeCardioFatigue(args.cardioLoads) : { level: "none" as const, summary: null, count: 0 };
 
   const base: Suggestion = {
     suggested_weight_kg: args.currentWeight,
@@ -161,9 +163,21 @@ export function suggestAdjustment(args: {
     reason: "Poucos dados ainda — registre pelo menos 2 sessões deste exercício.",
     confidence: "low",
     sessions,
+    cardioFatigue,
   };
 
-  if (!last || !prev) return base;
+  if (!last || !prev) {
+    // Even without lifting history, cardio fatigue alone can suggest bumping rest.
+    if (cardioFatigue.level === "high") {
+      return {
+        ...base,
+        suggested_rest_seconds: Math.min(240, args.currentRest + 30),
+        restDirection: "up",
+        reason: `${cardioFatigue.summary}. Considere descansar mais entre séries.`,
+      };
+    }
+    return base;
+  }
 
   // --- Carga ---
   const currentLoad = args.currentWeight ?? last.avgLoad ?? 0;
@@ -176,9 +190,14 @@ export function suggestAdjustment(args: {
   let suggestedWeight = currentLoad;
 
   if (lastReps >= target + 1 && prevReps >= target) {
-    const bump = currentLoad >= 40 ? currentLoad * 0.05 : 2.5;
-    suggestedWeight = roundTo(currentLoad + bump, 2.5);
-    loadDirection = "up";
+    // Under high cardio fatigue, hold the load instead of bumping — recovery first.
+    if (cardioFatigue.level === "high") {
+      loadDirection = "hold";
+    } else {
+      const bump = currentLoad >= 40 ? currentLoad * 0.05 : 2.5;
+      suggestedWeight = roundTo(currentLoad + bump, 2.5);
+      loadDirection = "up";
+    }
   } else if (lastReps > 0 && prevReps > 0 && lastReps < floor - 1 && prevReps < floor) {
     suggestedWeight = roundTo(currentLoad * 0.95, 2.5);
     loadDirection = "down";
@@ -202,6 +221,21 @@ export function suggestAdjustment(args: {
     }
   }
 
+  // Cardio fatigue nudges rest UP even when RPE alone wouldn't.
+  if (cardioFatigue.level === "high") {
+    const bumped = Math.min(240, Math.max(suggestedRest, args.currentRest) + 30);
+    if (bumped > suggestedRest) {
+      suggestedRest = bumped;
+      restDirection = "up";
+    }
+  } else if (cardioFatigue.level === "moderate" && restDirection !== "up") {
+    const bumped = Math.min(240, args.currentRest + 15);
+    if (bumped > suggestedRest) {
+      suggestedRest = bumped;
+      restDirection = "up";
+    }
+  }
+
   // --- Confiança ---
   const confidence: Suggestion["confidence"] =
     sessions.length >= 3 && sessions.every((s) => s.setCount >= 2) ? "high" : sessions.length >= 3 ? "medium" : "low";
@@ -215,6 +249,7 @@ export function suggestAdjustment(args: {
     .join(", ");
   const parts = [`Últimas ${sessions.length} sessões: reps ${repList} @ ${loadList}`];
   if (rpeSamples.length) parts.push(`RPE médio ${mean(rpeSamples).toFixed(1)}`);
+  if (cardioFatigue.summary) parts.push(cardioFatigue.summary);
 
   return {
     suggested_weight_kg: suggestedWeight === currentLoad ? args.currentWeight : suggestedWeight,
@@ -224,6 +259,7 @@ export function suggestAdjustment(args: {
     reason: parts.join(" · "),
     confidence,
     sessions,
+    cardioFatigue,
   };
 }
 
