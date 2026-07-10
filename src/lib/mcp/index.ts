@@ -1,6 +1,7 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listWorkouts from "./tools/list-workouts";
 import getWorkout from "./tools/get-workout";
+import upsertWorkoutExercise from "./tools/upsert-workout-exercise";
 import listRecentSessions from "./tools/list-recent-sessions";
 import logSleep from "./tools/log-sleep";
 import listSleepLogs from "./tools/list-sleep-logs";
@@ -19,5 +20,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listWorkouts, getWorkout, listRecentSessions, logSleep, listSleepLogs],
+  tools: [listWorkouts, getWorkout, upsertWorkoutExercise, listRecentSessions, logSleep, listSleepLogs],
 });
