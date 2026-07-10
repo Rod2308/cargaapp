@@ -194,11 +194,30 @@ type Message = {
   read_at: string | null;
 };
 
-function Chat({ me, partnerId, partnerName }: { me: string; partnerId: string; partnerName: string | null }) {
+function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPartner; subtitle: string; onBack: (() => void) | null }) {
+  const partnerId = partner.id;
+  const partnerName = partner.display_name;
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const queryKey = ["messages", me, partnerId];
+
+  const deleteConversation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .or(`and(sender_id.eq.${me},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${me})`);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.setQueryData<Message[]>(queryKey, []);
+      qc.invalidateQueries({ queryKey: ["msg-preview"] });
+      toast.success("Conversa excluída");
+      if (onBack) onBack();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao excluir"),
+  });
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey,
