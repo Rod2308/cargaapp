@@ -20,6 +20,67 @@ export type SessionSummary = {
   setCount: number;
 };
 
+export type CardioLoad = {
+  started_at: string;
+  ended_at: string | null;
+  avg_hr: number | null;
+  max_hr: number | null;
+  calories: number | null;
+  distance_m: number | null;
+  activity_type: string | null;
+};
+
+/**
+ * Fatigue signal derived from cardio sessions in the last N days linked to this workout.
+ * Returns:
+ *   - level: "high" if any recent cardio was intense (avg_hr>=150 OR max_hr>=175 OR duration>60min at avg_hr>=130)
+ *           "moderate" if 2+ sessions with avg_hr>=130 in the window
+ *           "none" otherwise
+ *   - summary: human readable phrase describing what was seen
+ */
+export type CardioFatigue = {
+  level: "high" | "moderate" | "none";
+  summary: string | null;
+  count: number;
+};
+
+export function computeCardioFatigue(loads: CardioLoad[], now: Date = new Date()): CardioFatigue {
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+  const recent = loads.filter((l) => new Date(l.started_at) >= sevenDaysAgo);
+  if (recent.length === 0) return { level: "none", summary: null, count: 0 };
+
+  const durationMin = (l: CardioLoad) =>
+    l.ended_at ? Math.max(0, (new Date(l.ended_at).getTime() - new Date(l.started_at).getTime()) / 60000) : 0;
+
+  const intense = recent.some(
+    (l) =>
+      (l.avg_hr != null && l.avg_hr >= 150) ||
+      (l.max_hr != null && l.max_hr >= 175) ||
+      (durationMin(l) >= 60 && (l.avg_hr ?? 0) >= 130),
+  );
+  const moderateCount = recent.filter((l) => (l.avg_hr ?? 0) >= 130).length;
+
+  if (intense) {
+    const worst = recent.reduce((best, l) => ((l.avg_hr ?? 0) > (best.avg_hr ?? 0) ? l : best), recent[0]);
+    const parts: string[] = [];
+    if (worst.avg_hr) parts.push(`FC média ${worst.avg_hr}`);
+    if (worst.max_hr) parts.push(`máx ${worst.max_hr}`);
+    return {
+      level: "high",
+      summary: `Cardio intenso nos últimos 7 dias (${parts.join(" · ") || "alto volume"})`,
+      count: recent.length,
+    };
+  }
+  if (moderateCount >= 2) {
+    return {
+      level: "moderate",
+      summary: `${moderateCount} sessões de cardio moderado nos últimos 7 dias`,
+      count: recent.length,
+    };
+  }
+  return { level: "none", summary: null, count: recent.length };
+}
+
 export type Suggestion = {
   suggested_weight_kg: number | null;
   suggested_rest_seconds: number | null;
@@ -28,6 +89,7 @@ export type Suggestion = {
   reason: string;
   confidence: "low" | "medium" | "high";
   sessions: SessionSummary[];
+  cardioFatigue?: CardioFatigue;
 };
 
 /** Aceita "8-12", "10", "AMRAP", "12+", "10 a 12". */
