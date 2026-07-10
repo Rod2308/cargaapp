@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, Dumbbell, Sparkles, User, History, Users } from "lucide-react";
+import { Home, Dumbbell, MessageCircle, User, History, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -27,7 +27,7 @@ function Layout() {
     { to: "/app/treinos", label: "Treinos", icon: Dumbbell },
     ...(isTrainer ? [{ to: "/app/alunos", label: "Alunos", icon: Users }] : []),
     { to: "/app/historico", label: "Histórico", icon: History },
-    { to: "/app/coach", label: "Coach", icon: Sparkles },
+    { to: "/app/mensagens", label: "Mensagens", icon: MessageCircle },
     { to: "/app/perfil", label: "Perfil", icon: User },
   ] as const;
   return (
