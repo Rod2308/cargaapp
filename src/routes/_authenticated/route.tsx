@@ -27,7 +27,7 @@ function Layout() {
     { to: "/app/treinos", label: "Treinos", icon: Dumbbell },
     ...(isTrainer ? [{ to: "/app/alunos", label: "Alunos", icon: Users }] : []),
     { to: "/app/historico", label: "Histórico", icon: History },
-    { to: "/app/coach", label: "Coach", icon: Sparkles },
+    { to: "/app/mensagens", label: "Mensagens", icon: MessageCircle },
     { to: "/app/perfil", label: "Perfil", icon: User },
   ] as const;
   return (
