@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search } from "lucide-react";
+import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search, CheckSquare, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -27,8 +28,12 @@ type ChatPartner = { id: string; display_name: string | null };
 
 function MensagensPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
+  const qc = useQueryClient();
   const [activeStudent, setActiveStudent] = useState<ChatPartner | null>(null);
   const [studentSearch, setStudentSearch] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Aluno: busca professor vinculado
   const { data: myTrainer, isLoading: loadingTrainer } = useQuery({
@@ -90,19 +95,71 @@ function MensagensPage() {
     );
   }
 
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const orFilter = ids
+        .map((sid) => `and(sender_id.eq.${user.id},receiver_id.eq.${sid}),and(sender_id.eq.${sid},receiver_id.eq.${user.id})`)
+        .join(",");
+      const { error } = await supabase.from("messages").delete().or(orFilter);
+      if (error) throw error;
+    },
+    onSuccess: (_d, ids) => {
+      toast.success(ids.length === 1 ? "Conversa excluída" : `${ids.length} conversas excluídas`);
+      qc.invalidateQueries({ queryKey: ["msg-preview"] });
+      qc.invalidateQueries({ queryKey: ["messages"] });
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      setConfirmOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao excluir"),
+  });
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const q = studentSearch.trim().toLowerCase();
+  const filtered = q ? students.filter((s) => (s.display_name ?? "").toLowerCase().includes(q)) : students;
+
   return (
-    <div className="app-container pt-8">
+    <div className="app-container pt-8 pb-24">
       <div className="flex items-center gap-3">
         <div className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
           <MessageCircle className="size-5" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Mensagens</h1>
-          <p className="text-xs text-muted-foreground">Converse com seus alunos</p>
+          <p className="text-xs text-muted-foreground">
+            {selectMode ? `${selectedIds.size} selecionada${selectedIds.size === 1 ? "" : "s"}` : "Converse com seus alunos"}
+          </p>
         </div>
+        {students.length > 0 && (
+          selectMode ? (
+            <button
+              onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+              aria-label="Cancelar seleção"
+            >
+              <X className="size-5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+              aria-label="Selecionar conversas"
+            >
+              <CheckSquare className="size-5" />
+            </button>
+          )
+        )}
       </div>
 
-      {students.length > 0 && (
+      {students.length > 0 && !selectMode && (
         <div className="relative mt-5">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -115,29 +172,84 @@ function MensagensPage() {
         </div>
       )}
 
+      {selectMode && filtered.length > 0 && (
+        <div className="mt-5 flex items-center justify-between text-sm">
+          <button
+            onClick={() => {
+              if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+              else setSelectedIds(new Set(filtered.map((s) => s.id)));
+            }}
+            className="font-semibold text-primary"
+          >
+            {selectedIds.size === filtered.length ? "Desmarcar todas" : "Selecionar todas"}
+          </button>
+        </div>
+      )}
+
       <div className="mt-3 space-y-2">
         {loadingStudents && <p className="text-sm text-muted-foreground">Carregando...</p>}
         {!loadingStudents && students.length === 0 && (
           <EmptyState title="Nenhum aluno vinculado" message="Vincule alunos pelo código de convite em Alunos." />
         )}
-        {(() => {
-          const q = studentSearch.trim().toLowerCase();
-          const filtered = q
-            ? students.filter((s) => (s.display_name ?? "").toLowerCase().includes(q))
-            : students;
-          if (students.length > 0 && filtered.length === 0) {
-            return <p className="p-4 text-center text-sm text-muted-foreground">Nenhum aluno encontrado para "{studentSearch}".</p>;
-          }
-          return filtered.map((s) => (
-            <StudentRow key={s.id} student={s} meId={user.id} onOpen={() => setActiveStudent(s)} />
-          ));
-        })()}
+        {students.length > 0 && filtered.length === 0 && (
+          <p className="p-4 text-center text-sm text-muted-foreground">Nenhum aluno encontrado para "{studentSearch}".</p>
+        )}
+        {filtered.map((s) => (
+          <StudentRow
+            key={s.id}
+            student={s}
+            meId={user.id}
+            selectMode={selectMode}
+            selected={selectedIds.has(s.id)}
+            onOpen={() => (selectMode ? toggleSelect(s.id) : setActiveStudent(s))}
+          />
+        ))}
       </div>
+
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur sm:left-auto sm:right-6 sm:bottom-6 sm:rounded-xl sm:border sm:shadow-lg">
+          <div className="mx-auto flex max-w-md items-center justify-between gap-3">
+            <p className="text-sm">
+              <span className="font-semibold">{selectedIds.size}</span> selecionada{selectedIds.size === 1 ? "" : "s"}
+            </p>
+            <Button
+              variant="destructive"
+              onClick={() => setConfirmOpen(true)}
+              disabled={bulkDelete.isPending}
+            >
+              {bulkDelete.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {selectedIds.size} conversa{selectedIds.size === 1 ? "" : "s"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Todas as mensagens trocadas com {selectedIds.size === 1 ? "este aluno" : "estes alunos"} serão apagadas. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDelete.mutate(Array.from(selectedIds))}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function StudentRow({ student, meId, onOpen }: { student: ChatPartner; meId: string; onOpen: () => void }) {
+function StudentRow({ student, meId, onOpen, selectMode, selected }: { student: ChatPartner; meId: string; onOpen: () => void; selectMode: boolean; selected: boolean }) {
   const { data: preview } = useQuery({
     queryKey: ["msg-preview", meId, student.id],
     queryFn: async () => {
@@ -156,8 +268,14 @@ function StudentRow({ student, meId, onOpen }: { student: ChatPartner; meId: str
   return (
     <button
       onClick={onOpen}
-      className="card-soft flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/40"
+      className={cn(
+        "card-soft flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/40",
+        selectMode && selected && "ring-2 ring-primary",
+      )}
     >
+      {selectMode && (
+        <Checkbox checked={selected} className="shrink-0" tabIndex={-1} aria-label="Selecionar conversa" />
+      )}
       <div className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground">
         <UserRound className="size-5" />
       </div>
@@ -167,7 +285,7 @@ function StudentRow({ student, meId, onOpen }: { student: ChatPartner; meId: str
           {preview?.content ?? "Sem mensagens ainda"}
         </p>
       </div>
-      {unread && <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-label="Não lida" />}
+      {unread && !selectMode && <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-label="Não lida" />}
     </button>
   );
 }
