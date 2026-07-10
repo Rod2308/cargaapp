@@ -221,28 +221,46 @@ export type Database = {
       }
       sessions: {
         Row: {
+          activity_type: string | null
+          avg_hr: number | null
+          calories: number | null
+          distance_m: number | null
           ended_at: string | null
           id: string
+          max_hr: number | null
           notes: string | null
           perceived_effort: number | null
+          source: string
           started_at: string
           user_id: string
           workout_id: string | null
         }
         Insert: {
+          activity_type?: string | null
+          avg_hr?: number | null
+          calories?: number | null
+          distance_m?: number | null
           ended_at?: string | null
           id?: string
+          max_hr?: number | null
           notes?: string | null
           perceived_effort?: number | null
+          source?: string
           started_at?: string
           user_id: string
           workout_id?: string | null
         }
         Update: {
+          activity_type?: string | null
+          avg_hr?: number | null
+          calories?: number | null
+          distance_m?: number | null
           ended_at?: string | null
           id?: string
+          max_hr?: number | null
           notes?: string | null
           perceived_effort?: number | null
+          source?: string
           started_at?: string
           user_id?: string
           workout_id?: string | null
