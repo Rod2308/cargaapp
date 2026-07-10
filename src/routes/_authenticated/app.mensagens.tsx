@@ -75,8 +75,7 @@ function MensagensPage() {
     if (!myTrainer) return <EmptyState title="Nenhum professor vinculado" message="Vincule um professor no seu Perfil para poder conversar." />;
     return (
       <div className="app-container pt-8">
-        <Header partner={myTrainer} subtitle="Seu professor" onBack={null} />
-        <Chat me={user.id} partnerId={myTrainer.id} partnerName={myTrainer.display_name} />
+        <Chat me={user.id} partner={myTrainer} subtitle="Seu professor" onBack={null} />
       </div>
     );
   }
@@ -85,8 +84,7 @@ function MensagensPage() {
   if (activeStudent) {
     return (
       <div className="app-container pt-8">
-        <Header partner={activeStudent} subtitle="Aluno" onBack={() => setActiveStudent(null)} />
-        <Chat me={user.id} partnerId={activeStudent.id} partnerName={activeStudent.display_name} />
+        <Chat me={user.id} partner={activeStudent} subtitle="Aluno" onBack={() => setActiveStudent(null)} />
       </div>
     );
   }
