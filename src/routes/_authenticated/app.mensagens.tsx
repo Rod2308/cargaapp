@@ -28,6 +28,7 @@ type ChatPartner = { id: string; display_name: string | null };
 function MensagensPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
   const [activeStudent, setActiveStudent] = useState<ChatPartner | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
 
   // Aluno: busca professor vinculado
   const { data: myTrainer, isLoading: loadingTrainer } = useQuery({
