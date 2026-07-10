@@ -162,12 +162,6 @@ function AlunoDetail() {
         </DialogContent>
       </Dialog>
 
-      <AiPlanForStudentDialog
-        open={aiOpen}
-        onOpenChange={setAiOpen}
-        studentId={id}
-        studentName={data?.profile?.display_name ?? "aluno"}
-      />
     </div>
   );
 }
