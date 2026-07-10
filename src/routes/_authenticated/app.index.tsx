@@ -713,7 +713,7 @@ function SleepCard({
 }
 
 function CycleCard({ profile }: { profile: any }) {
-  if (!profile?.cycle_tracking_enabled) return null;
+  if (!profile?.cycle_tracking_enabled || profile?.sex !== "feminino") return null;
   const info = computeCyclePhase({
     lastPeriodStart: profile.cycle_last_period_start,
     cycleLength: profile.cycle_length_days,
