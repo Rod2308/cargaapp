@@ -94,6 +94,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
       if (!parsed) throw new Error("Nada para salvar");
       const { error } = await supabase.from("sessions").insert({
         user_id: userId,
+        workout_id: workoutId === "none" ? null : workoutId,
         started_at: parsed.started_at,
         ended_at: parsed.ended_at,
         activity_type: parsed.activity_type,
@@ -111,6 +112,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["workout-recent-cardio"] });
       onImported?.();
       setOpen(false);
       reset();
