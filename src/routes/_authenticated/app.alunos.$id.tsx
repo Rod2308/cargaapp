@@ -227,7 +227,13 @@ function AiPlanForStudentDialog({
     onSuccess: (res) => {
       setAiError(null);
       qc.invalidateQueries({ queryKey: ["student", studentId] });
-      toast.success(`${res.workouts.length} treinos enviados para ${studentName}!`);
+      if (res.usedFallback) {
+        toast.warning("Plano gerado em modo manual (IA indisponível)", {
+          description: res.fallbackReason || "Os treinos são um modelo padrão — a IA não conseguiu personalizar agora.",
+        });
+      } else {
+        toast.success(`${res.workouts.length} treinos enviados para ${studentName}!`, { description: res.overview });
+      }
       onOpenChange(false);
     },
     onError: (e: any) => setAiError(e?.message ?? "Falha ao gerar plano"),

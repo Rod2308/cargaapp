@@ -356,13 +356,21 @@ Retorne JSON no formato:
       };
     };
 
+    // Nonce força variação entre gerações com os mesmos parâmetros
+    const variationNonce = Math.random().toString(36).slice(2, 8);
+    const variationHint = `\n\nIMPORTANTE: cada geração deve ser DIFERENTE da anterior. Varie a escolha de exercícios dentro da biblioteca (não repita sempre os "óbvios"), a ordem, e as notas. Combine variações de barra, halter, máquina e cabo. Semente de variação: ${variationNonce}.`;
+
     let plan: z.infer<typeof PlanSchema>;
+    let usedFallback = false;
+    let fallbackReason = "";
     try {
       const { output } = await generateText({
         model: ai.model,
         system,
-        prompt,
+        prompt: prompt + variationHint,
         output: Output.object({ schema: PlanSchema }),
+        temperature: 0.9,
+        topP: 0.95,
         maxRetries: 2,
       });
       plan = output;
@@ -373,13 +381,19 @@ Retorne JSON no formato:
           try {
             plan = PlanSchema.parse(JSON.parse(match[0]));
           } catch {
-            plan = buildLocalPlan("A IA não devolveu um plano válido.");
+            usedFallback = true;
+            fallbackReason = "A IA não devolveu um plano válido.";
+            plan = buildLocalPlan(fallbackReason);
           }
         } else {
-          plan = buildLocalPlan("A IA não devolveu um plano válido.");
+          usedFallback = true;
+          fallbackReason = "A IA não devolveu um plano válido.";
+          plan = buildLocalPlan(fallbackReason);
         }
       } else {
-        plan = buildLocalPlan(getAiFallbackMessage(error, "gerar o plano"));
+        usedFallback = true;
+        fallbackReason = getAiFallbackMessage(error, "gerar o plano");
+        plan = buildLocalPlan(fallbackReason);
       }
     }
 
@@ -461,6 +475,6 @@ Retorne JSON no formato:
         .eq("id", userId);
     }
 
-    return { overview: plan.overview, workouts: created };
+    return { overview: plan.overview, workouts: created, usedFallback, fallbackReason };
   });
 

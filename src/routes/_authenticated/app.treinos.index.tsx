@@ -187,7 +187,13 @@ function AiPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
     onSuccess: (res) => {
       setAiError(null);
       qc.invalidateQueries({ queryKey: ["workouts"] });
-      toast.success(`${res.workouts.length} treinos criados!`, { description: res.overview });
+      if (res.usedFallback) {
+        toast.warning("Plano gerado em modo manual (IA indisponível)", {
+          description: res.fallbackReason || "Os treinos são um modelo padrão — a IA não conseguiu personalizar agora.",
+        });
+      } else {
+        toast.success(`${res.workouts.length} treinos criados!`, { description: res.overview });
+      }
       onOpenChange(false);
     },
     onError: (e: any) => setAiError(e?.message ?? "Falha ao gerar plano"),
