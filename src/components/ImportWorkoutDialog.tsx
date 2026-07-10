@@ -47,6 +47,20 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
   const [fileName, setFileName] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [workoutId, setWorkoutId] = useState<string>("none");
+
+  const { data: workouts = [] } = useQuery({
+    enabled: open,
+    queryKey: ["user-workouts-picker", userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("workouts")
+        .select("id, label, name")
+        .eq("user_id", userId)
+        .order("order_idx", { ascending: true });
+      return data ?? [];
+    },
+  });
 
   function reset() {
     setParsed(null);
@@ -54,6 +68,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     setNotes("");
     setDragging(false);
     setParsing(false);
+    setWorkoutId("none");
   }
 
   async function handleFile(file: File) {
