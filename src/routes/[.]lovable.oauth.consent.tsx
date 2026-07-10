@@ -28,8 +28,11 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   }),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Faltou o parâmetro authorization_id.");
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
+    // getUser() validates the token with the server; getSession() alone can return
+    // a stale/expired session from localStorage and the SDK then throws
+    // "Auth session missing!" from the loader.
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
       const next = location.pathname + location.searchStr;
       throw redirect({ to: "/auth", search: { next } });
     }
@@ -37,7 +40,14 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   loader: async ({ location }) => {
     const id = new URLSearchParams(location.search).get("authorization_id")!;
     const { data, error } = await authOauth.getAuthorizationDetails(id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Auth expired between beforeLoad and loader — bounce to /auth and come back.
+      if (/auth session missing|not authenticated|jwt/i.test(error.message)) {
+        const next = location.pathname + location.search;
+        throw redirect({ to: "/auth", search: { next } });
+      }
+      throw new Error(error.message);
+    }
     const immediate = data?.redirect_url ?? data?.redirect_to;
     if (immediate && !data?.client) throw redirect({ href: immediate });
     return data;
