@@ -305,6 +305,24 @@ function WorkoutEditor() {
         </Dialog>
       </div>
 
+      {cardioLoads.length > 0 && (() => {
+        const first = suggestionsByItem.values().next().value;
+        const fatigue = first?.cardioFatigue;
+        if (!fatigue || fatigue.level === "none") return null;
+        const isHigh = fatigue.level === "high";
+        return (
+          <div className={`mt-3 flex items-center gap-3 rounded-xl border p-3 ${isHigh ? "border-destructive/40 bg-destructive/10" : "border-amber-500/40 bg-amber-500/10"}`}>
+            <HeartPulse className={`size-4 shrink-0 ${isHigh ? "text-destructive" : "text-amber-600"}`} />
+            <p className="min-w-0 flex-1 text-xs">
+              <span className="font-semibold text-foreground">
+                {isHigh ? "Recuperação recomendada" : "Cardio recente moderado"}
+              </span>
+              <span className="text-muted-foreground"> · {fatigue.summary}. Ajustes de descanso já refletem isso.</span>
+            </p>
+          </div>
+        );
+      })()}
+
       {pendingSuggestions.length > 0 && (
         <div className="mt-3 flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 p-3">
           <Sparkles className="size-4 shrink-0 text-accent" />
