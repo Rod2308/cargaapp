@@ -18,6 +18,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
+import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
 import { Route as AuthenticatedAppCoachRouteImport } from './routes/_authenticated/app.coach'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -75,6 +76,12 @@ const AuthenticatedAppPerfilRoute = AuthenticatedAppPerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppMcpTesteRoute =
+  AuthenticatedAppMcpTesteRouteImport.update({
+    id: '/mcp-teste',
+    path: '/mcp-teste',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppHistoricoRoute =
   AuthenticatedAppHistoricoRouteImport.update({
     id: '/historico',
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -164,6 +172,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -186,6 +195,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/app/coach': typeof AuthenticatedAppCoachRoute
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/app/coach'
     | '/app/historico'
+    | '/app/mcp-teste'
     | '/app/perfil'
     | '/app/'
     | '/app/alunos/$id'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/app/coach'
     | '/app/historico'
+    | '/app/mcp-teste'
     | '/app/perfil'
     | '/app'
     | '/app/alunos/$id'
@@ -248,6 +260,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/app/coach'
     | '/_authenticated/app/historico'
+    | '/_authenticated/app/mcp-teste'
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/'
     | '/_authenticated/app/alunos/$id'
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/perfil'
       fullPath: '/app/perfil'
       preLoaderRoute: typeof AuthenticatedAppPerfilRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/mcp-teste': {
+      id: '/_authenticated/app/mcp-teste'
+      path: '/mcp-teste'
+      fullPath: '/app/mcp-teste'
+      preLoaderRoute: typeof AuthenticatedAppMcpTesteRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/historico': {
@@ -424,6 +444,7 @@ const AuthenticatedAppSessaoIdRouteWithChildren =
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppCoachRoute: typeof AuthenticatedAppCoachRoute
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
+  AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
@@ -436,6 +457,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppCoachRoute: AuthenticatedAppCoachRoute,
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
+  AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
