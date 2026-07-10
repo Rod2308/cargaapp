@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search } from "lucide-react";
+import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search, CheckSquare, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
