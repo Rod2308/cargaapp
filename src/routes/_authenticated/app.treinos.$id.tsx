@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { suggestAdjustment, hasChange, type Suggestion } from "@/lib/progression";
@@ -30,6 +30,7 @@ function WorkoutEditor() {
   const [addOpen, setAddOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const pendingAddsRef = useRef(0);
   useEffect(() => {
     if (routeSearch.add) {
       setAddOpen(true);
@@ -86,11 +87,11 @@ function WorkoutEditor() {
   });
 
   const addExercise = useMutation({
-    mutationFn: async (exerciseId: string) => {
+    mutationFn: async ({ exerciseId, orderIdx }: { exerciseId: string; orderIdx: number }) => {
       const { error } = await supabase.from("workout_exercises").insert({
         workout_id: id,
         exercise_id: exerciseId,
-        order_idx: items.length,
+        order_idx: orderIdx,
         target_sets: 3,
         target_reps: "10",
         target_rest_seconds: 90,
@@ -99,10 +100,12 @@ function WorkoutEditor() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
-      setAddOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const addedIds = useMemo(() => new Set((items as any[]).map((it) => it.exercise_id)), [items]);
+  useEffect(() => { pendingAddsRef.current = 0; }, [items]);
 
   const updateItem = useMutation({
     mutationFn: async ({ itemId, patch }: { itemId: string; patch: any }) => {
@@ -248,21 +251,38 @@ function WorkoutEditor() {
               </Select>
             </div>
             <div className="max-h-[50vh] space-y-1 overflow-y-auto">
-              {filtered.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => addExercise.mutate(e.id)}
-                  className="flex w-full items-center justify-between rounded-lg p-3 text-left hover:bg-secondary"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{e.name}</p>
-                    <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
-                  </div>
-                  <Plus className="size-4 text-muted-foreground" />
-                </button>
-              ))}
+              {filtered.map((e) => {
+                const added = addedIds.has(e.id);
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => {
+                      if (added) return;
+                      const maxIdx = (items as any[]).reduce((m, it) => Math.max(m, it.order_idx ?? 0), -1);
+                      addExercise.mutate({ exerciseId: e.id, orderIdx: maxIdx + 1 + pendingAddsRef.current++ });
+                    }}
+                    disabled={added || addExercise.isPending}
+                    className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary disabled:cursor-default"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{e.name}</p>
+                      <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
+                    </div>
+                    {added ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                        <Check className="size-3" /> Adicionado
+                      </span>
+                    ) : (
+                      <Plus className="size-4 text-muted-foreground" />
+                    )}
+                  </button>
+                );
+              })}
               {filtered.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Nenhum exercício encontrado.</p>}
             </div>
+            <DialogFooter>
+              <Button onClick={() => setAddOpen(false)} className="w-full sm:w-auto">Concluir</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
