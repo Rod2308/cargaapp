@@ -10,23 +10,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { suggestAdjustment, hasChange, type Suggestion } from "@/lib/progression";
 
 
 export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
+  validateSearch: z.object({ add: z.number().optional() }),
   component: WorkoutEditor,
 });
 
 function WorkoutEditor() {
   const { id } = Route.useParams();
+  const routeSearch = Route.useSearch();
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    if (routeSearch.add) {
+      setAddOpen(true);
+      navigate({ to: "/app/treinos/$id", params: { id }, search: {}, replace: true });
+    }
+  }, [routeSearch.add, id, navigate]);
+
+
 
   const { data: workout } = useQuery({
     queryKey: ["workout", id],
