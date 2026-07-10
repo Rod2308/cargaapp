@@ -4,9 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Loader2, UserRound, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/app/mensagens")({
   component: MensagensPage,
@@ -64,8 +75,7 @@ function MensagensPage() {
     if (!myTrainer) return <EmptyState title="Nenhum professor vinculado" message="Vincule um professor no seu Perfil para poder conversar." />;
     return (
       <div className="app-container pt-8">
-        <Header partner={myTrainer} subtitle="Seu professor" onBack={null} />
-        <Chat me={user.id} partnerId={myTrainer.id} partnerName={myTrainer.display_name} />
+        <Chat me={user.id} partner={myTrainer} subtitle="Seu professor" onBack={null} />
       </div>
     );
   }
@@ -74,8 +84,7 @@ function MensagensPage() {
   if (activeStudent) {
     return (
       <div className="app-container pt-8">
-        <Header partner={activeStudent} subtitle="Aluno" onBack={() => setActiveStudent(null)} />
-        <Chat me={user.id} partnerId={activeStudent.id} partnerName={activeStudent.display_name} />
+        <Chat me={user.id} partner={activeStudent} subtitle="Aluno" onBack={() => setActiveStudent(null)} />
       </div>
     );
   }
@@ -185,11 +194,30 @@ type Message = {
   read_at: string | null;
 };
 
-function Chat({ me, partnerId, partnerName }: { me: string; partnerId: string; partnerName: string | null }) {
+function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPartner; subtitle: string; onBack: (() => void) | null }) {
+  const partnerId = partner.id;
+  const partnerName = partner.display_name;
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const queryKey = ["messages", me, partnerId];
+
+  const deleteConversation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .or(`and(sender_id.eq.${me},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${me})`);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.setQueryData<Message[]>(queryKey, []);
+      qc.invalidateQueries({ queryKey: ["msg-preview"] });
+      toast.success("Conversa excluída");
+      if (onBack) onBack();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao excluir"),
+  });
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey,
@@ -269,6 +297,50 @@ function Chat({ me, partnerId, partnerName }: { me: string; partnerId: string; p
   }
 
   return (
+    <>
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary">
+            <ArrowLeft className="size-5" />
+          </button>
+        )}
+        <div className="grid size-11 place-items-center rounded-full bg-secondary text-secondary-foreground">
+          <UserRound className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-bold leading-tight tracking-tight">{partnerName ?? "Contato"}</h1>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              aria-label="Excluir conversa"
+              disabled={messages.length === 0 || deleteConversation.isPending}
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Isso apagará todas as mensagens trocadas entre você e {partnerName ?? "este contato"}. Essa ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteConversation.mutate()}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
     <div className="mt-4 flex h-[calc(100dvh-16rem)] flex-col">
       <div
         ref={listRef}
@@ -321,5 +393,6 @@ function Chat({ me, partnerId, partnerName }: { me: string; partnerId: string; p
         </Button>
       </form>
     </div>
+    </>
   );
 }
