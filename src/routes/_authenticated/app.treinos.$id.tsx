@@ -13,7 +13,7 @@ import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { suggestAdjustment, hasChange, type Suggestion } from "@/lib/progression";
+import { suggestAdjustment, hasChange, type Suggestion, type CardioLoad } from "@/lib/progression";
 
 
 export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
