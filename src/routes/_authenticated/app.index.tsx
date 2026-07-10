@@ -17,6 +17,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
+import { computeCyclePhase } from "@/lib/cycle";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
