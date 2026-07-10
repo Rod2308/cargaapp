@@ -65,12 +65,15 @@ function HistoryPage() {
 
   return (
     <div className="app-container pt-8 sm:pt-12">
-      <header>
-        <p className="text-eyebrow text-muted-foreground">Registros</p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight">Histórico</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Todos os treinos que você realizou. Edite carga, reps ou exclua sessões antigas.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-eyebrow text-muted-foreground">Registros</p>
+          <h1 className="mt-2 font-display text-3xl tracking-tight">Histórico</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Todos os treinos que você realizou. Edite carga, reps ou exclua sessões antigas.
+          </p>
+        </div>
+        <ImportWorkoutDialog userId={user.id} />
       </header>
 
       {isLoading ? (
