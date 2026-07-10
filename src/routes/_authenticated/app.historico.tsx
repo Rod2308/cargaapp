@@ -20,6 +20,7 @@ import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload } from "lucide-r
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
+import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
