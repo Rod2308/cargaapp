@@ -92,16 +92,24 @@ function HistoryPage() {
                   const done = !!s.ended_at;
                   const setsCount = s.session_sets?.length ?? 0;
                   const subtitle = sessionSubtitle(s);
+                  const imported = s.source && s.source !== "manual";
                   return (
                     <li key={s.id} className="card-lift flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <p className="truncate font-display text-sm font-bold">
+                        <p className="flex items-center gap-2 truncate font-display text-sm font-bold">
                           {sessionTitle(s)}
+                          {imported && (
+                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                              Importado
+                            </span>
+                          )}
                         </p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                           <CalendarIcon className="size-3" />
                           {format(new Date(s.started_at), "d MMM yyyy · HH:mm", { locale: ptBR })}
                           {subtitle ? <><span>·</span><span>{subtitle}</span></> : (setsCount > 0 && <><span>·</span><span>{setsCount} série{setsCount === 1 ? "" : "s"}</span></>)}
+                          {s.avg_hr && <><span>·</span><span>FC {s.avg_hr}</span></>}
+                          {s.calories && <><span>·</span><span>{s.calories} kcal</span></>}
                           {s.perceived_effort && <><span>·</span><span>RPE {s.perceived_effort}</span></>}
                           {s.notes && <><span>·</span><span className="truncate">{s.notes}</span></>}
                           {!done && (
@@ -116,11 +124,11 @@ function HistoryPage() {
                           <Button size="sm" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
                             <Play className="size-3.5 fill-current" /> Continuar
                           </Button>
-                        ) : (
+                        ) : !imported ? (
                           <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/sessao/$id/editar", params: { id: s.id } })}>
                             <Pencil className="size-3.5" /> Editar
                           </Button>
-                        )}
+                        ) : null}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
