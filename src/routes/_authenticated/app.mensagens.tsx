@@ -256,8 +256,12 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
     },
   });
 
-  // Realtime: escuta INSERTs envolvendo esses dois usuários
+  // Realtime: INSERTs e DELETEs desta conversa
   useEffect(() => {
+    const isThisChat = (m: Partial<Message>) =>
+      (m.sender_id === me && m.receiver_id === partnerId) ||
+      (m.sender_id === partnerId && m.receiver_id === me);
+
     const channel = supabase
       .channel(`dm:${[me, partnerId].sort().join(":")}`)
       .on(
@@ -265,14 +269,24 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const m = payload.new as Message;
-          const isThisChat =
-            (m.sender_id === me && m.receiver_id === partnerId) ||
-            (m.sender_id === partnerId && m.receiver_id === me);
-          if (!isThisChat) return;
+          if (!isThisChat(m)) return;
           qc.setQueryData<Message[]>(queryKey, (old = []) => {
             if (old.some((x) => x.id === m.id)) return old;
             return [...old, m];
           });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "messages" },
+        (payload) => {
+          const old = payload.old as Partial<Message>;
+          // Com REPLICA IDENTITY FULL, old contém sender/receiver
+          if (old.sender_id && old.receiver_id && !isThisChat(old)) return;
+          qc.setQueryData<Message[]>(queryKey, (curr = []) =>
+            old.id ? curr.filter((x) => x.id !== old.id) : [],
+          );
+          qc.invalidateQueries({ queryKey: ["msg-preview"] });
         },
       )
       .subscribe();
