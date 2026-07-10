@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
+import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -243,6 +244,10 @@ function Dashboard() {
           {firstName.slice(0, 1).toUpperCase()}
         </button>
       </header>
+
+      <div className="mt-5">
+        <CardioRecoveryAlert userId={user.id} />
+      </div>
 
       {/* Frase do dia */}
       <div className="card-lift mt-5 flex items-start gap-3 p-4 sm:p-5">
