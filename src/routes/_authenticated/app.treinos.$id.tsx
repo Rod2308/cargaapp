@@ -130,6 +130,23 @@ function WorkoutEditor() {
     },
   });
 
+  // Cardio sessions imported from watch/app linked to THIS workout — last 14 days.
+  const { data: cardioLoads = [] } = useQuery({
+    queryKey: ["workout-recent-cardio", id, user.id],
+    queryFn: async (): Promise<CardioLoad[]> => {
+      const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+      const { data } = await supabase
+        .from("sessions")
+        .select("started_at, ended_at, avg_hr, max_hr, calories, distance_m, activity_type")
+        .eq("user_id", user.id)
+        .eq("workout_id", id)
+        .neq("source", "manual")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false });
+      return (data ?? []) as CardioLoad[];
+    },
+  });
+
   const suggestionsByItem = useMemo(() => {
     const map = new Map<string, Suggestion>();
     for (const it of items as any[]) {
@@ -141,11 +158,12 @@ function WorkoutEditor() {
           currentRest: it.target_rest_seconds,
           repRange: it.target_reps,
           rows,
+          cardioLoads,
         }),
       );
     }
     return map;
-  }, [items, recentSets]);
+  }, [items, recentSets, cardioLoads]);
 
   const pendingSuggestions = useMemo(() => {
     const out: { itemId: string; patch: any }[] = [];
