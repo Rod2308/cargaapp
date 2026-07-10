@@ -297,6 +297,50 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
   }
 
   return (
+    <>
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary">
+            <ArrowLeft className="size-5" />
+          </button>
+        )}
+        <div className="grid size-11 place-items-center rounded-full bg-secondary text-secondary-foreground">
+          <UserRound className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-bold leading-tight tracking-tight">{partnerName ?? "Contato"}</h1>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              aria-label="Excluir conversa"
+              disabled={messages.length === 0 || deleteConversation.isPending}
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Isso apagará todas as mensagens trocadas entre você e {partnerName ?? "este contato"}. Essa ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteConversation.mutate()}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
     <div className="mt-4 flex h-[calc(100dvh-16rem)] flex-col">
       <div
         ref={listRef}
