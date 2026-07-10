@@ -21,7 +21,6 @@ import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppMensagensRouteImport } from './routes/_authenticated/app.mensagens'
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
-import { Route as AuthenticatedAppCoachRouteImport } from './routes/_authenticated/app.coach'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
@@ -95,11 +94,6 @@ const AuthenticatedAppHistoricoRoute =
     path: '/historico',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
-const AuthenticatedAppCoachRoute = AuthenticatedAppCoachRouteImport.update({
-  id: '/coach',
-  path: '/coach',
-  getParentRoute: () => AuthenticatedAppRoute,
-} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -157,7 +151,6 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
@@ -178,7 +171,6 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/app/coach': typeof AuthenticatedAppCoachRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
@@ -202,7 +194,6 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/_authenticated/app/coach': typeof AuthenticatedAppCoachRoute
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/_authenticated/app/mensagens': typeof AuthenticatedAppMensagensRoute
@@ -226,7 +217,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/app/coach'
     | '/app/historico'
     | '/app/mcp-teste'
     | '/app/mensagens'
@@ -247,7 +237,6 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/app/coach'
     | '/app/historico'
     | '/app/mcp-teste'
     | '/app/mensagens'
@@ -270,7 +259,6 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/_authenticated/app/coach'
     | '/_authenticated/app/historico'
     | '/_authenticated/app/mcp-teste'
     | '/_authenticated/app/mensagens'
@@ -381,13 +369,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppHistoricoRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
-    '/_authenticated/app/coach': {
-      id: '/_authenticated/app/coach'
-      path: '/coach'
-      fullPath: '/app/coach'
-      preLoaderRoute: typeof AuthenticatedAppCoachRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -462,7 +443,6 @@ const AuthenticatedAppSessaoIdRouteWithChildren =
   )
 
 interface AuthenticatedAppRouteChildren {
-  AuthenticatedAppCoachRoute: typeof AuthenticatedAppCoachRoute
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
   AuthenticatedAppMensagensRoute: typeof AuthenticatedAppMensagensRoute
@@ -476,7 +456,6 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
-  AuthenticatedAppCoachRoute: AuthenticatedAppCoachRoute,
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
   AuthenticatedAppMensagensRoute: AuthenticatedAppMensagensRoute,
