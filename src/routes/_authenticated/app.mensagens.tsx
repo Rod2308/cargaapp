@@ -268,8 +268,14 @@ function StudentRow({ student, meId, onOpen, selectMode, selected }: { student: 
   return (
     <button
       onClick={onOpen}
-      className="card-soft flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/40"
+      className={cn(
+        "card-soft flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/40",
+        selectMode && selected && "ring-2 ring-primary",
+      )}
     >
+      {selectMode && (
+        <Checkbox checked={selected} className="shrink-0" tabIndex={-1} aria-label="Selecionar conversa" />
+      )}
       <div className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground">
         <UserRound className="size-5" />
       </div>
@@ -279,7 +285,7 @@ function StudentRow({ student, meId, onOpen, selectMode, selected }: { student: 
           {preview?.content ?? "Sem mensagens ainda"}
         </p>
       </div>
-      {unread && <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-label="Não lida" />}
+      {unread && !selectMode && <span className="size-2.5 shrink-0 rounded-full bg-primary" aria-label="Não lida" />}
     </button>
   );
 }
