@@ -162,7 +162,7 @@ function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
       lengthUnit: "m",
       elapsedRecordField: true,
     });
-    parser.parse(buffer, (err: string | undefined, data: any) => {
+    parser.parse(BufferPolyfill.from(new Uint8Array(buffer)) as any, (err: string | undefined, data: any) => {
       if (err) return reject(new Error(`Falha ao ler .fit: ${err}`));
       try {
         const session = Array.isArray(data.sessions) ? data.sessions[0] : data.sessions;
