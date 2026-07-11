@@ -485,11 +485,21 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       };
     }
 
+    const { computeCyclePhase } = await import("./cycle");
+    const cycle = profile?.cycle_tracking_enabled
+      ? computeCyclePhase({
+          lastPeriodStart: profile.cycle_last_period_start,
+          cycleLength: profile.cycle_length_days,
+          periodLength: profile.cycle_period_length_days,
+        })
+      : null;
+
     const calc = computeScore({
       profile: (profile ?? null) as ProfileRow | null,
       sessions: (sessions ?? []) as SessionRow[],
       sleep: (sleep ?? []) as SleepRow[],
       now,
+      cycle,
     });
 
     const fallback = buildFallbackNarrative(calc);
