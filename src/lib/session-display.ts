@@ -11,6 +11,7 @@ type MaybeSet = { reps?: number | null; weight_kg?: number | null; exercises?: M
 
 export interface SessionLike {
   notes?: string | null;
+  title?: string | null;
   workouts?: MaybeWorkout;
   session_sets?: MaybeSet[] | null;
   activity_type?: string | null;
@@ -19,6 +20,7 @@ export interface SessionLike {
   started_at?: string | null;
   ended_at?: string | null;
 }
+
 
 function firstExercise(s: SessionLike): MaybeExercise {
   const sets = s.session_sets ?? [];
