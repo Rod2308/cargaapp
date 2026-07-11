@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dumbbell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
+
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -36,8 +38,11 @@ function AuthPage() {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
+    const parsedEmail = emailSchema.safeParse(email);
+    if (!parsedEmail.success) return toast.error(parsedEmail.error.issues[0]?.message ?? "Email inválido.");
+    if (!password) return toast.error("Informe sua senha.");
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
     if (error) return toast.error(error.message);
     window.location.href = redirectTo;
@@ -45,13 +50,20 @@ function AuthPage() {
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    const parsedEmail = emailSchema.safeParse(email);
+    if (!parsedEmail.success) return toast.error(parsedEmail.error.issues[0]?.message ?? "Email inválido.");
+    const parsedPassword = passwordSchema.safeParse(password);
+    if (!parsedPassword.success) return toast.error(parsedPassword.error.issues[0]?.message ?? "Senha inválida.");
+    const nameCandidate = name.trim() || parsedEmail.data.split("@")[0];
+    const parsedName = displayNameSchema.safeParse(nameCandidate);
+    if (!parsedName.success) return toast.error(parsedName.error.issues[0]?.message ?? "Nome inválido.");
     setBusy(true);
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: parsedEmail.data,
+      password: parsedPassword.data,
       options: {
         emailRedirectTo: `${window.location.origin}${redirectTo}`,
-        data: { display_name: name || email.split("@")[0], role },
+        data: { display_name: parsedName.data, role },
       },
     });
     setBusy(false);
@@ -59,6 +71,7 @@ function AuthPage() {
     toast.success("Conta criada! Verifique seu email se necessário.");
     window.location.href = redirectTo;
   }
+
 
   async function google() {
     setBusy(true);
