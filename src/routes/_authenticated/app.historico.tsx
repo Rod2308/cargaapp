@@ -14,9 +14,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload } from "lucide-react";
+import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
@@ -25,6 +35,7 @@ import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
 });
+
 
 function HistoryPage() {
   const { user } = AuthedRoute.useRouteContext();
