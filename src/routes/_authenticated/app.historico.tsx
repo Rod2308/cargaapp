@@ -41,13 +41,15 @@ function HistoryPage() {
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [renaming, setRenaming] = useState<{ id: string; current: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["history-sessions", user.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("id, started_at, ended_at, perceived_effort, notes, workout_id, source, activity_type, distance_m, avg_hr, max_hr, calories, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))")
+        .select("id, started_at, ended_at, perceived_effort, notes, title, workout_id, source, activity_type, distance_m, avg_hr, max_hr, calories, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))")
         .eq("user_id", user.id)
         .order("started_at", { ascending: false });
       return data ?? [];
@@ -67,6 +69,21 @@ function HistoryPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const rename = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string | null }) => {
+      const { error } = await supabase.from("sessions").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Nome atualizado");
+      setRenaming(null);
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   // Agrupar por mês
   const grouped: Record<string, typeof sessions> = {};
