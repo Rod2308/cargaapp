@@ -2,6 +2,12 @@
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 
 import FitParser from "fit-file-parser";
+import { Buffer as BufferPolyfill } from "buffer";
+
+// fit-file-parser depende de Node's Buffer; garantir polyfill no browser
+if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
+  (globalThis as any).Buffer = BufferPolyfill;
+}
 
 export type ParsedWorkout = {
   started_at: string; // ISO
