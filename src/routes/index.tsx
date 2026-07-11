@@ -199,6 +199,18 @@ function Landing() {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-6 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center">
+          <p>© {new Date().getFullYear()} Carga · Seu treino, do seu jeito.</p>
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link to="/privacidade" className="hover:text-foreground">Política de Privacidade</Link>
+            <Link to="/termos" className="hover:text-foreground">Termos de Uso</Link>
+            <Link to="/auth" className="hover:text-foreground">Entrar</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
+
