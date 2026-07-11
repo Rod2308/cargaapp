@@ -139,6 +139,7 @@ function computeScore(input: {
   sessions: SessionRow[];
   sleep: SleepRow[];
   now: Date;
+  cycle: import("./cycle").CycleInfo | null;
 }) {
   const { profile, sessions, sleep, now } = input;
   const factors: Factor[] = [];
