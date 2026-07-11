@@ -161,23 +161,40 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Nome</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como podemos te chamar?" />
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como podemos te chamar?" maxLength={60} autoComplete="name" />
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} autoComplete="email" />
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input type="password" required minLength={8} maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+                <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Criar conta"}
               </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Ao criar sua conta você concorda com nossos{" "}
+                <Link to="/termos" className="underline underline-offset-2 hover:text-foreground">Termos de Uso</Link>
+                {" "}e a{" "}
+                <Link to="/privacidade" className="underline underline-offset-2 hover:text-foreground">Política de Privacidade</Link>.
+              </p>
             </form>
           </TabsContent>
         </Tabs>
+
+        <div className="mt-8 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <Link to="/privacidade" className="hover:text-foreground">Privacidade</Link>
+          <span aria-hidden>·</span>
+          <Link to="/termos" className="hover:text-foreground">Termos</Link>
+        </div>
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
