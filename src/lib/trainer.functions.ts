@@ -64,7 +64,9 @@ export const linkStudentByCode = createServerFn({ method: "POST" })
     if (!student) throw new Error("Código não encontrado.");
     if (student.id === userId) throw new Error("Você não pode se vincular a si mesmo.");
 
-    const { error } = await supabase
+    // Insert via admin: RLS restricts INSERT to the student themselves; the
+    // student's consent here is the invite code they shared with the trainer.
+    const { error } = await supabaseAdmin
       .from("trainer_students")
       .insert({ trainer_id: userId, student_id: student.id });
     if (error) {
