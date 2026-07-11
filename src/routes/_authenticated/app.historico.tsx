@@ -122,9 +122,46 @@ function HistoryPage() {
                   const setsCount = s.session_sets?.length ?? 0;
                   const subtitle = sessionSubtitle(s);
                   const imported = s.source && s.source !== "manual";
+
+                  const durationSec = s.started_at && s.ended_at
+                    ? Math.max(0, Math.round((new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 1000))
+                    : 0;
+                  const fmtDuration = (sec: number) => {
+                    if (!sec) return null;
+                    const h = Math.floor(sec / 3600);
+                    const m = Math.floor((sec % 3600) / 60);
+                    const ss = sec % 60;
+                    if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+                    if (m > 0) return `${m}min${ss ? ` ${ss}s` : ""}`;
+                    return `${ss}s`;
+                  };
+                  const fmtDistance = (m: number) => m >= 1000
+                    ? `${(m / 1000).toFixed(2).replace(".", ",")} km`
+                    : `${m} m`;
+                  const pace = imported && s.distance_m && durationSec > 0 && s.distance_m >= 400
+                    ? (() => {
+                        const paceSec = durationSec / (s.distance_m / 1000);
+                        const pm = Math.floor(paceSec / 60);
+                        const ps = Math.round(paceSec % 60);
+                        return `${pm}:${String(ps).padStart(2, "0")} /km`;
+                      })()
+                    : null;
+
+                  const metrics: { label: string; value: string }[] = [];
+                  if (imported) {
+                    if (s.distance_m) metrics.push({ label: "Distância", value: fmtDistance(s.distance_m) });
+                    const dur = fmtDuration(durationSec);
+                    if (dur) metrics.push({ label: "Duração", value: dur });
+                    if (pace) metrics.push({ label: "Pace", value: pace });
+                    if (s.avg_hr) metrics.push({ label: "FC média", value: `${s.avg_hr} bpm` });
+                    if (s.max_hr) metrics.push({ label: "FC máx", value: `${s.max_hr} bpm` });
+                    if (s.calories) metrics.push({ label: "Calorias", value: `${s.calories} kcal` });
+                    if (s.perceived_effort) metrics.push({ label: "RPE", value: `${s.perceived_effort}/10` });
+                  }
+
                   return (
-                    <li key={s.id} className="card-lift flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
+                    <li key={s.id} className="card-lift flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-2 truncate font-display text-sm font-bold">
                           {sessionTitle(s)}
                           {imported && (
@@ -136,10 +173,11 @@ function HistoryPage() {
                         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                           <CalendarIcon className="size-3" />
                           {format(new Date(s.started_at), "d MMM yyyy · HH:mm", { locale: ptBR })}
-                          {subtitle ? <><span>·</span><span>{subtitle}</span></> : (setsCount > 0 && <><span>·</span><span>{setsCount} série{setsCount === 1 ? "" : "s"}</span></>)}
-                          {s.avg_hr && <><span>·</span><span>FC {s.avg_hr}</span></>}
-                          {s.calories && <><span>·</span><span>{s.calories} kcal</span></>}
-                          {s.perceived_effort && <><span>·</span><span>RPE {s.perceived_effort}</span></>}
+                          {!imported && subtitle && <><span>·</span><span>{subtitle}</span></>}
+                          {!imported && !subtitle && setsCount > 0 && <><span>·</span><span>{setsCount} série{setsCount === 1 ? "" : "s"}</span></>}
+                          {!imported && s.avg_hr && <><span>·</span><span>FC {s.avg_hr}</span></>}
+                          {!imported && s.calories && <><span>·</span><span>{s.calories} kcal</span></>}
+                          {!imported && s.perceived_effort && <><span>·</span><span>RPE {s.perceived_effort}</span></>}
                           {s.notes && <><span>·</span><span className="truncate">{s.notes}</span></>}
                           {!done && (
                             <span className="ml-1 rounded-full bg-brand/25 px-2 py-0.5 font-semibold text-foreground">
@@ -147,7 +185,18 @@ function HistoryPage() {
                             </span>
                           )}
                         </p>
+                        {imported && metrics.length > 0 && (
+                          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 md:grid-cols-4">
+                            {metrics.map((m) => (
+                              <div key={m.label} className="rounded-lg bg-secondary/40 px-2.5 py-1.5">
+                                <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.label}</dt>
+                                <dd className="mt-0.5 text-sm font-semibold tabular-nums">{m.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
                       </div>
+
                       <div className="flex shrink-0 flex-wrap gap-2">
                         {done && (
                           <Button
