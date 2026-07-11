@@ -377,11 +377,13 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
         <h2 className="text-lg font-semibold">Dados profissionais</h2>
 
         <div className="space-y-1.5">
+
           <Label>Nome público</Label>
           <Input
             defaultValue={profile.display_name ?? ""}
             placeholder="Como seus alunos te encontram"
-            onBlur={(e) => e.target.value !== (profile.display_name ?? "") && update.mutate({ display_name: e.target.value })}
+            maxLength={60}
+            onBlur={(e) => e.target.value !== (profile.display_name ?? "") && update.mutate({ display_name: e.target.value.trim().slice(0, 60) })}
           />
         </div>
 
@@ -391,7 +393,8 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
             <Input
               defaultValue={profile.cref ?? ""}
               placeholder="Ex.: 123456-G/SP"
-              onBlur={(e) => e.target.value !== (profile.cref ?? "") && update.mutate({ cref: e.target.value || null })}
+              maxLength={20}
+              onBlur={(e) => e.target.value !== (profile.cref ?? "") && update.mutate({ cref: e.target.value.trim().slice(0, 20) || null })}
             />
           </div>
           <div className="space-y-1.5">
@@ -403,7 +406,7 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
               defaultValue={profile.years_experience ?? ""}
               onBlur={(e) => {
                 const n = e.target.value ? Number(e.target.value) : null;
-                if (n !== profile.years_experience && (n === null || (n >= 0 && n <= 70))) update.mutate({ years_experience: n });
+                if (n !== profile.years_experience && (n === null || (Number.isFinite(n) && n >= 0 && n <= 70))) update.mutate({ years_experience: n });
               }}
             />
           </div>
@@ -415,7 +418,8 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
             <Input
               defaultValue={profile.city ?? ""}
               placeholder="Ex.: São Paulo, SP"
-              onBlur={(e) => e.target.value !== (profile.city ?? "") && update.mutate({ city: e.target.value || null })}
+              maxLength={80}
+              onBlur={(e) => e.target.value !== (profile.city ?? "") && update.mutate({ city: e.target.value.trim().slice(0, 80) || null })}
             />
           </div>
           <div className="space-y-1.5">
@@ -423,7 +427,8 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
             <Input
               defaultValue={profile.contact_phone ?? ""}
               placeholder="Ex.: (11) 99999-9999"
-              onBlur={(e) => e.target.value !== (profile.contact_phone ?? "") && update.mutate({ contact_phone: e.target.value || null })}
+              maxLength={20}
+              onBlur={(e) => e.target.value !== (profile.contact_phone ?? "") && update.mutate({ contact_phone: e.target.value.trim().slice(0, 20) || null })}
             />
           </div>
         </div>
@@ -433,7 +438,8 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
           <Input
             defaultValue={profile.specialties ?? ""}
             placeholder="Ex.: hipertrofia, emagrecimento, reabilitação"
-            onBlur={(e) => e.target.value !== (profile.specialties ?? "") && update.mutate({ specialties: e.target.value || null })}
+            maxLength={120}
+            onBlur={(e) => e.target.value !== (profile.specialties ?? "") && update.mutate({ specialties: e.target.value.trim().slice(0, 120) || null })}
           />
           <p className="text-xs text-muted-foreground">Separe por vírgulas.</p>
         </div>
@@ -442,15 +448,17 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
           <Label>Bio</Label>
           <Textarea
             rows={4}
+            maxLength={500}
             placeholder="Fale um pouco sobre sua abordagem, formação e como você trabalha com os alunos…"
             defaultValue={profile.bio ?? ""}
-            onBlur={(e) => e.target.value !== (profile.bio ?? "") && update.mutate({ bio: e.target.value || null })}
+            onBlur={(e) => e.target.value !== (profile.bio ?? "") && update.mutate({ bio: e.target.value.trim().slice(0, 500) || null })}
           />
         </div>
       </div>
     </>
   );
 }
+
 
 function LinkStudentCard({ userId }: { userId: string }) {
   const qc = useQueryClient();

@@ -8,6 +8,8 @@ import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search, Che
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { messageSchema } from "@/lib/validation";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -446,10 +448,15 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const content = text.trim();
-    if (!content || send.isPending) return;
-    send.mutate(content);
+    if (send.isPending) return;
+    const parsed = messageSchema.safeParse(text);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Mensagem inválida.");
+      return;
+    }
+    send.mutate(parsed.data);
   }
+
 
   return (
     <>
@@ -538,11 +545,13 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
           onChange={(e) => setText(e.target.value)}
           placeholder="Escreva sua mensagem..."
           rows={1}
+          maxLength={4000}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(e as any); }
           }}
           className="min-h-10 flex-1 resize-none rounded-2xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary"
         />
+
         <Button type="submit" size="icon" disabled={send.isPending || !text.trim()}>
           {send.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         </Button>

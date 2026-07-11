@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dumbbell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
+
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -36,8 +38,11 @@ function AuthPage() {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
+    const parsedEmail = emailSchema.safeParse(email);
+    if (!parsedEmail.success) return toast.error(parsedEmail.error.issues[0]?.message ?? "Email inválido.");
+    if (!password) return toast.error("Informe sua senha.");
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
     if (error) return toast.error(error.message);
     window.location.href = redirectTo;
@@ -45,13 +50,20 @@ function AuthPage() {
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    const parsedEmail = emailSchema.safeParse(email);
+    if (!parsedEmail.success) return toast.error(parsedEmail.error.issues[0]?.message ?? "Email inválido.");
+    const parsedPassword = passwordSchema.safeParse(password);
+    if (!parsedPassword.success) return toast.error(parsedPassword.error.issues[0]?.message ?? "Senha inválida.");
+    const nameCandidate = name.trim() || parsedEmail.data.split("@")[0];
+    const parsedName = displayNameSchema.safeParse(nameCandidate);
+    if (!parsedName.success) return toast.error(parsedName.error.issues[0]?.message ?? "Nome inválido.");
     setBusy(true);
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: parsedEmail.data,
+      password: parsedPassword.data,
       options: {
         emailRedirectTo: `${window.location.origin}${redirectTo}`,
-        data: { display_name: name || email.split("@")[0], role },
+        data: { display_name: parsedName.data, role },
       },
     });
     setBusy(false);
@@ -59,6 +71,7 @@ function AuthPage() {
     toast.success("Conta criada! Verifique seu email se necessário.");
     window.location.href = redirectTo;
   }
+
 
   async function google() {
     setBusy(true);
@@ -148,22 +161,35 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Nome</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como podemos te chamar?" />
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como podemos te chamar?" maxLength={60} autoComplete="name" />
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} autoComplete="email" />
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input type="password" required minLength={8} maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+                <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Criar conta"}
               </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Ao criar sua conta você concorda com nossos{" "}
+                <Link to="/termos" className="underline underline-offset-2 hover:text-foreground">Termos de Uso</Link>
+                {" "}e a{" "}
+                <Link to="/privacidade" className="underline underline-offset-2 hover:text-foreground">Política de Privacidade</Link>.
+              </p>
             </form>
           </TabsContent>
         </Tabs>
+
+        <div className="mt-8 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <Link to="/privacidade" className="hover:text-foreground">Privacidade</Link>
+          <span aria-hidden>·</span>
+          <Link to="/termos" className="hover:text-foreground">Termos</Link>
+        </div>
       </div>
     </div>
   );
