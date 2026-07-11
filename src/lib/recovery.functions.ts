@@ -259,35 +259,23 @@ function computeScore(input: {
 
   // ---------- 5) Ciclo menstrual ----------
   let cyclePenalty = 0;
-  let cycleInfo: { phaseLabel: string; dayInCycle: number; cycleLength: number; isLatePhaseLutea: boolean } | null = null;
-  if (profile?.cycle_tracking_enabled && profile.cycle_last_period_start) {
-    // usamos import dinâmico pra não puxar cliente no server bundle
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { computeCyclePhase } = require("./cycle") as typeof import("./cycle");
-    const c = computeCyclePhase({
-      lastPeriodStart: profile.cycle_last_period_start,
-      cycleLength: profile.cycle_length_days,
-      periodLength: profile.cycle_period_length_days,
-    });
-    if (c) {
-      cycleInfo = c;
-      if (c.phase === "menstrual") cyclePenalty = 12;
-      else if (c.isLatePhaseLutea) cyclePenalty = 9;
-      else if (c.phase === "lutea") cyclePenalty = 4;
-      // ovulação/folicular = 0 (favorece)
-      // Proximidade de transição adiciona pequeno peso
-      const transitionSoon = c.daysUntilNextPeriod <= 2;
-      if (transitionSoon && c.phase !== "menstrual") cyclePenalty += 3;
-      if (cyclePenalty > 0) {
-        factors.push({
-          key: "cycle",
-          label: `Fase ${c.phaseLabel.toLowerCase()}`,
-          detail: `dia ${c.dayInCycle}/${c.cycleLength}${c.isLatePhaseLutea ? " (TPM)" : ""}`,
-          impact: cyclePenalty,
-        });
-      }
+  const c = input.cycle;
+  if (c) {
+    if (c.phase === "menstrual") cyclePenalty = 12;
+    else if (c.isLatePhaseLutea) cyclePenalty = 9;
+    else if (c.phase === "lutea") cyclePenalty = 4;
+    // Proximidade de transição adiciona pequeno peso
+    if (c.daysUntilNextPeriod <= 2 && c.phase !== "menstrual") cyclePenalty += 3;
+    if (cyclePenalty > 0) {
+      factors.push({
+        key: "cycle",
+        label: `Fase ${c.phaseLabel.toLowerCase()}`,
+        detail: `dia ${c.dayInCycle}/${c.cycleLength}${c.isLatePhaseLutea ? " (TPM)" : ""}`,
+        impact: cyclePenalty,
+      });
     }
   }
+
 
   // ---------- 6) Dor/lesões cadastradas ----------
   let injuryPenalty = 0;
