@@ -14,9 +14,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload } from "lucide-react";
+import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
@@ -26,17 +36,20 @@ export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
 });
 
+
 function HistoryPage() {
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [renaming, setRenaming] = useState<{ id: string; current: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["history-sessions", user.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("id, started_at, ended_at, perceived_effort, notes, workout_id, source, activity_type, distance_m, avg_hr, max_hr, calories, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))")
+        .select("id, started_at, ended_at, perceived_effort, notes, title, workout_id, source, activity_type, distance_m, avg_hr, max_hr, calories, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))")
         .eq("user_id", user.id)
         .order("started_at", { ascending: false });
       return data ?? [];
@@ -56,6 +69,21 @@ function HistoryPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const rename = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string | null }) => {
+      const { error } = await supabase.from("sessions").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Nome atualizado");
+      setRenaming(null);
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   // Agrupar por mês
   const grouped: Record<string, typeof sessions> = {};
@@ -121,6 +149,19 @@ function HistoryPage() {
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
+                        {done && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setRenameValue(s.title ?? sessionTitle(s));
+                              setRenaming({ id: s.id, current: sessionTitle(s) });
+                            }}
+                            title="Renomear treino"
+                          >
+                            <Type className="size-3.5" /> Nome
+                          </Button>
+                        )}
                         {imported && done && (
                           <LinkToWorkoutButton
                             sessionId={s.id}
@@ -129,6 +170,7 @@ function HistoryPage() {
                             currentWorkoutLabel={s.workouts?.label ?? s.workouts?.name ?? null}
                           />
                         )}
+
                         {!done ? (
                           <Button size="sm" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
                             <Play className="size-3.5 fill-current" /> Continuar
@@ -170,6 +212,55 @@ function HistoryPage() {
       <div className="mt-8 text-center">
         <Link to="/app" className="text-xs font-semibold underline underline-offset-4">Voltar ao início</Link>
       </div>
+
+      <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear treino</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="session-title">Nome do treino</Label>
+            <Input
+              id="session-title"
+              value={renameValue}
+              maxLength={80}
+              placeholder={renaming?.current ?? ""}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renaming) {
+                  const v = renameValue.trim();
+                  rename.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+                }
+              }}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              Deixe em branco para usar o nome padrão.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            {renaming && (
+              <Button
+                variant="outline"
+                onClick={() => rename.mutate({ id: renaming.id, title: null })}
+                disabled={rename.isPending}
+              >
+                Restaurar padrão
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                if (!renaming) return;
+                const v = renameValue.trim();
+                rename.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+              }}
+              disabled={rename.isPending}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

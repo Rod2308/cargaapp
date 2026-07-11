@@ -232,6 +232,7 @@ export type Database = {
           perceived_effort: number | null
           source: string
           started_at: string
+          title: string | null
           user_id: string
           workout_id: string | null
         }
@@ -247,6 +248,7 @@ export type Database = {
           perceived_effort?: number | null
           source?: string
           started_at?: string
+          title?: string | null
           user_id: string
           workout_id?: string | null
         }
@@ -262,6 +264,7 @@ export type Database = {
           perceived_effort?: number | null
           source?: string
           started_at?: string
+          title?: string | null
           user_id?: string
           workout_id?: string | null
         }

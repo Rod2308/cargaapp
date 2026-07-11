@@ -11,6 +11,7 @@ type MaybeSet = { reps?: number | null; weight_kg?: number | null; exercises?: M
 
 export interface SessionLike {
   notes?: string | null;
+  title?: string | null;
   workouts?: MaybeWorkout;
   session_sets?: MaybeSet[] | null;
   activity_type?: string | null;
@@ -19,6 +20,7 @@ export interface SessionLike {
   started_at?: string | null;
   ended_at?: string | null;
 }
+
 
 function firstExercise(s: SessionLike): MaybeExercise {
   const sets = s.session_sets ?? [];
@@ -50,6 +52,7 @@ function isImported(s: SessionLike): boolean {
 }
 
 export function sessionTitle(s: SessionLike): string {
+  if (s.title && s.title.trim()) return s.title.trim();
   if (s.workouts?.name) {
     const label = s.workouts.label ? `Treino ${s.workouts.label} — ` : "";
     return `${label}${s.workouts.name}`;
