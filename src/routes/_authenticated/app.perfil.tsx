@@ -377,7 +377,7 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
         <h2 className="text-lg font-semibold">Dados profissionais</h2>
 
         <div className="space-y-1.5">
-        <div className="space-y-1.5">
+
           <Label>Nome público</Label>
           <Input
             defaultValue={profile.display_name ?? ""}
