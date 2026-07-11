@@ -8,6 +8,8 @@ import { MessageCircle, Send, Loader2, UserRound, ArrowLeft, Trash2, Search, Che
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { messageSchema } from "@/lib/validation";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -446,10 +448,15 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const content = text.trim();
-    if (!content || send.isPending) return;
-    send.mutate(content);
+    if (send.isPending) return;
+    const parsed = messageSchema.safeParse(text);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Mensagem inválida.");
+      return;
+    }
+    send.mutate(parsed.data);
   }
+
 
   return (
     <>
