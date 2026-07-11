@@ -264,5 +264,3 @@ function HistoryPage() {
     </div>
   );
 }
-
-}
