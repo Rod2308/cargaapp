@@ -3,40 +3,474 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 
+/**
+ * Recovery engine
+ * ---------------
+ * Objetivo: cruzar TODOS os sinais disponíveis do usuário de forma ponderada
+ * e produzir um único score 0-100 + narrativa. O score é determinístico
+ * (mesmos dados → mesmo score); o texto/tom é polido pela IA em cima da
+ * estrutura calculada. Se a IA falhar, caímos em fallback textual gerado
+ * a partir dos próprios fatores.
+ *
+ * Cada fator produz um delta negativo (fadiga) sobre uma base 100, ponderado
+ * pela sua importância relativa e pela recência. O resultado é combinado
+ * (não somado ingenuamente) via redução multiplicativa suave para evitar
+ * que um único fator domine, mantendo o "quadro completo".
+ */
+
+const FactorSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  detail: z.string(),
+  impact: z.number(), // pontos deduzidos do score (positivo = penalidade)
+});
+
 const RecoverySchema = z.object({
   status: z.enum(["recuperado", "leve", "cuidado", "descanso"]),
+  score: z.number().min(0).max(100),
+  intensityPct: z.number().min(0).max(100),
+  intensityLabel: z.string(),
   headline: z.string(),
   reason: z.string(),
   recommendation: z.string(),
+  tip: z.string(),
+  canDo: z.array(z.string()),
+  avoid: z.array(z.string()),
+  factors: z.array(FactorSchema),
 });
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
 
+// -------------------- utils --------------------
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+function scoreToStatus(score: number): RecoveryAdvice["status"] {
+  if (score >= 80) return "recuperado";
+  if (score >= 60) return "leve";
+  if (score >= 40) return "cuidado";
+  return "descanso";
+}
+
+function scoreToIntensity(score: number): { pct: number; label: string } {
+  // Curva suave: 100→100%, 80→90%, 60→75%, 40→55%, 20→30%, 0→0%
+  const pct = Math.round(clamp(Math.pow(score / 100, 0.9) * 100, 0, 100));
+  if (pct >= 90) return { pct, label: "Carga normal — pode progredir" };
+  if (pct >= 70) return { pct, label: `Reduza para ~${pct}% da carga usual` };
+  if (pct >= 45) return { pct, label: `Treino leve · ~${pct}% da carga` };
+  if (pct >= 25) return { pct, label: "Descanso ativo (mobilidade, caminhada)" };
+  return { pct, label: "Priorize descanso total hoje" };
+}
+
+// Combina penalidades como perdas independentes (1 - Π(1 - p_i/100)) *100.
+// Isso evita somas lineares que estouram o score, e reflete "quadro global":
+// muitos fatores pequenos ainda derrubam bastante; um fator gigante domina mas
+// não zera se outros fatores forem bons.
+function combinePenalties(penalties: number[]): number {
+  let survive = 1;
+  for (const p of penalties) survive *= 1 - clamp(p, 0, 100) / 100;
+  return Math.round(clamp(100 * (1 - survive), 0, 100));
+}
+
+// -------------------- core scoring --------------------
+type Factor = z.infer<typeof FactorSchema>;
+
+type SessionRow = {
+  started_at: string;
+  ended_at: string | null;
+  perceived_effort: number | null;
+  session_sets: {
+    reps: number | null;
+    weight_kg: number | null;
+    rpe: number | null;
+    exercises: { name: string | null; muscle_group: string | null } | null;
+  }[];
+};
+
+type SleepRow = { log_date: string; hours: number; quality: number | null };
+
+type ProfileRow = {
+  experience_level: string | null;
+  uses_enhancers: boolean | null;
+  birth_date: string | null;
+  activity_level: string | null;
+  injuries: string | null;
+  weekly_frequency: number | null;
+  cycle_tracking_enabled: boolean | null;
+  cycle_last_period_start: string | null;
+  cycle_length_days: number | null;
+  cycle_period_length_days: number | null;
+};
+
+type MuscleAgg = { group: string; setsRecent: number; volume: number; avgRpe: number | null; lastDaysAgo: number };
+
+function ageYears(birth: string | null): number | null {
+  if (!birth) return null;
+  const b = new Date(birth);
+  if (isNaN(b.getTime())) return null;
+  const n = new Date();
+  let a = n.getFullYear() - b.getFullYear();
+  const m = n.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+  return a;
+}
+
+function aggregateMuscles(sessions: SessionRow[], now: Date): MuscleAgg[] {
+  const map = new Map<string, MuscleAgg>();
+  for (const s of sessions) {
+    const daysAgo = (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000;
+    if (daysAgo > 5) continue;
+    for (const st of s.session_sets ?? []) {
+      const g = st.exercises?.muscle_group;
+      if (!g || g === "Esportes") continue;
+      const cur =
+        map.get(g) ?? { group: g, setsRecent: 0, volume: 0, avgRpe: null, lastDaysAgo: 999 };
+      cur.setsRecent += 1;
+      cur.volume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
+      if (st.rpe) cur.avgRpe = cur.avgRpe == null ? Number(st.rpe) : (cur.avgRpe + Number(st.rpe)) / 2;
+      cur.lastDaysAgo = Math.min(cur.lastDaysAgo, daysAgo);
+      map.set(g, cur);
+    }
+  }
+  return Array.from(map.values());
+}
+
+function computeScore(input: {
+  profile: ProfileRow | null;
+  sessions: SessionRow[];
+  sleep: SleepRow[];
+  now: Date;
+}) {
+  const { profile, sessions, sleep, now } = input;
+  const factors: Factor[] = [];
+
+  const experienced = ["intermediario", "avancado", "avançado"].includes(
+    (profile?.experience_level ?? "").toLowerCase(),
+  );
+  const enhancers = !!profile?.uses_enhancers;
+  const age = ageYears(profile?.birth_date ?? null);
+  // Tolerância global: avançados/ergogênicos aguentam mais; >40 anos aguentam menos
+  const tolerance = (experienced ? 1.15 : 1) * (enhancers ? 1.1 : 1) * (age && age > 40 ? 0.9 : 1);
+
+  // ---------- 1) Volume/intensidade recente por sessão, ponderado pela recência ----------
+  const recentSessions = sessions.filter(
+    (s) => (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000 <= 3,
+  );
+  let trainingPenalty = 0;
+  let bigSetsCount = 0;
+  let hardestRpe = 0;
+  for (const s of recentSessions) {
+    const daysAgo = (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000;
+    const recency = clamp(1 - daysAgo / 3.5, 0.15, 1); // 1 hoje → 0.15 há 3d
+    const sets = (s.session_sets ?? []).filter((st) => st.exercises?.muscle_group !== "Esportes")
+      .length;
+    const rpes = (s.session_sets ?? []).map((st) => Number(st.rpe) || 0).filter((v) => v > 0);
+    const rpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : 0;
+    const effort = Number(s.perceived_effort) || 0;
+    bigSetsCount += sets;
+    hardestRpe = Math.max(hardestRpe, rpe, effort);
+    // volume-load leve: cada 20 séries ≈ 20pts; RPE 9 ≈ +15pts; effort 5 ≈ +12pts
+    const raw = (sets / 20) * 20 + Math.max(0, rpe - 7) * 7 + Math.max(0, effort - 3) * 6;
+    trainingPenalty += raw * recency;
+  }
+  trainingPenalty = clamp(trainingPenalty / tolerance, 0, 55);
+  if (trainingPenalty >= 6) {
+    factors.push({
+      key: "training",
+      label: "Treinos recentes pesados",
+      detail: `${recentSessions.length} sessão(ões) nos últimos 3d · ${bigSetsCount} série(s)${
+        hardestRpe ? ` · pico RPE/esforço ${hardestRpe.toFixed(1)}` : ""
+      }`,
+      impact: Math.round(trainingPenalty),
+    });
+  }
+
+  // ---------- 2) Grupos musculares repetidos sem 48h ----------
+  const muscles = aggregateMuscles(sessions, now);
+  const overlapped = muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 4);
+  let musclePenalty = 0;
+  if (overlapped.length > 0) {
+    musclePenalty = clamp(overlapped.length * 8, 0, 20);
+    factors.push({
+      key: "muscle-overlap",
+      label: "Grupos ainda em recuperação",
+      detail: overlapped
+        .map((m) => `${m.group} há ${m.lastDaysAgo.toFixed(1)}d (${m.setsRecent} séries)`)
+        .join(", "),
+      impact: Math.round(musclePenalty),
+    });
+  }
+
+  // ---------- 3) Sono (últimas 1-7 noites) ----------
+  const nights = [...sleep].sort((a, b) => (a.log_date < b.log_date ? 1 : -1));
+  const last = nights[0] ?? null;
+  const window = nights.slice(0, 7);
+  const avgH = window.length ? window.reduce((a, s) => a + Number(s.hours), 0) / window.length : null;
+  const qArr = window.filter((s) => s.quality != null);
+  const avgQ = qArr.length ? qArr.reduce((a, s) => a + Number(s.quality), 0) / qArr.length : null;
+
+  let sleepPenalty = 0;
+  const sleepBits: string[] = [];
+  if (last && Number(last.hours) < 6) {
+    const p = (6 - Number(last.hours)) * 9; // 5h → 9pts; 4h → 18pts
+    sleepPenalty += p;
+    sleepBits.push(`última noite ${last.hours}h`);
+  }
+  if (avgH != null && avgH < 6.5) {
+    const p = (6.5 - avgH) * 8;
+    sleepPenalty += p;
+    sleepBits.push(`média ${avgH.toFixed(1)}h`);
+  }
+  if (avgQ != null && avgQ <= 2.5) {
+    sleepPenalty += (2.5 - avgQ) * 6;
+    sleepBits.push(`qualidade ${avgQ.toFixed(1)}/5`);
+  }
+  if (!last && !avgH) {
+    // sem dado de sono: penalidade leve por incerteza
+    sleepPenalty += 4;
+    sleepBits.push("sem registro");
+  }
+  sleepPenalty = clamp(sleepPenalty, 0, 35);
+  if (sleepPenalty >= 3) {
+    factors.push({
+      key: "sleep",
+      label: "Sono insuficiente",
+      detail: sleepBits.join(" · "),
+      impact: Math.round(sleepPenalty),
+    });
+  }
+
+  // ---------- 4) Esporte/atividade extra (grupo "Esportes") ----------
+  const sportMinutes48h = sessions
+    .filter((s) => (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000 <= 2)
+    .flatMap((s) => s.session_sets ?? [])
+    .filter((st) => st.exercises?.muscle_group === "Esportes")
+    .reduce((a, st) => a + (Number(st.reps) || 0), 0);
+  let sportPenalty = 0;
+  if (sportMinutes48h >= 45) {
+    sportPenalty = clamp(((sportMinutes48h - 30) / 60) * 12, 0, 20);
+    factors.push({
+      key: "sport",
+      label: "Atividade extra recente",
+      detail: `${sportMinutes48h} min de esporte nas últimas 48h`,
+      impact: Math.round(sportPenalty),
+    });
+  }
+
+  // ---------- 5) Ciclo menstrual ----------
+  let cyclePenalty = 0;
+  let cycleInfo: { phaseLabel: string; dayInCycle: number; cycleLength: number; isLatePhaseLutea: boolean } | null = null;
+  if (profile?.cycle_tracking_enabled && profile.cycle_last_period_start) {
+    // usamos import dinâmico pra não puxar cliente no server bundle
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { computeCyclePhase } = require("./cycle") as typeof import("./cycle");
+    const c = computeCyclePhase({
+      lastPeriodStart: profile.cycle_last_period_start,
+      cycleLength: profile.cycle_length_days,
+      periodLength: profile.cycle_period_length_days,
+    });
+    if (c) {
+      cycleInfo = c;
+      if (c.phase === "menstrual") cyclePenalty = 12;
+      else if (c.isLatePhaseLutea) cyclePenalty = 9;
+      else if (c.phase === "lutea") cyclePenalty = 4;
+      // ovulação/folicular = 0 (favorece)
+      // Proximidade de transição adiciona pequeno peso
+      const transitionSoon = c.daysUntilNextPeriod <= 2;
+      if (transitionSoon && c.phase !== "menstrual") cyclePenalty += 3;
+      if (cyclePenalty > 0) {
+        factors.push({
+          key: "cycle",
+          label: `Fase ${c.phaseLabel.toLowerCase()}`,
+          detail: `dia ${c.dayInCycle}/${c.cycleLength}${c.isLatePhaseLutea ? " (TPM)" : ""}`,
+          impact: cyclePenalty,
+        });
+      }
+    }
+  }
+
+  // ---------- 6) Dor/lesões cadastradas ----------
+  let injuryPenalty = 0;
+  const injuriesText = (profile?.injuries ?? "").trim();
+  if (injuriesText) {
+    // heurística: presença sozinha ≥ 6pts; palavras-chave fortes elevam
+    const strong = /(forte|aguda|grave|crônic|hérnia|tendinite|lesão|inflamação|dor intensa)/i.test(
+      injuriesText,
+    );
+    injuryPenalty = strong ? 14 : 6;
+    factors.push({
+      key: "injury",
+      label: "Lesão/limitação ativa",
+      detail: injuriesText.length > 80 ? injuriesText.slice(0, 77) + "…" : injuriesText,
+      impact: injuryPenalty,
+    });
+  }
+
+  // ---------- 7) Frequência / dias consecutivos ----------
+  const daysWithSession = new Set<string>();
+  for (const s of sessions) {
+    const d = new Date(s.started_at);
+    daysWithSession.add(d.toISOString().slice(0, 10));
+  }
+  // contar streak de dias treinados terminando hoje ou ontem
+  let streak = 0;
+  const d = new Date(now);
+  while (true) {
+    const key = d.toISOString().slice(0, 10);
+    if (daysWithSession.has(key)) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+    if (streak > 14) break;
+  }
+  const last7 = Array.from(daysWithSession).filter(
+    (k) => (now.getTime() - new Date(k).getTime()) / 86_400_000 <= 7,
+  ).length;
+  const targetFreq = clamp(Number(profile?.weekly_frequency) || 4, 2, 7);
+  let freqPenalty = 0;
+  const freqBits: string[] = [];
+  if (streak >= 4) {
+    freqPenalty += (streak - 3) * 5; // 4 dias → 5, 5d → 10, 6d → 15
+    freqBits.push(`${streak} dias seguidos treinando`);
+  }
+  if (last7 > targetFreq) {
+    freqPenalty += (last7 - targetFreq) * 4;
+    freqBits.push(`${last7} treinos em 7d (meta ${targetFreq})`);
+  }
+  freqPenalty = clamp(freqPenalty / (experienced ? 1.1 : 1), 0, 25);
+  if (freqPenalty >= 3) {
+    factors.push({
+      key: "frequency",
+      label: "Alta constância sem folga",
+      detail: freqBits.join(" · "),
+      impact: Math.round(freqPenalty),
+    });
+  }
+
+  // ---------- Combinação ponderada ----------
+  const score = combinePenalties(factors.map((f) => f.impact));
+  const status = scoreToStatus(score);
+  const intensity = scoreToIntensity(score);
+
+  // Top fatores (para narrativa)
+  const top = [...factors].sort((a, b) => b.impact - a.impact).slice(0, 3);
+
+  // pode/evite baseado em grupos + score
+  const workedRecent = new Set(
+    muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 3).map((m) => m.group),
+  );
+  const workedYesterday = new Set(
+    muscles.filter((m) => m.lastDaysAgo < 2.5 && m.setsRecent >= 4).map((m) => m.group),
+  );
+  const untouched = muscles.filter((m) => m.lastDaysAgo >= 3).map((m) => m.group);
+
+  const canonicalGroups = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Core"];
+  const avoidBase = new Set<string>([...workedRecent]);
+  if (score < 40) {
+    // fadiga alta: evitar tudo pesado
+    canonicalGroups.forEach((g) => avoidBase.add(g));
+  } else if (score < 60) {
+    workedYesterday.forEach((g) => avoidBase.add(g));
+  }
+  const avoid = Array.from(avoidBase);
+  const canDoRaw =
+    score < 40
+      ? ["Mobilidade", "Alongamento", "Caminhada leve"]
+      : canonicalGroups.filter((g) => !avoidBase.has(g)).concat(untouched.filter((g) => !canonicalGroups.includes(g)));
+  const canDo = Array.from(new Set(canDoRaw)).slice(0, 6);
+
+  return {
+    score,
+    status,
+    intensity,
+    factors,
+    top,
+    muscles,
+    workedRecent: Array.from(workedRecent),
+    canDo,
+    avoid,
+    sleep: { last, avgHours: avgH, avgQuality: avgQ, nights: nights.length },
+    cycle: cycleInfo,
+    streak,
+    last7,
+    sportMinutes48h,
+    injuriesText,
+    tolerance,
+  };
+}
+
+// -------------------- fallback narrativo determinístico --------------------
+function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
+  headline: string;
+  reason: string;
+  recommendation: string;
+  tip: string;
+} {
+  const { score, status, top, sleep, streak, cycle } = calc;
+  const topStr =
+    top.length > 0
+      ? top.map((f) => f.label.toLowerCase()).join(" + ")
+      : "poucos sinais de fadiga";
+
+  const headline =
+    status === "recuperado"
+      ? "Pronto pra treinar forte"
+      : status === "leve"
+        ? "Vá com moderação hoje"
+        : status === "cuidado"
+          ? "Cuide da recuperação"
+          : "Priorize descanso hoje";
+
+  const reasonBits: string[] = [];
+  reasonBits.push(`Score ${score}/100`);
+  if (top.length) reasonBits.push(`pesou: ${topStr}`);
+  if (sleep.last) reasonBits.push(`últ. noite ${sleep.last.hours}h`);
+  if (streak >= 4) reasonBits.push(`${streak}d seguidos`);
+  const reason = reasonBits.join(" · ") + ".";
+
+  const recommendation =
+    calc.intensity.label +
+    (calc.avoid.length && score < 70 ? ` · evite ${calc.avoid.slice(0, 3).join(", ")}` : "");
+
+  // Dica proporcional
+  let tip = "Hidrate bem e faça 5 min de mobilidade antes de começar.";
+  if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
+  else if (score < 60) {
+    if (sleep.last && Number(sleep.last.hours) < 6.5) tip = "Meta pra hoje: dormir ≥ 8h e reduzir cafeína depois das 15h.";
+    else if (streak >= 5) tip = "Encaixe 1 dia off nos próximos 2 — constância vira sobrecarga.";
+    else tip = "Aumente o descanso entre séries em 20-30s e priorize técnica.";
+  } else if (cycle && (cycle.isLatePhaseLutea || cycle.phaseLabel.toLowerCase() === "menstrual")) {
+    tip = "Hidratação extra e magnésio à noite ajudam nessa fase.";
+  }
+
+  return { headline, reason, recommendation, tip };
+}
+
+// -------------------- server function --------------------
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<RecoveryAdvice> => {
     const { supabase, userId } = context;
-
     const now = new Date();
-    const since = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const sleepSince = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const since = new Date(now.getTime() - 14 * 86_400_000);
+    const sleepSince = new Date(now.getTime() - 7 * 86_400_000);
 
     const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, experience_level, goal, uses_enhancers, weekly_frequency, sex, birth_date, height_cm, weight_kg, activity_level, injuries, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days")
+        .select(
+          "experience_level, uses_enhancers, birth_date, activity_level, injuries, weekly_frequency, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days",
+        )
         .eq("id", userId)
         .maybeSingle(),
-
       supabase
         .from("sessions")
         .select(
-          "id, started_at, ended_at, perceived_effort, notes, workouts(label, name), session_sets(reps, weight_kg, rpe, exercises(name, muscle_group))",
+          "started_at, ended_at, perceived_effort, session_sets(reps, weight_kg, rpe, exercises(name, muscle_group))",
         )
         .eq("user_id", userId)
         .gte("started_at", since.toISOString())
         .order("started_at", { ascending: false })
-        .limit(20),
+        .limit(30),
       supabase
         .from("sleep_logs")
         .select("log_date, hours, quality")
@@ -45,159 +479,115 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
         .order("log_date", { ascending: false }),
     ]);
 
-    // Se não há treinos nos últimos 14 dias, resposta local (sem IA)
-    if (!sessions || sessions.length === 0) {
+    // Sem histórico algum → estado inicial "recuperado" total
+    if ((!sessions || sessions.length === 0) && (!sleep || sleep.length === 0)) {
       return {
-        status: "recuperado" as const,
-        headline: "Você está recuperado",
-        reason: "Sem treinos registrados nas últimas 2 semanas.",
-        recommendation: "Bora começar! Escolha um treino e mande ver com carga moderada.",
+        status: "recuperado",
+        score: 95,
+        intensityPct: 100,
+        intensityLabel: "Carga normal — pode progredir",
+        headline: "Bora começar",
+        reason: "Sem histórico ainda — corpo pronto para o primeiro treino.",
+        recommendation: "Escolha um treino do plano e comece com carga moderada, focando técnica.",
+        tip: "Anote o RPE de cada série pra IA começar a te calibrar.",
+        canDo: ["Peito", "Costas", "Ombros", "Pernas", "Core"],
+        avoid: [],
+        factors: [],
       };
     }
 
-    // Resumo dos treinos para a IA
-    const summary = sessions.map((s: any) => {
-      const durationMin = s.ended_at
-        ? Math.round((new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
-        : null;
-      const musclesMap = new Map<string, number>();
-      let totalVolume = 0;
-      let sets = 0;
-      let avgRpe = 0;
-      let rpeCount = 0;
-      let sportMinutes = 0;
-      const sportsList = new Set<string>();
-      for (const st of s.session_sets ?? []) {
-        const mg = st.exercises?.muscle_group;
-        const isSport = mg === "Esportes";
-        if (isSport) {
-          // Em esportes: reps = minutos, sem carga
-          sportMinutes += Number(st.reps) || 0;
-          if (st.exercises?.name) sportsList.add(st.exercises.name);
-        } else {
-          sets++;
-          totalVolume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
-        }
-        if (st.rpe) {
-          avgRpe += Number(st.rpe);
-          rpeCount++;
-        }
-        if (mg) musclesMap.set(mg, (musclesMap.get(mg) ?? 0) + 1);
-      }
-      const muscles = Array.from(musclesMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([m, n]) => `${m}(${n})`)
-        .join(", ");
-      const daysAgo = Math.floor((now.getTime() - new Date(s.started_at).getTime()) / (24 * 60 * 60 * 1000));
-      const sportPart = sportMinutes > 0
-        ? ` · esporte ${sportMinutes}min (${Array.from(sportsList).join("/")})`
-        : "";
-      return `- há ${daysAgo}d: ${s.workouts?.label ?? "livre"} ${s.workouts?.name ?? ""} · ${sets} séries · vol ${Math.round(totalVolume)}kg${sportPart} · ${durationMin ? durationMin + " min total" : "sem duração"} · esforço ${s.perceived_effort ?? "?"}${rpeCount ? " · RPE médio " + (avgRpe / rpeCount).toFixed(1) : ""} · músculos: ${muscles || "-"}`;
+    const calc = computeScore({
+      profile: (profile ?? null) as ProfileRow | null,
+      sessions: (sessions ?? []) as SessionRow[],
+      sleep: (sleep ?? []) as SleepRow[],
+      now,
     });
 
-    const sessionsThisWeek = sessions.filter(
-      (s: any) => now.getTime() - new Date(s.started_at).getTime() < 7 * 24 * 60 * 60 * 1000,
-    ).length;
+    const fallback = buildFallbackNarrative(calc);
 
-    // Sono últimos 7 dias
-    const sleepArr = (sleep ?? []) as { log_date: string; hours: number; quality: number | null }[];
-    const sleepAvg =
-      sleepArr.length > 0
-        ? sleepArr.reduce((a, s) => a + Number(s.hours), 0) / sleepArr.length
-        : null;
-    const qualArr = sleepArr.filter((s) => s.quality != null);
-    const qualityAvg =
-      qualArr.length > 0
-        ? qualArr.reduce((a, s) => a + Number(s.quality), 0) / qualArr.length
-        : null;
-    const lastNight = sleepArr[0]?.hours ?? null;
-    const sleepSummary = sleepArr.length
-      ? `média ${sleepAvg!.toFixed(1)}h em ${sleepArr.length} noites${qualityAvg ? `, qualidade média ${qualityAvg.toFixed(1)}/5` : ""}${lastNight != null ? `, última noite ${lastNight}h` : ""}`
-      : "sem registros de sono";
-
+    // ---------- narrativa via IA (só polimento textual) ----------
     const { createConfiguredAiModel } = await import("./ai-gateway.server");
     const ai = createConfiguredAiModel({
       googleModel: "gemini-flash-latest",
       lovableModel: "google/gemini-3-flash-preview",
     });
 
-    const system = `Você é um coach de musculação especialista em recuperação e periodização, respondendo em português brasileiro.
-Analise volume, frequência, esforço percebido (RPE), grupos musculares treinados E SONO para decidir se o usuário está:
-- "recuperado": pronto para treino pesado
-- "leve": pode treinar, mas reduzir intensidade/volume
-- "cuidado": sinais de fadiga, priorizar grupos não trabalhados ou treino leve
-- "descanso": excesso de carga / overreaching / privação de sono → deve descansar hoje
-Considere: >5 treinos em 7 dias sem folga = alerta; RPE médio >8.5 sustentado = fadiga; mesmo grupo muscular treinado sem 48h de intervalo = risco.
-ESPORTES (futebol, vôlei, corrida etc — grupo "Esportes", medidos em minutos) somam carga cardiovascular/sistêmica e fadiga de MMII: >90min de esporte intenso nas últimas 48h ou esporte + treino de perna no mesmo/dia seguinte = fadiga acumulada, reduzir volume de pernas/glúteos; contam também na contagem semanal de "treinos".
-SONO é decisivo para recuperação: <6h médias ou última noite <5h = reduzir intensidade ou descansar; 6-7h = treino leve/moderado; 7-9h = ideal; qualidade baixa (≤2/5) sustentada = alerta.
-CICLO MENSTRUAL (quando fornecido) é um fator adicional: fase MENSTRUAL e últimos 3 dias da fase LÚTEA (TPM) reduzem tolerância ao esforço — some ~10% de redução de carga e ~15s a mais de descanso, igual à mecânica de sono baixo/dor muscular alta; fase FOLICULAR e OVULAÇÃO favorecem cargas mais altas e progressão.
-Para usuários avançados / com ergogênicos, tolere mais volume. Para iniciantes, seja mais conservador. Ajuste também para idade (>40 anos: janela de recuperação maior), sexo, IMC e nível de atividade diária fora do treino. Considere lesões/limitações para sugerir grupos alternativos.
-Seja direto, cite números concretos do sono, esportes e ciclo quando relevante, use tom motivador mas honesto.`;
+    const NarrativeSchema = z.object({
+      headline: z.string().max(60),
+      reason: z.string().max(240),
+      recommendation: z.string().max(240),
+      tip: z.string().max(240),
+    });
 
-    const recAge = profile?.birth_date
-      ? (() => {
-          const b = new Date(profile.birth_date);
-          const n = new Date();
-          let a = n.getFullYear() - b.getFullYear();
-          const m = n.getMonth() - b.getMonth();
-          if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
-          return a;
-        })()
-      : null;
+    const system = `Você é um coach de musculação em português brasileiro, direto e motivador.
+Recebe o score de recuperação já calculado (0-100) e a lista de fatores que mais pesaram.
+Sua tarefa é APENAS reescrever a narrativa em tom natural e humano, SEM inventar dados
+que não estejam na estrutura. Cite números concretos (score, horas de sono, séries, dias
+seguidos, fase do ciclo) quando aparecerem nos fatores.
+Regras:
+- headline: até 6 palavras, sem ponto final.
+- reason: 1 frase citando os 2-3 fatores que mais impactaram e por quê.
+- recommendation: 1-2 frases com intensidade sugerida ("~${calc.intensity.pct}%") e o que
+  fazer/evitar hoje (grupos musculares se relevante).
+- tip: 1 dica prática e proporcional ao score (${calc.score}). Quanto menor o score, mais
+  específica/urgente (sono, hidratação, mobilidade, dia off).
+Nunca contradiga o score, o status ou a intensidade recebidos.`;
 
-    const { computeCyclePhase } = await import("./cycle");
-    const cycle = profile?.cycle_tracking_enabled
-      ? computeCyclePhase({
-          lastPeriodStart: profile.cycle_last_period_start,
-          cycleLength: profile.cycle_length_days,
-          periodLength: profile.cycle_period_length_days,
-        })
-      : null;
-    const cycleSummary = cycle
-      ? `${cycle.phaseLabel} · dia ${cycle.dayInCycle}/${cycle.cycleLength}${cycle.isLatePhaseLutea ? " (TPM — fim da lútea)" : ""} · ajuste sugerido: carga x${cycle.loadMultiplier.toFixed(2)}, +${cycle.restBonusSeconds}s descanso`
-      : "não acompanhado";
+    const prompt = `SCORE: ${calc.score}/100 (status: ${calc.status})
+INTENSIDADE SUGERIDA: ${calc.intensity.label}
+FATORES QUE MAIS PESARAM (impacto = pontos perdidos):
+${calc.top.map((f) => `- ${f.label} (-${f.impact}pts): ${f.detail}`).join("\n") || "- nenhum fator relevante"}
+FATORES ADICIONAIS:
+${calc.factors.filter((f) => !calc.top.includes(f)).map((f) => `- ${f.label} (-${f.impact}): ${f.detail}`).join("\n") || "- —"}
+DADOS-CHAVE:
+- Sono: ${
+      calc.sleep.last
+        ? `última noite ${calc.sleep.last.hours}h${calc.sleep.last.quality ? ` (qualidade ${calc.sleep.last.quality}/5)` : ""}`
+        : "sem registro"
+    }${calc.sleep.avgHours != null ? ` · média ${calc.sleep.avgHours.toFixed(1)}h em ${calc.sleep.nights} noites` : ""}
+- Constância: ${calc.streak} dias seguidos · ${calc.last7} treinos em 7d
+- Esporte nas últimas 48h: ${calc.sportMinutes48h} min
+- Ciclo: ${calc.cycle ? `${calc.cycle.phaseLabel} (dia ${calc.cycle.dayInCycle}/${calc.cycle.cycleLength}${calc.cycle.isLatePhaseLutea ? " · TPM" : ""})` : "não acompanhado"}
+- Lesão/limitação: ${calc.injuriesText || "nenhuma"}
+- Pode fazer: ${calc.canDo.join(", ") || "—"}
+- Evitar: ${calc.avoid.join(", ") || "—"}
 
-    const prompt = `Perfil: ${profile?.experience_level ?? "iniciante"} · objetivo ${profile?.goal ?? "hipertrofia"} · ${profile?.weekly_frequency ?? "?"}x/semana · ${profile?.uses_enhancers ? "usa ergogênicos" : "natural"}
-Antropometria: ${profile?.sex ?? "-"}, ${recAge ?? "-"} anos, ${profile?.height_cm ?? "-"}cm, ${profile?.weight_kg ?? "-"}kg · atividade fora do treino: ${profile?.activity_level ?? "-"}
-Lesões / limitações: ${profile?.injuries?.trim() || "nenhuma"}
-Sono (últimos 7 dias): ${sleepSummary}
-Ciclo menstrual: ${cycleSummary}
-Treinos nos últimos 7 dias: ${sessionsThisWeek}
-Últimas sessões (14 dias):
-${summary.join("\n")}
+Retorne JSON: { "headline": "...", "reason": "...", "recommendation": "...", "tip": "..." }`;
 
-Retorne JSON:
-{
-  "status": "recuperado" | "leve" | "cuidado" | "descanso",
-  "headline": "frase curta (máx 6 palavras) — ex: 'Pronto pra treinar pesado' ou 'Sono baixo, vá leve'",
-  "reason": "1-2 frases com números concretos incluindo sono quando afetar (ex: 'Dormiu média 5.2h e fez 4 treinos essa semana')",
-  "recommendation": "1-2 frases com ação prática (ex: 'Vá de perna hoje, poupe peito', 'Priorize dormir 8h e faça só cardio leve')"
-}`;
-
+    let narrative = fallback;
     try {
       const { output } = await generateText({
         model: ai.model,
         system,
         prompt,
-        output: Output.object({ schema: RecoverySchema }),
-        maxRetries: 2,
+        output: Output.object({ schema: NarrativeSchema }),
+        maxRetries: 1,
       });
-      return output;
+      narrative = output;
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error) && error.text) {
         const match = error.text.match(/\{[\s\S]*\}/);
         if (match) {
           try {
-            return RecoverySchema.parse(JSON.parse(match[0]));
-          } catch {}
+            narrative = NarrativeSchema.parse(JSON.parse(match[0]));
+          } catch {
+            /* fica no fallback */
+          }
         }
       }
-      // Fallback silencioso
-      return {
-        status: "leve" as const,
-        headline: "Escute seu corpo",
-        reason: `${sessionsThisWeek} treino(s) essa semana.`,
-        recommendation: "Se ainda sente dor muscular forte, priorize um treino mais leve hoje.",
-      };
     }
+
+    return {
+      status: calc.status,
+      score: calc.score,
+      intensityPct: calc.intensity.pct,
+      intensityLabel: calc.intensity.label,
+      headline: narrative.headline,
+      reason: narrative.reason,
+      recommendation: narrative.recommendation,
+      tip: narrative.tip,
+      canDo: calc.canDo,
+      avoid: calc.avoid,
+      factors: calc.factors,
+    };
   });
