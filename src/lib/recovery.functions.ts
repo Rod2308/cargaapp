@@ -378,7 +378,7 @@ function computeScore(input: {
     canDo,
     avoid,
     sleep: { last, avgHours: avgH, avgQuality: avgQ, nights: nights.length },
-    cycle: cycleInfo,
+    cycle: c,
     streak,
     last7,
     sportMinutes48h,
