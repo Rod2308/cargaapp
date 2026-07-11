@@ -1,13 +1,11 @@
 // Parses .gpx / .tcx (XML) and .fit (binary) workout files entirely in the browser.
 // Returns a normalized shape suitable for inserting into `public.sessions`.
+//
+// `fit-file-parser` (~833KB) and its `buffer` polyfill are heavy and only
+// needed when the user actually drops a .fit file. They are dynamically
+// imported inside `parseFit()` so the historico route bundle stays small.
 
-import FitParser from "fit-file-parser";
-import { Buffer as BufferPolyfill } from "buffer";
 
-// fit-file-parser depende de Node's Buffer; garantir polyfill no browser
-if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
-  (globalThis as any).Buffer = BufferPolyfill;
-}
 
 export type ParsedWorkout = {
   started_at: string; // ISO
@@ -154,7 +152,15 @@ function parseTcx(text: string): ParsedWorkout {
 }
 
 // ----------------- FIT -----------------
-function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
+async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
+  // Dynamic imports: only pay for these when a .fit file is actually parsed.
+  const [{ default: FitParser }, { Buffer: BufferPolyfill }] = await Promise.all([
+    import("fit-file-parser"),
+    import("buffer"),
+  ]);
+  if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
+    (globalThis as any).Buffer = BufferPolyfill;
+  }
   return new Promise((resolve, reject) => {
     const parser = new FitParser({
       force: true,
@@ -204,6 +210,7 @@ function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
     });
   });
 }
+
 
 // ----------------- Dispatcher -----------------
 export async function parseWorkoutFile(file: File): Promise<ParsedWorkout> {
