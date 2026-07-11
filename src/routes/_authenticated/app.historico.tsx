@@ -212,6 +212,57 @@ function HistoryPage() {
       <div className="mt-8 text-center">
         <Link to="/app" className="text-xs font-semibold underline underline-offset-4">Voltar ao início</Link>
       </div>
+
+      <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear treino</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="session-title">Nome do treino</Label>
+            <Input
+              id="session-title"
+              value={renameValue}
+              maxLength={80}
+              placeholder={renaming?.current ?? ""}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renaming) {
+                  const v = renameValue.trim();
+                  rename.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+                }
+              }}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              Deixe em branco para usar o nome padrão.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            {renaming && (
+              <Button
+                variant="outline"
+                onClick={() => rename.mutate({ id: renaming.id, title: null })}
+                disabled={rename.isPending}
+              >
+                Restaurar padrão
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                if (!renaming) return;
+                const v = renameValue.trim();
+                rename.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+              }}
+              disabled={rename.isPending}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
 }
