@@ -542,7 +542,7 @@ function RecoveryCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-eyebrow text-muted-foreground">Recuperação · IA</p>
+            <p className="text-eyebrow text-muted-foreground uppercase">Recuperação</p>
             <div className="flex items-center gap-2">
               {recovery && (
                 <span className={`inline-flex items-baseline gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.badge}`}>
