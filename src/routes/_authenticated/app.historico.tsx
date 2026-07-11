@@ -149,6 +149,19 @@ function HistoryPage() {
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
+                        {done && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setRenameValue(s.title ?? sessionTitle(s));
+                              setRenaming({ id: s.id, current: sessionTitle(s) });
+                            }}
+                            title="Renomear treino"
+                          >
+                            <Type className="size-3.5" /> Nome
+                          </Button>
+                        )}
                         {imported && done && (
                           <LinkToWorkoutButton
                             sessionId={s.id}
@@ -157,6 +170,7 @@ function HistoryPage() {
                             currentWorkoutLabel={s.workouts?.label ?? s.workouts?.name ?? null}
                           />
                         )}
+
                         {!done ? (
                           <Button size="sm" onClick={() => navigate({ to: "/app/sessao/$id", params: { id: s.id } })}>
                             <Play className="size-3.5 fill-current" /> Continuar
