@@ -2,6 +2,12 @@
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 
 import FitParser from "fit-file-parser";
+import { Buffer as BufferPolyfill } from "buffer";
+
+// fit-file-parser depende de Node's Buffer; garantir polyfill no browser
+if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
+  (globalThis as any).Buffer = BufferPolyfill;
+}
 
 export type ParsedWorkout = {
   started_at: string; // ISO
@@ -156,7 +162,7 @@ function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
       lengthUnit: "m",
       elapsedRecordField: true,
     });
-    parser.parse(buffer, (err: string | undefined, data: any) => {
+    parser.parse(BufferPolyfill.from(new Uint8Array(buffer)) as any, (err: string | undefined, data: any) => {
       if (err) return reject(new Error(`Falha ao ler .fit: ${err}`));
       try {
         const session = Array.isArray(data.sessions) ? data.sessions[0] : data.sessions;
