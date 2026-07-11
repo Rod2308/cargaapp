@@ -503,9 +503,16 @@ function Dashboard() {
 
 type RecoveryData = {
   status: "recuperado" | "leve" | "cuidado" | "descanso";
+  score: number;
+  intensityPct: number;
+  intensityLabel: string;
   headline: string;
   reason: string;
   recommendation: string;
+  tip: string;
+  canDo: string[];
+  avoid: string[];
+  factors: { key: string; label: string; detail: string; impact: number }[];
 };
 
 function RecoveryCard({
@@ -524,6 +531,7 @@ function RecoveryCard({
     descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
   };
   const s = recovery ? styles[recovery.status] : styles.leve;
+  const topFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact).slice(0, 3);
 
   return (
     <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
@@ -535,14 +543,22 @@ function RecoveryCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="text-eyebrow text-muted-foreground">Recuperação · IA</p>
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-              aria-label="Recalcular"
-            >
-              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2.5} />
-            </button>
+            <div className="flex items-center gap-2">
+              {recovery && (
+                <span className={`inline-flex items-baseline gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.badge}`}>
+                  <span className="tabular-nums">{recovery.score}</span>
+                  <span className="opacity-60">/100</span>
+                </span>
+              )}
+              <button
+                onClick={onRefresh}
+                disabled={loading}
+                className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
+                aria-label="Recalcular"
+              >
+                <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
           {loading && !recovery ? (
             <p className="mt-1 text-sm text-muted-foreground">Analisando seus últimos treinos…</p>
@@ -552,11 +568,87 @@ function RecoveryCard({
                 {recovery.headline}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{recovery.reason}</p>
-              <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-foreground">
+
+              {/* Barra de intensidade sugerida */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Intensidade sugerida</span>
+                  <span className="tabular-nums text-foreground">{recovery.intensityPct}%</span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={`h-full ${s.bar} transition-all`}
+                    style={{ width: `${recovery.intensityPct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">{recovery.intensityLabel}</p>
+              </div>
+
+              <p className="mt-3 flex items-start gap-1.5 text-xs font-medium text-foreground">
                 <span className={`mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full ${s.bar}`} />
                 {recovery.recommendation}
               </p>
-              <span className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.badge}`}>
+
+              {/* Pode fazer / Evitar */}
+              {(recovery.canDo.length > 0 || recovery.avoid.length > 0) && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {recovery.canDo.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Pode fazer</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {recovery.canDo.map((g) => (
+                          <span key={g} className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {recovery.avoid.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive">Evite</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {recovery.avoid.map((g) => (
+                          <span key={g} className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fatores que mais pesaram */}
+              {topFactors.length > 0 && (
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                    Por que esse score? ({topFactors.length} fator{topFactors.length > 1 ? "es" : ""})
+                  </summary>
+                  <ul className="mt-2 space-y-1">
+                    {topFactors.map((f) => (
+                      <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{f.label}</p>
+                          <p className="truncate text-muted-foreground">{f.detail}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                          −{f.impact}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {/* Dica prática */}
+              {recovery.tip && (
+                <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-2 text-[11px] leading-snug text-foreground">
+                  💡 <span className="font-medium">Dica:</span> {recovery.tip}
+                </p>
+              )}
+
+              <span className={`mt-3 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.badge}`}>
                 {s.label}
               </span>
             </>
@@ -568,6 +660,7 @@ function RecoveryCard({
     </div>
   );
 }
+
 
 
 
