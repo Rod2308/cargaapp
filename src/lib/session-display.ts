@@ -52,6 +52,7 @@ function isImported(s: SessionLike): boolean {
 }
 
 export function sessionTitle(s: SessionLike): string {
+  if (s.title && s.title.trim()) return s.title.trim();
   if (s.workouts?.name) {
     const label = s.workouts.label ? `Treino ${s.workouts.label} — ` : "";
     return `${label}${s.workouts.name}`;
