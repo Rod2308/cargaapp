@@ -91,18 +91,35 @@ function Dashboard() {
   ).size;
 
   const startSession = useMutation({
-    mutationFn: async (workoutId: string) => {
+    mutationFn: async ({ workoutId, dateStr }: { workoutId: string; dateStr?: string }) => {
+      const payload: { user_id: string; workout_id: string; started_at?: string; ended_at?: string } = {
+        user_id: user.id,
+        workout_id: workoutId,
+      };
+      if (dateStr) {
+        // Sessão retroativa: marca começo às 12:00 do dia escolhido e já finaliza,
+        // pra usuário só preencher as séries na tela de edição.
+        const startedAt = new Date(`${dateStr}T12:00:00`);
+        payload.started_at = startedAt.toISOString();
+        payload.ended_at = new Date(startedAt.getTime() + 60 * 60_000).toISOString();
+      }
       const { data, error } = await supabase
         .from("sessions")
-        .insert({ user_id: user.id, workout_id: workoutId })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return { session: data, retro: !!dateStr };
     },
-    onSuccess: (s) => {
+    onSuccess: ({ session, retro }) => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      navigate({ to: "/app/sessao/$id", params: { id: s.id } });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
+      navigate({
+        to: retro ? "/app/sessao/$id/editar" : "/app/sessao/$id",
+        params: { id: session.id },
+      });
     },
   });
 
@@ -184,6 +201,11 @@ function Dashboard() {
   const [sportId, setSportId] = useState<string>("");
   const [sportDuration, setSportDuration] = useState<string>("30");
   const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
+  // Marcar treino de outro dia (retroativo)
+  const [pastOpen, setPastOpen] = useState(false);
+  const [pastWorkoutId, setPastWorkoutId] = useState<string>("");
+  const [pastDate, setPastDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   const logSport = useMutation({
     mutationFn: async () => {
@@ -293,7 +315,7 @@ function Dashboard() {
         {/* Start workout — hero tile */}
         {nextWorkout ? (
           <button
-            onClick={() => startSession.mutate(nextWorkout.id)}
+            onClick={() => startSession.mutate({ workoutId: nextWorkout.id })}
             disabled={startSession.isPending}
             className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left sm:p-7 md:col-span-2 md:min-h-[280px]"
           >
@@ -394,13 +416,78 @@ function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: marcar treino de outro dia (retroativo) */}
+      <Dialog open={pastOpen} onOpenChange={setPastOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar treino de outro dia</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Escolha o treino e o dia em que foi feito. Depois você preenche as séries na tela de edição.
+            </p>
+            <div>
+              <Label className="text-xs">Treino</Label>
+              <Select value={pastWorkoutId} onValueChange={setPastWorkoutId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um treino" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {workouts.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>{w.label} · {w.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Data do treino</Label>
+              <Input
+                type="date"
+                value={pastDate}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={(e) => setPastDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPastOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (!pastWorkoutId) {
+                  toast.error("Escolha um treino");
+                  return;
+                }
+                setPastOpen(false);
+                startSession.mutate({ workoutId: pastWorkoutId, dateStr: pastDate });
+              }}
+              disabled={startSession.isPending}
+            >
+              <CalendarIcon className="size-4" /> Marcar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Meus treinos */}
       <section className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Meus treinos</h2>
-          <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
-            Ver todos
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setPastWorkoutId(workouts[0]?.id ?? "");
+                setPastDate(format(new Date(), "yyyy-MM-dd"));
+                setPastOpen(true);
+              }}
+              disabled={workouts.length === 0}
+              className="text-xs font-semibold text-foreground underline underline-offset-4 disabled:opacity-40"
+            >
+              Marcar em outro dia
+            </button>
+            <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Ver todos
+            </Link>
+          </div>
         </div>
         {workouts.length === 0 ? (
           <div className="card-lift p-6 text-center text-sm text-muted-foreground">
@@ -419,7 +506,7 @@ function Dashboard() {
                 <h3 className="mt-3 font-display text-base font-bold leading-tight">{w.name}</h3>
                 {w.notes && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{w.notes}</p>}
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" className="flex-1" onClick={() => startSession.mutate(w.id)} disabled={startSession.isPending}>
+                  <Button size="sm" className="flex-1" onClick={() => startSession.mutate({ workoutId: w.id })} disabled={startSession.isPending}>
                     <Play className="size-3.5 fill-current" /> Iniciar
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/treinos/$id", params: { id: w.id } })}>
