@@ -191,13 +191,22 @@ export function RetroWorkoutDialog({ userId, trigger, triggerLabel = "Marcar tre
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={() => create.mutate()} disabled={create.isPending || !workoutId}>
+          <Button
+            variant="secondary"
+            onClick={() => create.mutate({ keepOpen: true })}
+            disabled={create.isPending || !workoutId || confirmDup}
+            title="Registra e mantém o diálogo aberto para adicionar outro treino"
+          >
+            Salvar e adicionar outro
+          </Button>
+          <Button onClick={() => create.mutate({ keepOpen: false })} disabled={create.isPending || !workoutId}>
             <CalendarIcon className="size-4" />
             {confirmDup ? "Confirmar mesmo assim" : "Marcar como concluído"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
