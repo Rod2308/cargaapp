@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import { format } from "date-fns";
+import { useMemo, useState } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isAfter, startOfDay } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -92,6 +93,33 @@ function HistoryPage() {
     const key = format(new Date(s.started_at), "MMMM 'de' yyyy", { locale: ptBR });
     (grouped[key] ??= []).push(s);
   }
+
+  // Calendário: mês navegável com dias treinados vs. "sem treino" (não logados)
+  const [calMonth, setCalMonth] = useState<Date>(new Date());
+  const { trainedDays, untrainedDays } = useMemo(() => {
+    const today = startOfDay(new Date());
+    const start = startOfMonth(calMonth);
+    const end = endOfMonth(calMonth);
+    const trainedSet = new Set(
+      sessions
+        .filter((s: any) => {
+          const d = new Date(s.started_at);
+          return d >= start && d <= end;
+        })
+        .map((s: any) => format(new Date(s.started_at), "yyyy-MM-dd")),
+    );
+    const trained: Date[] = [];
+    const untrained: Date[] = [];
+    for (const day of eachDayOfInterval({ start, end })) {
+      if (isAfter(startOfDay(day), today)) continue; // ignora dias futuros
+      const key = format(day, "yyyy-MM-dd");
+      if (trainedSet.has(key)) trained.push(day);
+      else untrained.push(day);
+    }
+    return { trainedDays: trained, untrainedDays: untrained };
+  }, [sessions, calMonth]);
+
+
 
   return (
     <div className="app-container pt-8 sm:pt-12">
