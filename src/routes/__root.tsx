@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { registerSW } from "@/lib/register-sw";
+import { initSyncQueue } from "@/lib/offline-queue";
+import { SyncStatus } from "@/components/SyncStatus";
 
 function NotFoundComponent() {
   return (
@@ -107,6 +109,7 @@ function RootComponent() {
   const router = useRouter();
   useEffect(() => {
     registerSW();
+    initSyncQueue();
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
@@ -117,6 +120,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <SyncStatus />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
