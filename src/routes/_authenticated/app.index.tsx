@@ -436,7 +436,7 @@ function Dashboard() {
                 <h3 className="mt-3 font-display text-base font-bold leading-tight">{w.name}</h3>
                 {w.notes && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{w.notes}</p>}
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" className="flex-1" onClick={() => startSession.mutate(w.id)} disabled={startSession.isPending}>
+                  <Button size="sm" className="flex-1" onClick={() => startSession.mutate({ workoutId: w.id })} disabled={startSession.isPending}>
                     <Play className="size-3.5 fill-current" /> Iniciar
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => navigate({ to: "/app/treinos/$id", params: { id: w.id } })}>
