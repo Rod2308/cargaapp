@@ -317,7 +317,37 @@ function computeScore(input: {
   const daysSinceLastTraining =
     lastSessionTs != null ? (now.getTime() - lastSessionTs) / 86_400_000 : null;
 
-  if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
+  // Continuous-day analysis: every day in the last 14 without a session
+  // counts as "day without training". Used for advice + inactivity nudge.
+  const WINDOW_DAYS = 14;
+  const daysInWindow: { date: string; trained: boolean }[] = [];
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    daysInWindow.push({ date: key, trained: daysWithSession.has(key) });
+  }
+  const untrainedDaysInWindow = daysInWindow.filter((d) => !d.trained).length;
+  // Consecutive untrained days ending today (excluding today if today has a session)
+  let untrainedStreak = 0;
+  for (const d of daysInWindow) {
+    if (d.trained) break;
+    untrainedStreak++;
+  }
+
+  // Inactivity factor: light penalty when the user has been inactive for
+  // long enough that detraining/inconsistency matters. It's a small nudge,
+  // not a large penalty — the goal is to influence advice, not to punish.
+  let inactivityPenalty = 0;
+  if (untrainedStreak >= 4) {
+    inactivityPenalty = clamp((untrainedStreak - 3) * 3, 0, 12);
+    factors.push({
+      key: "inactivity",
+      label: "Dias sem treinar",
+      detail: `${untrainedStreak} dia${untrainedStreak === 1 ? "" : "s"} seguido${untrainedStreak === 1 ? "" : "s"} sem registrar treino`,
+      impact: Math.round(inactivityPenalty),
+    });
+  } else if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
     const dd = Math.floor(daysSinceLastTraining);
     factors.push({
       key: "rested",
@@ -326,6 +356,7 @@ function computeScore(input: {
       impact: 0,
     });
   }
+
 
   const score = combinePenalties(factors.map((f) => f.impact));
   const status = scoreToStatus(score);
@@ -360,37 +391,51 @@ function computeScore(input: {
     sleep: { last, avgHours: avgH, avgQuality: avgQ, nights: nights.length },
     cycle: c, streak, last7, sportMinutes48h, injuriesText, tolerance,
     daysSinceLastTraining,
+    untrainedDaysInWindow,
+    untrainedStreak,
+    windowDays: WINDOW_DAYS,
   };
 }
+
 
 function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   headline: string; reason: string; recommendation: string; tip: string;
 } {
-  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining } = calc;
+  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining, untrainedStreak, untrainedDaysInWindow, windowDays } = calc;
   const topStr = top.length > 0 ? top.map((f) => f.label.toLowerCase()).join(" + ") : "poucos sinais de fadiga";
   const restedLong = daysSinceLastTraining != null && daysSinceLastTraining >= 2;
+  const longInactive = untrainedStreak >= 4;
 
   const headline =
-    status === "recuperado"
-      ? restedLong ? "Descansado — bora treinar" : "Pronto pra treinar forte"
-      : status === "leve" ? "Vá com moderação hoje"
-      : status === "cuidado" ? "Cuide da recuperação"
-      : "Priorize descanso hoje";
+    longInactive
+      ? "Hora de voltar aos treinos"
+      : status === "recuperado"
+        ? restedLong ? "Descansado — bora treinar" : "Pronto pra treinar forte"
+        : status === "leve" ? "Vá com moderação hoje"
+        : status === "cuidado" ? "Cuide da recuperação"
+        : "Priorize descanso hoje";
 
   const reasonBits: string[] = [`Score ${score}/100`];
-  if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
+  if (longInactive) reasonBits.push(`${untrainedStreak}d sem registrar treinos`);
+  else if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
   if (top.length) reasonBits.push(`pesou: ${topStr}`);
   if (sleep.last) reasonBits.push(`últ. noite ${sleep.last.hours}h`);
   if (streak >= 4) reasonBits.push(`${streak}d seguidos`);
+  if (!longInactive && untrainedDaysInWindow >= Math.ceil(windowDays * 0.7)) {
+    reasonBits.push(`${untrainedDaysInWindow}/${windowDays}d sem treino`);
+  }
   const reason = reasonBits.join(" · ") + ".";
 
   const recommendation =
-    (restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
+    (longInactive ? "Retome com um treino leve pra reativar o corpo. " : "") +
+    (!longInactive && restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
     calc.intensity.label +
     (calc.avoid.length && score < 70 ? ` · evite ${calc.avoid.slice(0, 3).join(", ")}` : "");
 
   let tip = "Hidrate bem e faça 5 min de mobilidade antes de começar.";
-  if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
+  if (longInactive) {
+    tip = `${untrainedStreak} dias sem treino registrado. Que tal um alongamento leve ou uma caminhada de 20 min pra reativar o corpo?`;
+  } else if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
   else if (score < 60) {
     if (sleep.last && Number(sleep.last.hours) < 6.5) tip = "Meta pra hoje: dormir ≥ 8h e reduzir cafeína depois das 15h.";
     else if (streak >= 5) tip = "Encaixe 1 dia off nos próximos 2 — constância vira sobrecarga.";
@@ -403,6 +448,7 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
 
   return { headline, reason, recommendation, tip };
 }
+
 
 /**
  * Shared entry point. Uses the caller's authenticated Supabase client so
@@ -521,7 +567,10 @@ Regras:
 Nunca contradiga o score, o status ou a intensidade recebidos.
 - Se o usuário está há 2+ dias sem treinar E o score é ≥ 70, NÃO sugira "descanso"
   nem "priorize repouso" — ele já está descansado; oriente a voltar ao treino
-  com carga normal.`;
+  com carga normal.
+- Se o usuário está há 4+ dias sem registrar treino (untrainedStreak ≥ 4),
+  reconheça a inatividade explicitamente e sugira retomar com algo leve
+  (caminhada, alongamento, treino de baixa intensidade).`;
 
     const prompt = `SCORE: ${calc.score}/100 (status: ${calc.status})
 INTENSIDADE SUGERIDA: ${calc.intensity.label}
@@ -536,6 +585,7 @@ DADOS-CHAVE:
         : "sem registro"
     }${calc.sleep.avgHours != null ? ` · média ${calc.sleep.avgHours.toFixed(1)}h em ${calc.sleep.nights} noites` : ""}
 - Dias desde o último treino: ${calc.daysSinceLastTraining != null ? calc.daysSinceLastTraining.toFixed(1) : "—"}
+- Dias sem treino registrado nos últimos ${calc.windowDays}d: ${calc.untrainedDaysInWindow}/${calc.windowDays} (streak atual: ${calc.untrainedStreak})
 - Constância: ${calc.streak} dias seguidos · ${calc.last7} treinos em 7d
 - Esporte nas últimas 48h: ${calc.sportMinutes48h} min
 - Ciclo: ${calc.cycle ? `${calc.cycle.phaseLabel} (dia ${calc.cycle.dayInCycle}/${calc.cycle.cycleLength}${calc.cycle.isLatePhaseLutea ? " · TPM" : ""})` : "não acompanhado"}
