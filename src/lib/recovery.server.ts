@@ -587,5 +587,6 @@ Retorne JSON: { "headline": "...", "reason": "...", "recommendation": "...", "ti
     canDo: calc.canDo,
     avoid: calc.avoid,
     factors: calc.factors,
+    ignoredFactors,
   };
 }
