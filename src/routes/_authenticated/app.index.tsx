@@ -91,18 +91,35 @@ function Dashboard() {
   ).size;
 
   const startSession = useMutation({
-    mutationFn: async (workoutId: string) => {
+    mutationFn: async ({ workoutId, dateStr }: { workoutId: string; dateStr?: string }) => {
+      const payload: { user_id: string; workout_id: string; started_at?: string; ended_at?: string } = {
+        user_id: user.id,
+        workout_id: workoutId,
+      };
+      if (dateStr) {
+        // Sessão retroativa: marca começo às 12:00 do dia escolhido e já finaliza,
+        // pra usuário só preencher as séries na tela de edição.
+        const startedAt = new Date(`${dateStr}T12:00:00`);
+        payload.started_at = startedAt.toISOString();
+        payload.ended_at = new Date(startedAt.getTime() + 60 * 60_000).toISOString();
+      }
       const { data, error } = await supabase
         .from("sessions")
-        .insert({ user_id: user.id, workout_id: workoutId })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return { session: data, retro: !!dateStr };
     },
-    onSuccess: (s) => {
+    onSuccess: ({ session, retro }) => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      navigate({ to: "/app/sessao/$id", params: { id: s.id } });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
+      navigate({
+        to: retro ? "/app/sessao/$id/editar" : "/app/sessao/$id",
+        params: { id: session.id },
+      });
     },
   });
 
