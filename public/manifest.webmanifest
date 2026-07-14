@@ -2,16 +2,24 @@
   "name": "Carga — seu treino de academia",
   "short_name": "Carga",
   "description": "Monte seus treinos A, B, C, registre carga e repetições e receba sugestões inteligentes.",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "lang": "pt-BR",
+  "categories": ["fitness", "health", "lifestyle"],
   "icons": [
-    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Meus treinos", "url": "/app/treinos", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Histórico", "url": "/app/historico", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
   ]
 }
