@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { enqueueOp } from "@/lib/offline-queue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,20 +68,28 @@ function SessionPage() {
 
   const logSet = useMutation({
     mutationFn: async (row: any) => {
-      const { error } = await supabase.from("session_sets").insert(row);
-      if (error) throw error;
+      const optimistic = {
+        ...row,
+        id: crypto.randomUUID(),
+        completed_at: new Date().toISOString(),
+      };
+      qc.setQueryData(["session-sets", id], (prev: any[] = []) => [...prev, optimistic]);
+      await enqueueOp({ kind: "insert", table: "session_sets", row: optimistic });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["session-sets", id] }),
     onError: (e: any) => toast.error(e.message),
   });
 
   const updateSet = useMutation({
     mutationFn: async ({ setId, reps, weight_kg }: { setId: string; reps: number; weight_kg: number | null }) => {
-      const { error } = await supabase.from("session_sets").update({ reps, weight_kg }).eq("id", setId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
+        prev.map((s) => (s.id === setId ? { ...s, reps, weight_kg } : s)),
+      );
+      await enqueueOp({
+        kind: "update",
+        table: "session_sets",
+        match: { id: setId },
+        patch: { reps, weight_kg },
+      });
       toast.success("Série atualizada");
     },
     onError: (e: any) => toast.error(e.message),
@@ -88,11 +97,10 @@ function SessionPage() {
 
   const deleteSet = useMutation({
     mutationFn: async (setId: string) => {
-      const { error } = await supabase.from("session_sets").delete().eq("id", setId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+      qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
+        prev.filter((s) => s.id !== setId),
+      );
+      await enqueueOp({ kind: "delete", table: "session_sets", match: { id: setId } });
       toast.success("Série removida");
     },
     onError: (e: any) => toast.error(e.message),
@@ -101,11 +109,12 @@ function SessionPage() {
   const finish = useMutation({
     mutationFn: async (effort: number | null) => {
       const endedAt = new Date();
-      const { error } = await supabase
-        .from("sessions")
-        .update({ ended_at: endedAt.toISOString(), perceived_effort: effort })
-        .eq("id", id);
-      if (error) throw error;
+      await enqueueOp({
+        kind: "update",
+        table: "sessions",
+        match: { id },
+        patch: { ended_at: endedAt.toISOString(), perceived_effort: effort },
+      });
       const startedAt = session?.started_at ? new Date(session.started_at) : endedAt;
       const mins = Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
       return { mins };
@@ -125,8 +134,7 @@ function SessionPage() {
 
   const cancelSession = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("sessions").delete().eq("id", id);
-      if (error) throw error;
+      await enqueueOp({ kind: "delete", table: "sessions", match: { id } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
