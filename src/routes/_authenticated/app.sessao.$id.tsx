@@ -496,6 +496,9 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
       src={src}
       alt={`Demonstração: ${alt}`}
       loading="lazy"
+      decoding="async"
+      width={80}
+      height={80}
       onError={() => setFailed(true)}
       className="size-20 shrink-0 rounded-lg bg-secondary object-cover"
     />
