@@ -580,6 +580,7 @@ DADOS-CHAVE:
         ? `última noite ${calc.sleep.last.hours}h${calc.sleep.last.quality ? ` (qualidade ${calc.sleep.last.quality}/5)` : ""}`
         : "sem registro"
     }${calc.sleep.avgHours != null ? ` · média ${calc.sleep.avgHours.toFixed(1)}h em ${calc.sleep.nights} noites` : ""}
+- Dias desde o último treino: ${calc.daysSinceLastTraining != null ? calc.daysSinceLastTraining.toFixed(1) : "—"}
 - Constância: ${calc.streak} dias seguidos · ${calc.last7} treinos em 7d
 - Esporte nas últimas 48h: ${calc.sportMinutes48h} min
 - Ciclo: ${calc.cycle ? `${calc.cycle.phaseLabel} (dia ${calc.cycle.dayInCycle}/${calc.cycle.cycleLength}${calc.cycle.isLatePhaseLutea ? " · TPM" : ""})` : "não acompanhado"}
