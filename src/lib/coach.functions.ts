@@ -199,8 +199,17 @@ Use as ferramentas disponíveis quando precisar de números específicos do hist
         description: "Análise consolidada de recuperação do usuário (status, motivo, recomendação) — considera sessões, sono, ciclo menstrual se aplicável.",
         inputSchema: z.object({}),
         execute: async () => {
-          const { getRecoveryAdvice } = await import("./recovery.functions");
-          return await (getRecoveryAdvice as any)({ context });
+          // Import the shared helper directly. Calling `getRecoveryAdvice` (a
+          // server fn stub) from inside another server-fn handler routes
+          // through the RPC boundary and fails in production with
+          // "Server function info not found for <hash>".
+          const { computeRecoveryAdviceFor } = await import("./recovery.server");
+          try {
+            return await computeRecoveryAdviceFor(supabase, userId);
+          } catch (error) {
+            console.error("[coach:get_recovery_status] failed:", error);
+            return { error: "Recuperação indisponível no momento." };
+          }
         },
       }),
     };
