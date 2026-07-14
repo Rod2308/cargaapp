@@ -14,6 +14,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Loader2, FileUp, Activity, Heart, Flame, Ruler, Timer, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useOnline } from "@/hooks/useOnline";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import {
   parseWorkoutFile,
   translateActivityType,
@@ -129,7 +131,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" disabled={!online} title={!online ? "Requer internet" : undefined}>
           <Upload className="size-3.5" /> Importar treino
         </Button>
       </DialogTrigger>
@@ -141,6 +143,8 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
             do seu relógio, Strava, Garmin, Polar, Coros, Suunto etc.
           </DialogDescription>
         </DialogHeader>
+        <OfflineNotice feature="Importação de treino" />
+
 
         {!parsed && !parsing && (
           <label
