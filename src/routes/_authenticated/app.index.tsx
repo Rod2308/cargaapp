@@ -555,10 +555,10 @@ function RecoveryCard({
   onRefresh: () => void;
 }) {
   const styles: Record<RecoveryData["status"], { bar: string; badge: string; label: string }> = {
-    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Recuperado" },
-    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Treino leve" },
-    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Cuidado" },
-    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
+    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Excelente" },
+    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Boa" },
+    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Moderada" },
+    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Baixa" },
   };
   const s = recovery ? styles[recovery.status] : styles.leve;
   const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
@@ -574,7 +574,14 @@ function RecoveryCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-eyebrow text-muted-foreground uppercase">Recuperação</p>
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-eyebrow text-muted-foreground uppercase">Recuperação</p>
+              {recovery && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.badge}`}>
+                  {s.label}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {recovery && (
                 <span className={`inline-flex items-baseline gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.badge}`}>
@@ -592,6 +599,7 @@ function RecoveryCard({
               </button>
             </div>
           </div>
+
           {loading && !recovery ? (
             <p className="mt-1 text-sm text-muted-foreground">Analisando seus últimos treinos…</p>
           ) : recovery ? (
