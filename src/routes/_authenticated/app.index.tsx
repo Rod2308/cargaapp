@@ -19,6 +19,7 @@ import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -202,10 +203,6 @@ function Dashboard() {
   const [sportDuration, setSportDuration] = useState<string>("30");
   const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
-  // Marcar treino de outro dia (retroativo)
-  const [pastOpen, setPastOpen] = useState(false);
-  const [pastWorkoutId, setPastWorkoutId] = useState<string>("");
-  const [pastDate, setPastDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   const logSport = useMutation({
     mutationFn: async () => {
@@ -423,17 +420,7 @@ function Dashboard() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Meus treinos</h2>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setPastWorkoutId(workouts[0]?.id ?? "");
-                setPastDate(format(new Date(), "yyyy-MM-dd"));
-                setPastOpen(true);
-              }}
-              disabled={workouts.length === 0}
-              className="text-xs font-semibold text-foreground underline underline-offset-4 disabled:opacity-40"
-            >
-              Marcar em outro dia
-            </button>
+            <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
             <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Ver todos
             </Link>
