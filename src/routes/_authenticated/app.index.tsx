@@ -416,6 +416,58 @@ function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog: marcar treino de outro dia (retroativo) */}
+      <Dialog open={pastOpen} onOpenChange={setPastOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar treino de outro dia</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Escolha o treino e o dia em que foi feito. Depois você preenche as séries na tela de edição.
+            </p>
+            <div>
+              <Label className="text-xs">Treino</Label>
+              <Select value={pastWorkoutId} onValueChange={setPastWorkoutId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um treino" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {workouts.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>{w.label} · {w.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Data do treino</Label>
+              <Input
+                type="date"
+                value={pastDate}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={(e) => setPastDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPastOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (!pastWorkoutId) {
+                  toast.error("Escolha um treino");
+                  return;
+                }
+                setPastOpen(false);
+                startSession.mutate({ workoutId: pastWorkoutId, dateStr: pastDate });
+              }}
+              disabled={startSession.isPending}
+            >
+              <CalendarIcon className="size-4" /> Marcar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Meus treinos */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between gap-3">
