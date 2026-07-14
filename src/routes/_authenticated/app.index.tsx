@@ -418,11 +418,24 @@ function Dashboard() {
 
       {/* Meus treinos */}
       <section className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Meus treinos</h2>
-          <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
-            Ver todos
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setPastWorkoutId(workouts[0]?.id ?? "");
+                setPastDate(format(new Date(), "yyyy-MM-dd"));
+                setPastOpen(true);
+              }}
+              disabled={workouts.length === 0}
+              className="text-xs font-semibold text-foreground underline underline-offset-4 disabled:opacity-40"
+            >
+              Marcar em outro dia
+            </button>
+            <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Ver todos
+            </Link>
+          </div>
         </div>
         {workouts.length === 0 ? (
           <div className="card-lift p-6 text-center text-sm text-muted-foreground">
