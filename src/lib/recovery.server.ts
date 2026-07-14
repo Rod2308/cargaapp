@@ -401,31 +401,41 @@ function computeScore(input: {
 function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   headline: string; reason: string; recommendation: string; tip: string;
 } {
-  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining } = calc;
+  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining, untrainedStreak, untrainedDaysInWindow, windowDays } = calc;
   const topStr = top.length > 0 ? top.map((f) => f.label.toLowerCase()).join(" + ") : "poucos sinais de fadiga";
   const restedLong = daysSinceLastTraining != null && daysSinceLastTraining >= 2;
+  const longInactive = untrainedStreak >= 4;
 
   const headline =
-    status === "recuperado"
-      ? restedLong ? "Descansado — bora treinar" : "Pronto pra treinar forte"
-      : status === "leve" ? "Vá com moderação hoje"
-      : status === "cuidado" ? "Cuide da recuperação"
-      : "Priorize descanso hoje";
+    longInactive
+      ? "Hora de voltar aos treinos"
+      : status === "recuperado"
+        ? restedLong ? "Descansado — bora treinar" : "Pronto pra treinar forte"
+        : status === "leve" ? "Vá com moderação hoje"
+        : status === "cuidado" ? "Cuide da recuperação"
+        : "Priorize descanso hoje";
 
   const reasonBits: string[] = [`Score ${score}/100`];
-  if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
+  if (longInactive) reasonBits.push(`${untrainedStreak}d sem registrar treinos`);
+  else if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
   if (top.length) reasonBits.push(`pesou: ${topStr}`);
   if (sleep.last) reasonBits.push(`últ. noite ${sleep.last.hours}h`);
   if (streak >= 4) reasonBits.push(`${streak}d seguidos`);
+  if (!longInactive && untrainedDaysInWindow >= Math.ceil(windowDays * 0.7)) {
+    reasonBits.push(`${untrainedDaysInWindow}/${windowDays}d sem treino`);
+  }
   const reason = reasonBits.join(" · ") + ".";
 
   const recommendation =
-    (restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
+    (longInactive ? "Retome com um treino leve pra reativar o corpo. " : "") +
+    (!longInactive && restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
     calc.intensity.label +
     (calc.avoid.length && score < 70 ? ` · evite ${calc.avoid.slice(0, 3).join(", ")}` : "");
 
   let tip = "Hidrate bem e faça 5 min de mobilidade antes de começar.";
-  if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
+  if (longInactive) {
+    tip = `${untrainedStreak} dias sem treino registrado. Que tal um alongamento leve ou uma caminhada de 20 min pra reativar o corpo?`;
+  } else if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
   else if (score < 60) {
     if (sleep.last && Number(sleep.last.hours) < 6.5) tip = "Meta pra hoje: dormir ≥ 8h e reduzir cafeína depois das 15h.";
     else if (streak >= 5) tip = "Encaixe 1 dia off nos próximos 2 — constância vira sobrecarga.";
@@ -438,6 +448,7 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
 
   return { headline, reason, recommendation, tip };
 }
+
 
 /**
  * Shared entry point. Uses the caller's authenticated Supabase client so
