@@ -125,7 +125,16 @@ function StudentProfile({ profile, update }: { profile: any; update: any }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Sexo biológico</Label>
-            <Select value={profile.sex ?? undefined} onValueChange={(v) => update.mutate({ sex: v })}>
+            <Select
+              value={profile.sex ?? undefined}
+              onValueChange={(v) =>
+                update.mutate(
+                  v !== "feminino"
+                    ? { sex: v, cycle_tracking_enabled: false }
+                    : { sex: v },
+                )
+              }
+            >
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="masculino">Masculino</SelectItem>
