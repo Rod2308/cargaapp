@@ -310,7 +310,7 @@ function Dashboard() {
         {/* Start workout — hero tile */}
         {nextWorkout ? (
           <button
-            onClick={() => startSession.mutate(nextWorkout.id)}
+            onClick={() => startSession.mutate({ workoutId: nextWorkout.id })}
             disabled={startSession.isPending}
             className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left sm:p-7 md:col-span-2 md:min-h-[280px]"
           >
