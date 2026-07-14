@@ -513,6 +513,7 @@ type RecoveryData = {
   canDo: string[];
   avoid: string[];
   factors: { key: string; label: string; detail: string; impact: number }[];
+  ignoredFactors?: { key: string; label: string; reason: string }[];
 };
 
 function RecoveryCard({
@@ -531,7 +532,9 @@ function RecoveryCard({
     descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
   };
   const s = recovery ? styles[recovery.status] : styles.leve;
-  const topFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact).slice(0, 3);
+  const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
+  const topFactors = allFactors;
+  const ignoredFactors = recovery?.ignoredFactors ?? [];
 
   return (
     <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
