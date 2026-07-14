@@ -106,23 +106,28 @@ function Dashboard() {
     },
   });
 
-  // Recuperação inteligente (IA)
+  // Data atual (usada como chave de cache — vira ao passar da meia-noite)
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  // Recuperação inteligente (IA) — inclui o dia atual na chave para que,
+  // se o usuário não treinar hoje, o score recalcule considerando o dia
+  // corrido como "não treinado".
   const fetchRecovery = useServerFn(getRecoveryAdvice);
   const {
     data: recovery,
     isFetching: recoveryLoading,
     refetch: refetchRecovery,
   } = useQuery({
-    queryKey: ["recovery", user.id],
+    queryKey: ["recovery", user.id, todayStr],
     queryFn: () => fetchRecovery(),
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: true,
     retry: false,
   });
 
 
 
   // Sono — últimos 7 dias e log de hoje
-  const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: sleepLogs = [] } = useQuery({
     queryKey: ["sleep-logs", user.id],
     queryFn: async () => {
