@@ -513,6 +513,7 @@ type RecoveryData = {
   canDo: string[];
   avoid: string[];
   factors: { key: string; label: string; detail: string; impact: number }[];
+  ignoredFactors?: { key: string; label: string; reason: string }[];
 };
 
 function RecoveryCard({
@@ -531,7 +532,9 @@ function RecoveryCard({
     descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
   };
   const s = recovery ? styles[recovery.status] : styles.leve;
-  const topFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact).slice(0, 3);
+  const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
+  const topFactors = allFactors;
+  const ignoredFactors = recovery?.ignoredFactors ?? [];
 
   return (
     <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
@@ -619,25 +622,53 @@ function RecoveryCard({
                 </div>
               )}
 
-              {/* Fatores que mais pesaram */}
-              {topFactors.length > 0 && (
+              {/* Fatores considerados no cálculo */}
+              {(topFactors.length > 0 || ignoredFactors.length > 0) && (
                 <details className="mt-3 group">
                   <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-                    Por que esse score? ({topFactors.length} fator{topFactors.length > 1 ? "es" : ""})
+                    Como o score foi calculado ({topFactors.length} fator{topFactors.length === 1 ? "" : "es"}
+                    {ignoredFactors.length > 0 ? ` · ${ignoredFactors.length} ignorado${ignoredFactors.length === 1 ? "" : "s"}` : ""})
                   </summary>
-                  <ul className="mt-2 space-y-1">
-                    {topFactors.map((f) => (
-                      <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground">{f.label}</p>
-                          <p className="truncate text-muted-foreground">{f.detail}</p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                          −{f.impact}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+
+                  {topFactors.length > 0 && (
+                    <>
+                      <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores usados</p>
+                      <ul className="mt-1 space-y-1">
+                        {topFactors.map((f) => (
+                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">{f.label}</p>
+                              <p className="truncate text-muted-foreground">{f.detail}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                              {f.impact > 0 ? `−${f.impact}` : "0"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  {ignoredFactors.length > 0 && (
+                    <>
+                      <p className="mt-3 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores ignorados</p>
+                      <ul className="mt-1 space-y-1">
+                        {ignoredFactors.map((f) => (
+                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <p className="font-medium text-muted-foreground line-through decoration-muted-foreground/40">
+                                {f.label}
+                              </p>
+                              <p className="text-muted-foreground">{f.reason}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-secondary/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              n/a
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </details>
               )}
 

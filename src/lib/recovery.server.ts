@@ -23,6 +23,12 @@ const FactorSchema = z.object({
   impact: z.number(),
 });
 
+const IgnoredFactorSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  reason: z.string(),
+});
+
 const RecoverySchema = z.object({
   status: z.enum(["recuperado", "leve", "cuidado", "descanso"]),
   score: z.number().min(0).max(100),
@@ -35,6 +41,7 @@ const RecoverySchema = z.object({
   canDo: z.array(z.string()),
   avoid: z.array(z.string()),
   factors: z.array(FactorSchema),
+  ignoredFactors: z.array(IgnoredFactorSchema),
 });
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
@@ -85,11 +92,14 @@ type ProfileRow = {
   activity_level: string | null;
   injuries: string | null;
   weekly_frequency: number | null;
+  sex: string | null;
   cycle_tracking_enabled: boolean | null;
   cycle_last_period_start: string | null;
   cycle_length_days: number | null;
   cycle_period_length_days: number | null;
 };
+
+type IgnoredFactor = { key: string; label: string; reason: string };
 
 type MuscleAgg = { group: string; setsRecent: number; volume: number; avgRpe: number | null; lastDaysAgo: number };
 
@@ -428,6 +438,22 @@ export async function computeRecoveryAdviceFor(
       .order("log_date", { ascending: false }),
   ]);
 
+  const sex = (profile as { sex?: string } | null)?.sex ?? null;
+  const ignoredFactors: IgnoredFactor[] = [];
+  if (sex && sex !== "feminino") {
+    ignoredFactors.push({
+      key: "cycle-sex",
+      label: "Fase menstrual",
+      reason: `Ignorada — perfil ${sex}.`,
+    });
+  } else if (sex === "feminino" && !profile?.cycle_tracking_enabled) {
+    ignoredFactors.push({
+      key: "cycle-off",
+      label: "Fase menstrual",
+      reason: "Ignorada — acompanhamento de ciclo desativado no perfil.",
+    });
+  }
+
   if ((!sessions || sessions.length === 0) && (!sleep || sleep.length === 0)) {
     return {
       status: "recuperado",
@@ -441,12 +467,13 @@ export async function computeRecoveryAdviceFor(
       canDo: ["Peito", "Costas", "Ombros", "Pernas", "Core"],
       avoid: [],
       factors: [],
+      ignoredFactors,
     };
   }
 
   const { computeCyclePhase } = await import("./cycle");
   const cycle =
-    profile?.cycle_tracking_enabled && (profile as { sex?: string })?.sex === "feminino"
+    profile?.cycle_tracking_enabled && sex === "feminino"
       ? computeCyclePhase({
           lastPeriodStart: profile.cycle_last_period_start,
           cycleLength: profile.cycle_length_days,
@@ -560,5 +587,6 @@ Retorne JSON: { "headline": "...", "reason": "...", "recommendation": "...", "ti
     canDo: calc.canDo,
     avoid: calc.avoid,
     factors: calc.factors,
+    ignoredFactors,
   };
 }
