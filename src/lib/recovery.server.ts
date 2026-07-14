@@ -92,11 +92,14 @@ type ProfileRow = {
   activity_level: string | null;
   injuries: string | null;
   weekly_frequency: number | null;
+  sex: string | null;
   cycle_tracking_enabled: boolean | null;
   cycle_last_period_start: string | null;
   cycle_length_days: number | null;
   cycle_period_length_days: number | null;
 };
+
+type IgnoredFactor = { key: string; label: string; reason: string };
 
 type MuscleAgg = { group: string; setsRecent: number; volume: number; avgRpe: number | null; lastDaysAgo: number };
 
