@@ -563,7 +563,10 @@ Regras:
   fazer/evitar hoje (grupos musculares se relevante).
 - tip: 1 dica prática e proporcional ao score (${calc.score}). Quanto menor o score, mais
   específica/urgente (sono, hidratação, mobilidade, dia off).
-Nunca contradiga o score, o status ou a intensidade recebidos.`;
+Nunca contradiga o score, o status ou a intensidade recebidos.
+- Se o usuário está há 2+ dias sem treinar E o score é ≥ 70, NÃO sugira "descanso"
+  nem "priorize repouso" — ele já está descansado; oriente a voltar ao treino
+  com carga normal.`;
 
     const prompt = `SCORE: ${calc.score}/100 (status: ${calc.status})
 INTENSIDADE SUGERIDA: ${calc.intensity.label}
