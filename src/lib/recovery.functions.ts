@@ -447,7 +447,7 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
       supabase
         .from("profiles")
         .select(
-          "experience_level, uses_enhancers, birth_date, activity_level, injuries, weekly_frequency, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days",
+          "experience_level, uses_enhancers, birth_date, activity_level, injuries, weekly_frequency, sex, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days",
         )
         .eq("id", userId)
         .maybeSingle(),
@@ -486,13 +486,14 @@ export const getRecoveryAdvice = createServerFn({ method: "POST" })
     }
 
     const { computeCyclePhase } = await import("./cycle");
-    const cycle = profile?.cycle_tracking_enabled
-      ? computeCyclePhase({
-          lastPeriodStart: profile.cycle_last_period_start,
-          cycleLength: profile.cycle_length_days,
-          periodLength: profile.cycle_period_length_days,
-        })
-      : null;
+    const cycle =
+      profile?.cycle_tracking_enabled && (profile as any)?.sex === "feminino"
+        ? computeCyclePhase({
+            lastPeriodStart: profile.cycle_last_period_start,
+            cycleLength: profile.cycle_length_days,
+            periodLength: profile.cycle_period_length_days,
+          })
+        : null;
 
     const calc = computeScore({
       profile: (profile ?? null) as ProfileRow | null,
