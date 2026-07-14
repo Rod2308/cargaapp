@@ -23,6 +23,12 @@ const FactorSchema = z.object({
   impact: z.number(),
 });
 
+const IgnoredFactorSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  reason: z.string(),
+});
+
 const RecoverySchema = z.object({
   status: z.enum(["recuperado", "leve", "cuidado", "descanso"]),
   score: z.number().min(0).max(100),
@@ -35,6 +41,7 @@ const RecoverySchema = z.object({
   canDo: z.array(z.string()),
   avoid: z.array(z.string()),
   factors: z.array(FactorSchema),
+  ignoredFactors: z.array(IgnoredFactorSchema),
 });
 
 export type RecoveryAdvice = z.infer<typeof RecoverySchema>;
