@@ -419,15 +419,19 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   recommendation: string;
   tip: string;
 } {
-  const { score, status, top, sleep, streak, cycle } = calc;
+  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining } = calc;
   const topStr =
     top.length > 0
       ? top.map((f) => f.label.toLowerCase()).join(" + ")
       : "poucos sinais de fadiga";
 
+  const restedLong = daysSinceLastTraining != null && daysSinceLastTraining >= 2;
+
   const headline =
     status === "recuperado"
-      ? "Pronto pra treinar forte"
+      ? restedLong
+        ? "Descansado — bora treinar"
+        : "Pronto pra treinar forte"
       : status === "leve"
         ? "Vá com moderação hoje"
         : status === "cuidado"
@@ -436,22 +440,25 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
 
   const reasonBits: string[] = [];
   reasonBits.push(`Score ${score}/100`);
+  if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
   if (top.length) reasonBits.push(`pesou: ${topStr}`);
   if (sleep.last) reasonBits.push(`últ. noite ${sleep.last.hours}h`);
   if (streak >= 4) reasonBits.push(`${streak}d seguidos`);
   const reason = reasonBits.join(" · ") + ".";
 
   const recommendation =
+    (restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
     calc.intensity.label +
     (calc.avoid.length && score < 70 ? ` · evite ${calc.avoid.slice(0, 3).join(", ")}` : "");
 
-  // Dica proporcional
   let tip = "Hidrate bem e faça 5 min de mobilidade antes de começar.";
   if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
   else if (score < 60) {
     if (sleep.last && Number(sleep.last.hours) < 6.5) tip = "Meta pra hoje: dormir ≥ 8h e reduzir cafeína depois das 15h.";
     else if (streak >= 5) tip = "Encaixe 1 dia off nos próximos 2 — constância vira sobrecarga.";
     else tip = "Aumente o descanso entre séries em 20-30s e priorize técnica.";
+  } else if (restedLong) {
+    tip = "Aquecimento caprichado (5-8 min) antes das séries pesadas — corpo estava em pausa.";
   } else if (cycle && (cycle.isLatePhaseLutea || cycle.phaseLabel.toLowerCase() === "menstrual")) {
     tip = "Hidratação extra e magnésio à noite ajudam nessa fase.";
   }
