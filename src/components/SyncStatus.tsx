@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { CloudOff, WifiOff } from "lucide-react";
 import { getPendingCount, subscribe } from "@/lib/offline-queue";
+import { useOnline } from "@/hooks/useOnline";
 
 export function SyncStatus() {
   const [pending, setPending] = useState(0);
-  const [online, setOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
+  const online = useOnline();
 
   useEffect(() => {
     let mounted = true;
@@ -18,19 +17,13 @@ export function SyncStatus() {
         if (mounted) setPending(n);
       });
     });
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
     return () => {
       mounted = false;
       unsub();
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
     };
   }, []);
 
-  // Only render anything when actually offline.
+  // Only render anything when actually offline (verified by real network ping).
   if (online) return null;
 
   return (
