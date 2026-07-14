@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { messageSchema } from "@/lib/validation";
+import { OfflineNotice } from "@/components/OfflineNotice";
 
 import {
   AlertDialog,
@@ -160,6 +161,10 @@ function MensagensPage() {
           )
         )}
       </div>
+
+      <OfflineNotice feature="Mensagens" className="mt-4" />
+
+
 
       {students.length > 0 && !selectMode && (
         <div className="relative mt-5">
