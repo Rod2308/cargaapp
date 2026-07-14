@@ -1,29 +1,50 @@
 import { useEffect, useState } from "react";
 
-// Small ping to a reliably reachable, cache-bustable resource on the same origin.
-// We use the PWA manifest because it's static, tiny, and always deployed.
-const PING_URL = "/manifest.webmanifest";
-const PING_TIMEOUT_MS = 4000;
+// Use more than one probe so a single blocked/static route does not create a false offline warning.
+const SAME_ORIGIN_PING_URL = "/favicon.png";
+const EXTERNAL_PING_URL = "https://www.gstatic.com/generate_204";
+const PING_TIMEOUT_MS = 5000;
 const PING_INTERVAL_MS = 20000;
+const FAILURES_BEFORE_OFFLINE = 3;
+
+function withCacheBust(url: string) {
+  return `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}`;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = window.setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    window.clearTimeout(t);
+  }
+}
 
 async function realPing(): Promise<boolean> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return false;
   if (typeof fetch === "undefined") return true;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
+
   try {
-    const res = await fetch(`${PING_URL}?_=${Date.now()}`, {
+    const res = await fetchWithTimeout(withCacheBust(SAME_ORIGIN_PING_URL), {
       method: "GET",
       cache: "no-store",
-      signal: ctrl.signal,
-      // Avoid CORS/opaque issues since it's same-origin.
       credentials: "omit",
     });
     return res.ok || res.status === 304;
   } catch {
-    return false;
-  } finally {
-    clearTimeout(t);
+    try {
+      // Cross-origin no-cors requests return an opaque response when the internet is reachable.
+      const res = await fetchWithTimeout(withCacheBust(EXTERNAL_PING_URL), {
+        method: "GET",
+        mode: "no-cors",
+        cache: "no-store",
+        credentials: "omit",
+      });
+      return res.type === "opaque" || res.ok || res.status === 0 || res.status === 204;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -35,10 +56,20 @@ export function useOnline(): boolean {
   useEffect(() => {
     let cancelled = false;
     let interval: number | undefined;
+    let consecutiveFailures = 0;
 
     const verify = async () => {
       const ok = await realPing();
-      if (!cancelled) setOnline(ok);
+      if (cancelled) return;
+
+      if (ok) {
+        consecutiveFailures = 0;
+        setOnline(true);
+        return;
+      }
+
+      consecutiveFailures += 1;
+      setOnline(consecutiveFailures >= FAILURES_BEFORE_OFFLINE ? false : true);
     };
 
     const onBrowserOnline = () => {
@@ -47,6 +78,7 @@ export function useOnline(): boolean {
     };
     const onBrowserOffline = () => {
       // Browser is authoritative when it says offline.
+      consecutiveFailures = FAILURES_BEFORE_OFFLINE;
       setOnline(false);
     };
     const onFocus = () => void verify();
