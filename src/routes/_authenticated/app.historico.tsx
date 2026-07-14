@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import { format } from "date-fns";
+import { useMemo, useState } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isAfter, startOfDay } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -93,6 +94,33 @@ function HistoryPage() {
     (grouped[key] ??= []).push(s);
   }
 
+  // Calendário: mês navegável com dias treinados vs. "sem treino" (não logados)
+  const [calMonth, setCalMonth] = useState<Date>(new Date());
+  const { trainedDays, untrainedDays } = useMemo(() => {
+    const today = startOfDay(new Date());
+    const start = startOfMonth(calMonth);
+    const end = endOfMonth(calMonth);
+    const trainedSet = new Set(
+      sessions
+        .filter((s: any) => {
+          const d = new Date(s.started_at);
+          return d >= start && d <= end;
+        })
+        .map((s: any) => format(new Date(s.started_at), "yyyy-MM-dd")),
+    );
+    const trained: Date[] = [];
+    const untrained: Date[] = [];
+    for (const day of eachDayOfInterval({ start, end })) {
+      if (isAfter(startOfDay(day), today)) continue; // ignora dias futuros
+      const key = format(day, "yyyy-MM-dd");
+      if (trainedSet.has(key)) trained.push(day);
+      else untrained.push(day);
+    }
+    return { trainedDays: trained, untrainedDays: untrained };
+  }, [sessions, calMonth]);
+
+
+
   return (
     <div className="app-container pt-8 sm:pt-12">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -108,6 +136,43 @@ function HistoryPage() {
           <ImportWorkoutDialog userId={user.id} />
         </div>
       </header>
+
+      {/* Calendário: dias com treino vs. dias sem treino registrado */}
+      <section className="mt-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl">Calendário de treinos</h2>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-full bg-emerald-500" />
+              Treino registrado
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-full border border-dashed border-muted-foreground/60" />
+              Sem treino
+            </span>
+          </div>
+        </div>
+        <div className="card-lift p-3">
+          <Calendar
+            mode="single"
+            month={calMonth}
+            onMonthChange={setCalMonth}
+            locale={ptBR}
+            className="pointer-events-auto"
+            modifiers={{ trained: trainedDays, untrained: untrainedDays }}
+            modifiersClassNames={{
+              trained: "!bg-emerald-500 !text-white !font-bold hover:!bg-emerald-500 hover:!text-white",
+              untrained:
+                "!text-muted-foreground !bg-transparent !border !border-dashed !border-muted-foreground/40",
+            }}
+          />
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Dias sem treino registrado contam como &quot;sem treino&quot; no cálculo de recuperação.
+          </p>
+        </div>
+      </section>
+
+
 
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Carregando...</p>
