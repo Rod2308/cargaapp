@@ -19,6 +19,7 @@ import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
@@ -202,10 +203,6 @@ function Dashboard() {
   const [sportDuration, setSportDuration] = useState<string>("30");
   const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
-  // Marcar treino de outro dia (retroativo)
-  const [pastOpen, setPastOpen] = useState(false);
-  const [pastWorkoutId, setPastWorkoutId] = useState<string>("");
-  const [pastDate, setPastDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   const logSport = useMutation({
     mutationFn: async () => {
@@ -416,56 +413,6 @@ function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: marcar treino de outro dia (retroativo) */}
-      <Dialog open={pastOpen} onOpenChange={setPastOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Marcar treino de outro dia</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Escolha o treino e o dia em que foi feito. Depois você preenche as séries na tela de edição.
-            </p>
-            <div>
-              <Label className="text-xs">Treino</Label>
-              <Select value={pastWorkoutId} onValueChange={setPastWorkoutId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um treino" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {workouts.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>{w.label} · {w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Data do treino</Label>
-              <Input
-                type="date"
-                value={pastDate}
-                max={format(new Date(), "yyyy-MM-dd")}
-                onChange={(e) => setPastDate(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPastOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => {
-                if (!pastWorkoutId) {
-                  toast.error("Escolha um treino");
-                  return;
-                }
-                setPastOpen(false);
-                startSession.mutate({ workoutId: pastWorkoutId, dateStr: pastDate });
-              }}
-              disabled={startSession.isPending}
-            >
-              <CalendarIcon className="size-4" /> Marcar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
 
       {/* Meus treinos */}
@@ -473,17 +420,7 @@ function Dashboard() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Meus treinos</h2>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setPastWorkoutId(workouts[0]?.id ?? "");
-                setPastDate(format(new Date(), "yyyy-MM-dd"));
-                setPastOpen(true);
-              }}
-              disabled={workouts.length === 0}
-              className="text-xs font-semibold text-foreground underline underline-offset-4 disabled:opacity-40"
-            >
-              Marcar em outro dia
-            </button>
+            <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
             <Link to="/app/treinos" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Ver todos
             </Link>

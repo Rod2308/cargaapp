@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
+import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
@@ -102,7 +103,10 @@ function HistoryPage() {
             Todos os treinos que você realizou. Edite carga, reps ou exclua sessões antigas.
           </p>
         </div>
-        <ImportWorkoutDialog userId={user.id} />
+        <div className="flex flex-wrap items-center gap-3">
+          <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
+          <ImportWorkoutDialog userId={user.id} />
+        </div>
       </header>
 
       {isLoading ? (
