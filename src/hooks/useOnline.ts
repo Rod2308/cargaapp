@@ -49,9 +49,9 @@ async function realPing(): Promise<boolean> {
 }
 
 export function useOnline(): boolean {
-  const [online, setOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
+  // Start as online so SSR/preview environments never render a false offline banner.
+  // The browser-only effect below can still switch to offline after verified failures.
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
