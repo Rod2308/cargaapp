@@ -317,7 +317,37 @@ function computeScore(input: {
   const daysSinceLastTraining =
     lastSessionTs != null ? (now.getTime() - lastSessionTs) / 86_400_000 : null;
 
-  if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
+  // Continuous-day analysis: every day in the last 14 without a session
+  // counts as "day without training". Used for advice + inactivity nudge.
+  const WINDOW_DAYS = 14;
+  const daysInWindow: { date: string; trained: boolean }[] = [];
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    daysInWindow.push({ date: key, trained: daysWithSession.has(key) });
+  }
+  const untrainedDaysInWindow = daysInWindow.filter((d) => !d.trained).length;
+  // Consecutive untrained days ending today (excluding today if today has a session)
+  let untrainedStreak = 0;
+  for (const d of daysInWindow) {
+    if (d.trained) break;
+    untrainedStreak++;
+  }
+
+  // Inactivity factor: light penalty when the user has been inactive for
+  // long enough that detraining/inconsistency matters. It's a small nudge,
+  // not a large penalty — the goal is to influence advice, not to punish.
+  let inactivityPenalty = 0;
+  if (untrainedStreak >= 4) {
+    inactivityPenalty = clamp((untrainedStreak - 3) * 3, 0, 12);
+    factors.push({
+      key: "inactivity",
+      label: "Dias sem treinar",
+      detail: `${untrainedStreak} dia${untrainedStreak === 1 ? "" : "s"} seguido${untrainedStreak === 1 ? "" : "s"} sem registrar treino`,
+      impact: Math.round(inactivityPenalty),
+    });
+  } else if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
     const dd = Math.floor(daysSinceLastTraining);
     factors.push({
       key: "rested",
@@ -326,6 +356,7 @@ function computeScore(input: {
       impact: 0,
     });
   }
+
 
   const score = combinePenalties(factors.map((f) => f.impact));
   const status = scoreToStatus(score);
