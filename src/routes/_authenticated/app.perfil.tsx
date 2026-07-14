@@ -51,6 +51,7 @@ function PerfilPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
       toast.success("Perfil atualizado");
     },
     onError: (e: any) => toast.error(e.message),
