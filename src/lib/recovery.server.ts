@@ -567,7 +567,10 @@ Regras:
 Nunca contradiga o score, o status ou a intensidade recebidos.
 - Se o usuário está há 2+ dias sem treinar E o score é ≥ 70, NÃO sugira "descanso"
   nem "priorize repouso" — ele já está descansado; oriente a voltar ao treino
-  com carga normal.`;
+  com carga normal.
+- Se o usuário está há 4+ dias sem registrar treino (untrainedStreak ≥ 4),
+  reconheça a inatividade explicitamente e sugira retomar com algo leve
+  (caminhada, alongamento, treino de baixa intensidade).`;
 
     const prompt = `SCORE: ${calc.score}/100 (status: ${calc.status})
 INTENSIDADE SUGERIDA: ${calc.intensity.label}
