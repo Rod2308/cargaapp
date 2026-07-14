@@ -202,6 +202,11 @@ function Dashboard() {
   const [sportDuration, setSportDuration] = useState<string>("30");
   const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
+  // Marcar treino de outro dia (retroativo)
+  const [pastOpen, setPastOpen] = useState(false);
+  const [pastWorkoutId, setPastWorkoutId] = useState<string>("");
+  const [pastDate, setPastDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
   const logSport = useMutation({
     mutationFn: async () => {
       if (!sportId) throw new Error("Escolha um esporte");
