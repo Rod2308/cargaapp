@@ -137,6 +137,43 @@ function HistoryPage() {
         </div>
       </header>
 
+      {/* Calendário: dias com treino vs. dias sem treino registrado */}
+      <section className="mt-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl">Calendário de treinos</h2>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-full bg-emerald-500" />
+              Treino registrado
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-full border border-dashed border-muted-foreground/60" />
+              Sem treino
+            </span>
+          </div>
+        </div>
+        <div className="card-lift p-3">
+          <Calendar
+            mode="single"
+            month={calMonth}
+            onMonthChange={setCalMonth}
+            locale={ptBR}
+            className="pointer-events-auto"
+            modifiers={{ trained: trainedDays, untrained: untrainedDays }}
+            modifiersClassNames={{
+              trained: "!bg-emerald-500 !text-white !font-bold hover:!bg-emerald-500 hover:!text-white",
+              untrained:
+                "!text-muted-foreground !bg-transparent !border !border-dashed !border-muted-foreground/40",
+            }}
+          />
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Dias sem treino registrado contam como &quot;sem treino&quot; no cálculo de recuperação.
+          </p>
+        </div>
+      </section>
+
+
+
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Carregando...</p>
       ) : sessions.length === 0 ? (
