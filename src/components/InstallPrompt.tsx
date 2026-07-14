@@ -135,7 +135,7 @@ export function InstallPrompt() {
     return (
       <div className="fixed inset-x-3 bottom-16 z-50 mx-auto max-w-md rounded-2xl border border-border/60 bg-background/95 p-4 shadow-xl backdrop-blur">
         <div className="flex items-start gap-3">
-          <img src="/icon-192.png" alt="" className="size-11 shrink-0 rounded-xl" />
+          <img src="/icon-192.png" alt="" width={44} height={44} loading="lazy" decoding="async" className="size-11 shrink-0 rounded-xl" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Instalar Carga no iPhone</p>
             <p className="mt-1 text-xs text-muted-foreground">
