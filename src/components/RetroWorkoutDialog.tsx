@@ -68,14 +68,16 @@ export function RetroWorkoutDialog({ userId, trigger, triggerLabel = "Marcar tre
   }, [open, workouts, yesterdayStr]);
 
   const create = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ keepOpen }: { keepOpen: boolean }) => {
       if (!workoutId) throw new Error("Escolha um treino");
       if (!dateStr) throw new Error("Escolha uma data");
       if (dateStr > todayStr) throw new Error("Não é possível marcar treinos em datas futuras");
       if (dateStr < minStr) throw new Error(`Só é possível registrar treinos dos últimos ${MAX_RETRO_DAYS} dias`);
 
-      // Check for existing session that day
-      if (!confirmDup) {
+      // Duplicate check só quando o usuário NÃO escolheu "adicionar outro".
+      // Ao clicar em "Salvar e adicionar outro", ele já está afirmando que
+      // quer múltiplos treinos no mesmo dia.
+      if (!confirmDup && !keepOpen) {
         const dayStart = new Date(`${dateStr}T00:00:00`).toISOString();
         const dayEnd = new Date(`${dateStr}T23:59:59.999`).toISOString();
         const { data: existing } = await supabase
@@ -103,17 +105,23 @@ export function RetroWorkoutDialog({ userId, trigger, triggerLabel = "Marcar tre
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return { session: data, keepOpen };
     },
-    onSuccess: (session) => {
+    onSuccess: ({ session, keepOpen }) => {
       toast.success(`Treino registrado em ${format(new Date(`${dateStr}T12:00:00`), "dd/MM/yyyy")}`);
       qc.invalidateQueries({ queryKey: ["recovery"] });
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      setConfirmDup(false);
+      if (keepOpen) {
+        // Mantém o diálogo aberto e a data selecionada, só limpa o treino
+        // para o usuário escolher o próximo rapidamente.
+        setWorkoutId("");
+        return;
+      }
       setOpen(false);
       setWorkoutId("");
-      setConfirmDup(false);
       navigate({ to: "/app/sessao/$id/editar", params: { id: session.id } });
     },
     onError: (e: any) => {
@@ -125,6 +133,7 @@ export function RetroWorkoutDialog({ userId, trigger, triggerLabel = "Marcar tre
       toast.error(e.message);
     },
   });
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -182,13 +191,22 @@ export function RetroWorkoutDialog({ userId, trigger, triggerLabel = "Marcar tre
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={() => create.mutate()} disabled={create.isPending || !workoutId}>
+          <Button
+            variant="secondary"
+            onClick={() => create.mutate({ keepOpen: true })}
+            disabled={create.isPending || !workoutId || confirmDup}
+            title="Registra e mantém o diálogo aberto para adicionar outro treino"
+          >
+            Salvar e adicionar outro
+          </Button>
+          <Button onClick={() => create.mutate({ keepOpen: false })} disabled={create.isPending || !workoutId}>
             <CalendarIcon className="size-4" />
             {confirmDup ? "Confirmar mesmo assim" : "Marcar como concluído"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
