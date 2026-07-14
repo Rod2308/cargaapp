@@ -43,6 +43,7 @@ function formatDistance(m: number): string {
 
 export function ImportWorkoutDialog({ userId, onImported }: { userId: string; onImported?: () => void }) {
   const qc = useQueryClient();
+  const online = useOnline();
   const [open, setOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
