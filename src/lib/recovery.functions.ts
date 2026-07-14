@@ -335,13 +335,37 @@ function computeScore(input: {
     });
   }
 
+  // ---------- 8) Dias desde o último treino (sinal positivo) ----------
+  const lastSessionTs = sessions.length
+    ? Math.max(...sessions.map((s) => new Date(s.started_at).getTime()))
+    : null;
+  const daysSinceLastTraining =
+    lastSessionTs != null ? (now.getTime() - lastSessionTs) / 86_400_000 : null;
+
+  // Se está há 2+ dias sem treinar, zera penalidades de treino/músculo/frequência
+  // (elas já tendem a 0, mas garantimos) e adiciona um fator positivo informativo.
+  let restedFactor: Factor | null = null;
+  if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
+    const d = Math.floor(daysSinceLastTraining);
+    restedFactor = {
+      key: "rested",
+      label: "Descansado",
+      detail: `${d} dia${d === 1 ? "" : "s"} sem treinar`,
+      impact: 0,
+    };
+    factors.push(restedFactor);
+  }
+
   // ---------- Combinação ponderada ----------
   const score = combinePenalties(factors.map((f) => f.impact));
   const status = scoreToStatus(score);
   const intensity = scoreToIntensity(score);
 
-  // Top fatores (para narrativa)
-  const top = [...factors].sort((a, b) => b.impact - a.impact).slice(0, 3);
+  // Top fatores (para narrativa) — exclui o fator positivo "descansado"
+  const top = [...factors]
+    .filter((f) => f.impact > 0)
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 3);
 
   // pode/evite baseado em grupos + score
   const workedRecent = new Set(
@@ -355,7 +379,6 @@ function computeScore(input: {
   const canonicalGroups = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Core"];
   const avoidBase = new Set<string>([...workedRecent]);
   if (score < 40) {
-    // fadiga alta: evitar tudo pesado
     canonicalGroups.forEach((g) => avoidBase.add(g));
   } else if (score < 60) {
     workedYesterday.forEach((g) => avoidBase.add(g));
@@ -384,8 +407,10 @@ function computeScore(input: {
     sportMinutes48h,
     injuriesText,
     tolerance,
+    daysSinceLastTraining,
   };
 }
+
 
 // -------------------- fallback narrativo determinístico --------------------
 function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
@@ -394,15 +419,19 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   recommendation: string;
   tip: string;
 } {
-  const { score, status, top, sleep, streak, cycle } = calc;
+  const { score, status, top, sleep, streak, cycle, daysSinceLastTraining } = calc;
   const topStr =
     top.length > 0
       ? top.map((f) => f.label.toLowerCase()).join(" + ")
       : "poucos sinais de fadiga";
 
+  const restedLong = daysSinceLastTraining != null && daysSinceLastTraining >= 2;
+
   const headline =
     status === "recuperado"
-      ? "Pronto pra treinar forte"
+      ? restedLong
+        ? "Descansado — bora treinar"
+        : "Pronto pra treinar forte"
       : status === "leve"
         ? "Vá com moderação hoje"
         : status === "cuidado"
@@ -411,22 +440,25 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
 
   const reasonBits: string[] = [];
   reasonBits.push(`Score ${score}/100`);
+  if (restedLong) reasonBits.push(`${Math.floor(daysSinceLastTraining!)}d sem treinar`);
   if (top.length) reasonBits.push(`pesou: ${topStr}`);
   if (sleep.last) reasonBits.push(`últ. noite ${sleep.last.hours}h`);
   if (streak >= 4) reasonBits.push(`${streak}d seguidos`);
   const reason = reasonBits.join(" · ") + ".";
 
   const recommendation =
+    (restedLong && score >= 70 ? "Volte ao treino com carga normal — corpo recuperado. " : "") +
     calc.intensity.label +
     (calc.avoid.length && score < 70 ? ` · evite ${calc.avoid.slice(0, 3).join(", ")}` : "");
 
-  // Dica proporcional
   let tip = "Hidrate bem e faça 5 min de mobilidade antes de começar.";
   if (score < 40) tip = "Hoje é dia de recuperação: sono cedo, alongamento e proteína adequada.";
   else if (score < 60) {
     if (sleep.last && Number(sleep.last.hours) < 6.5) tip = "Meta pra hoje: dormir ≥ 8h e reduzir cafeína depois das 15h.";
     else if (streak >= 5) tip = "Encaixe 1 dia off nos próximos 2 — constância vira sobrecarga.";
     else tip = "Aumente o descanso entre séries em 20-30s e priorize técnica.";
+  } else if (restedLong) {
+    tip = "Aquecimento caprichado (5-8 min) antes das séries pesadas — corpo estava em pausa.";
   } else if (cycle && (cycle.isLatePhaseLutea || cycle.phaseLabel.toLowerCase() === "menstrual")) {
     tip = "Hidratação extra e magnésio à noite ajudam nessa fase.";
   }
@@ -531,7 +563,10 @@ Regras:
   fazer/evitar hoje (grupos musculares se relevante).
 - tip: 1 dica prática e proporcional ao score (${calc.score}). Quanto menor o score, mais
   específica/urgente (sono, hidratação, mobilidade, dia off).
-Nunca contradiga o score, o status ou a intensidade recebidos.`;
+Nunca contradiga o score, o status ou a intensidade recebidos.
+- Se o usuário está há 2+ dias sem treinar E o score é ≥ 70, NÃO sugira "descanso"
+  nem "priorize repouso" — ele já está descansado; oriente a voltar ao treino
+  com carga normal.`;
 
     const prompt = `SCORE: ${calc.score}/100 (status: ${calc.status})
 INTENSIDADE SUGERIDA: ${calc.intensity.label}
@@ -545,6 +580,7 @@ DADOS-CHAVE:
         ? `última noite ${calc.sleep.last.hours}h${calc.sleep.last.quality ? ` (qualidade ${calc.sleep.last.quality}/5)` : ""}`
         : "sem registro"
     }${calc.sleep.avgHours != null ? ` · média ${calc.sleep.avgHours.toFixed(1)}h em ${calc.sleep.nights} noites` : ""}
+- Dias desde o último treino: ${calc.daysSinceLastTraining != null ? calc.daysSinceLastTraining.toFixed(1) : "—"}
 - Constância: ${calc.streak} dias seguidos · ${calc.last7} treinos em 7d
 - Esporte nas últimas 48h: ${calc.sportMinutes48h} min
 - Ciclo: ${calc.cycle ? `${calc.cycle.phaseLabel} (dia ${calc.cycle.dayInCycle}/${calc.cycle.cycleLength}${calc.cycle.isLatePhaseLutea ? " · TPM" : ""})` : "não acompanhado"}
