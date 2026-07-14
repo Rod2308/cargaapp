@@ -335,13 +335,37 @@ function computeScore(input: {
     });
   }
 
+  // ---------- 8) Dias desde o último treino (sinal positivo) ----------
+  const lastSessionTs = sessions.length
+    ? Math.max(...sessions.map((s) => new Date(s.started_at).getTime()))
+    : null;
+  const daysSinceLastTraining =
+    lastSessionTs != null ? (now.getTime() - lastSessionTs) / 86_400_000 : null;
+
+  // Se está há 2+ dias sem treinar, zera penalidades de treino/músculo/frequência
+  // (elas já tendem a 0, mas garantimos) e adiciona um fator positivo informativo.
+  let restedFactor: Factor | null = null;
+  if (daysSinceLastTraining != null && daysSinceLastTraining >= 2) {
+    const d = Math.floor(daysSinceLastTraining);
+    restedFactor = {
+      key: "rested",
+      label: "Descansado",
+      detail: `${d} dia${d === 1 ? "" : "s"} sem treinar`,
+      impact: 0,
+    };
+    factors.push(restedFactor);
+  }
+
   // ---------- Combinação ponderada ----------
   const score = combinePenalties(factors.map((f) => f.impact));
   const status = scoreToStatus(score);
   const intensity = scoreToIntensity(score);
 
-  // Top fatores (para narrativa)
-  const top = [...factors].sort((a, b) => b.impact - a.impact).slice(0, 3);
+  // Top fatores (para narrativa) — exclui o fator positivo "descansado"
+  const top = [...factors]
+    .filter((f) => f.impact > 0)
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 3);
 
   // pode/evite baseado em grupos + score
   const workedRecent = new Set(
@@ -355,7 +379,6 @@ function computeScore(input: {
   const canonicalGroups = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Core"];
   const avoidBase = new Set<string>([...workedRecent]);
   if (score < 40) {
-    // fadiga alta: evitar tudo pesado
     canonicalGroups.forEach((g) => avoidBase.add(g));
   } else if (score < 60) {
     workedYesterday.forEach((g) => avoidBase.add(g));
@@ -384,8 +407,10 @@ function computeScore(input: {
     sportMinutes48h,
     injuriesText,
     tolerance,
+    daysSinceLastTraining,
   };
 }
+
 
 // -------------------- fallback narrativo determinístico --------------------
 function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
