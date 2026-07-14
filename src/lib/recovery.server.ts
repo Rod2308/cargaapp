@@ -391,8 +391,12 @@ function computeScore(input: {
     sleep: { last, avgHours: avgH, avgQuality: avgQ, nights: nights.length },
     cycle: c, streak, last7, sportMinutes48h, injuriesText, tolerance,
     daysSinceLastTraining,
+    untrainedDaysInWindow,
+    untrainedStreak,
+    windowDays: WINDOW_DAYS,
   };
 }
+
 
 function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   headline: string; reason: string; recommendation: string; tip: string;
