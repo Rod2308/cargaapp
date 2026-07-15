@@ -187,41 +187,11 @@ function SessionPage() {
 
 
 
-  const [restSeconds, setRestSeconds] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [rest, setRest] = useState<{ seconds: number; exerciseName?: string } | null>(null);
 
-  useEffect(() => {
-    if (restSeconds === null || paused) return;
-    intervalRef.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          try {
-            const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-            if (AC) {
-              const ctx = new AC();
-              const o = ctx.createOscillator();
-              const g = ctx.createGain();
-              o.connect(g); g.connect(ctx.destination);
-              o.frequency.value = 880; g.gain.value = 0.2;
-              o.start(); setTimeout(() => { o.stop(); ctx.close(); }, 350);
-            }
-          } catch {}
-          setRestSeconds(null);
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [restSeconds, paused]);
-
-  function startRest(sec: number) {
-    setRestSeconds(sec);
-    setRemaining(sec);
-    setPaused(false);
+  function startRest(sec: number, exerciseName?: string) {
+    if (!sec || sec <= 0) return;
+    setRest({ seconds: sec, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
