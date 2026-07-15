@@ -423,7 +423,7 @@ function SessionPage() {
                     reps,
                     weight_kg: isSport ? null : (weight || null),
                   });
-                  if (!isSport) startRest(60);
+                  if (!isSport) startRest(60, name);
                 }}
               />
             </div>
