@@ -305,7 +305,7 @@ function SessionPage() {
 
       {rest !== null && (
         <RestTimer
-          key={`${rest.seconds}-${rest.exerciseName ?? ""}-${Date.now()}`}
+          key={rest.id}
           seconds={rest.seconds}
           exerciseName={rest.exerciseName}
           onFinish={() => setRest(null)}
