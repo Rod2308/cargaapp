@@ -187,11 +187,11 @@ function SessionPage() {
 
 
 
-  const [rest, setRest] = useState<{ seconds: number; exerciseName?: string } | null>(null);
+  const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
 
   function startRest(sec: number, exerciseName?: string) {
     if (!sec || sec <= 0) return;
-    setRest({ seconds: sec, exerciseName });
+    setRest({ id: Date.now(), seconds: sec, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
