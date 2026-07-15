@@ -24,9 +24,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, Play, Pause, RotateCcw, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { RestTimer } from "@/components/RestTimer";
 
 export const Route = createFileRoute("/_authenticated/app/sessao/$id")({
   component: SessionPage,
@@ -186,41 +187,11 @@ function SessionPage() {
 
 
 
-  const [restSeconds, setRestSeconds] = useState<number | null>(null);
-  const [remaining, setRemaining] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
 
-  useEffect(() => {
-    if (restSeconds === null || paused) return;
-    intervalRef.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          try {
-            const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-            if (AC) {
-              const ctx = new AC();
-              const o = ctx.createOscillator();
-              const g = ctx.createGain();
-              o.connect(g); g.connect(ctx.destination);
-              o.frequency.value = 880; g.gain.value = 0.2;
-              o.start(); setTimeout(() => { o.stop(); ctx.close(); }, 350);
-            }
-          } catch {}
-          setRestSeconds(null);
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [restSeconds, paused]);
-
-  function startRest(sec: number) {
-    setRestSeconds(sec);
-    setRemaining(sec);
-    setPaused(false);
+  function startRest(sec: number, exerciseName?: string) {
+    if (!sec || sec <= 0) return;
+    setRest({ id: Date.now(), seconds: sec, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
@@ -332,22 +303,13 @@ function SessionPage() {
         </AlertDialog>
       </div>
 
-      {restSeconds !== null && (
-        <div className="card-soft sticky top-3 z-20 mt-4 flex items-center gap-4 p-4">
-          <div className="grid size-14 place-items-center rounded-full bg-accent text-2xl font-bold text-accent-foreground tabular-nums">
-            {remaining}
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Descanso</p>
-            <p className="text-sm font-semibold">{paused ? "Pausado" : "Contando..."}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setPaused((p) => !p)}>
-            {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => { setRestSeconds(null); setRemaining(0); }}>
-            <RotateCcw className="size-4" />
-          </Button>
-        </div>
+      {rest !== null && (
+        <RestTimer
+          key={rest.id}
+          seconds={rest.seconds}
+          exerciseName={rest.exerciseName}
+          onFinish={() => setRest(null)}
+        />
       )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -397,7 +359,7 @@ function SessionPage() {
                       reps,
                       weight_kg: weight || null,
                     });
-                    startRest(it.target_rest_seconds);
+                    startRest(it.target_rest_seconds, it.exercises?.name);
                   }}
                 />
               )}
@@ -461,7 +423,7 @@ function SessionPage() {
                     reps,
                     weight_kg: isSport ? null : (weight || null),
                   });
-                  if (!isSport) startRest(60);
+                  if (!isSport) startRest(60, name);
                 }}
               />
             </div>
