@@ -359,7 +359,7 @@ function SessionPage() {
                       reps,
                       weight_kg: weight || null,
                     });
-                    startRest(it.target_rest_seconds);
+                    startRest(it.target_rest_seconds, it.exercises?.name);
                   }}
                 />
               )}
