@@ -303,22 +303,13 @@ function SessionPage() {
         </AlertDialog>
       </div>
 
-      {restSeconds !== null && (
-        <div className="card-soft sticky top-3 z-20 mt-4 flex items-center gap-4 p-4">
-          <div className="grid size-14 place-items-center rounded-full bg-accent text-2xl font-bold text-accent-foreground tabular-nums">
-            {remaining}
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Descanso</p>
-            <p className="text-sm font-semibold">{paused ? "Pausado" : "Contando..."}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setPaused((p) => !p)}>
-            {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => { setRestSeconds(null); setRemaining(0); }}>
-            <RotateCcw className="size-4" />
-          </Button>
-        </div>
+      {rest !== null && (
+        <RestTimer
+          key={`${rest.seconds}-${rest.exerciseName ?? ""}-${Date.now()}`}
+          seconds={rest.seconds}
+          exerciseName={rest.exerciseName}
+          onFinish={() => setRest(null)}
+        />
       )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
