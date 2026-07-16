@@ -401,6 +401,32 @@ function Dashboard() {
         onRefresh={() => refetchRecovery()}
       />
 
+      {/* Sugestão do dia — 100% lógica local */}
+      {!todayCheckin || checkinEditOpen ? (
+        <DailyCheckinCard
+          userId={user.id}
+          todayStr={todayStr}
+          initial={todayCheckin ?? null}
+        />
+      ) : suggestion ? (
+        <DailySuggestionCard
+          sugestao={suggestion}
+          workoutSugeridoId={workoutSugeridoId}
+          onEditCheckin={() => setCheckinEditOpen(true)}
+          onStart={() => {
+            if (suggestion.intensidade === "descanso") {
+              setSportOpen(true);
+            } else if (workoutSugeridoId) {
+              startSession.mutate({ workoutId: workoutSugeridoId });
+            } else {
+              navigate({ to: "/app/treinos" });
+            }
+          }}
+        />
+      ) : null}
+
+
+
 
 
       {/* Ciclo menstrual (se ativado) */}
