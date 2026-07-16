@@ -152,10 +152,103 @@ function Dashboard() {
     retry: false,
   });
 
+  // Check-in diário (para sugestão do dia)
+  const { data: todayCheckin } = useQuery({
+    queryKey: ["daily-checkin", user.id, todayStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_checkins")
+        .select("sleep_hours, sleep_quality, soreness, energy")
+        .eq("user_id", user.id)
+        .eq("log_date", todayStr)
+        .maybeSingle();
+      return data;
+    },
+  });
 
+  // Sessões dos últimos 7 dias (para timeline de esforço)
+  const { data: last7Sessions = [] } = useQuery({
+    queryKey: ["last7-sessions", user.id, todayStr],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const { data } = await supabase
+        .from("sessions")
+        .select("id, started_at, ended_at, workout_id, notes, workouts(name, label), session_sets(exercises(name, muscle_group))")
+        .eq("user_id", user.id)
+        .gte("started_at", since)
+        .order("started_at", { ascending: false });
+      return data ?? [];
+    },
+  });
 
+  const [checkinEditOpen, setCheckinEditOpen] = useState(false);
 
+  const suggestion = useMemo(() => {
+    if (!todayCheckin) return null;
+    const sessoes: WorkoutSession[] = [];
+    const extras: ExtraActivity[] = [];
+    for (const s of last7Sessions as any[]) {
+      const groups = new Set<string>();
+      const sportNames: string[] = [];
+      for (const st of s.session_sets ?? []) {
+        const g = st.exercises?.muscle_group;
+        if (g) groups.add(g);
+        if (g === "Esportes" && st.exercises?.name) sportNames.push(st.exercises.name);
+      }
+      const isSport = !s.workout_id && sportNames.length > 0;
+      if (isSport) {
+        const dur = s.ended_at
+          ? Math.max(0, (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
+          : null;
+        extras.push({
+          started_at: s.started_at,
+          ended_at: s.ended_at,
+          activity_name: sportNames[0],
+          duration_min: dur,
+        });
+      } else {
+        sessoes.push({
+          started_at: s.started_at,
+          ended_at: s.ended_at,
+          workout_label: s.workouts?.label ?? null,
+          workout_name: s.workouts?.name ?? null,
+          muscle_groups: Array.from(groups),
+        });
+      }
+    }
+    return sugerirTreinoDoDia({
+      sessoes,
+      atividadesExtras: extras,
+      checkin: todayCheckin,
+    });
+  }, [todayCheckin, last7Sessions]);
 
+  const workoutSugeridoId = useMemo(() => {
+    if (!suggestion || suggestion.grupos.length === 0) return null;
+    const wList = (workouts as any[]).map((w) => ({
+      id: w.id,
+      label: w.label,
+      name: w.name,
+      muscle_groups: [] as string[],
+    }));
+    // Enriquecer com grupos: buscar via last7 já não basta; usa nome/label como hint
+    for (const w of wList) {
+      const hay = `${w.label} ${w.name}`.toLowerCase();
+      const guesses: string[] = [];
+      if (/peito|chest/.test(hay)) guesses.push("Peito");
+      if (/cost|dorsal|back|puxada/.test(hay)) guesses.push("Costas");
+      if (/perna|quad|leg|posterior/.test(hay)) guesses.push("Pernas");
+      if (/ombro|shoulder|delto/.test(hay)) guesses.push("Ombro");
+      if (/bicep/.test(hay)) guesses.push("Bíceps");
+      if (/tricep/.test(hay)) guesses.push("Tríceps");
+      if (/gluteo|butt/.test(hay)) guesses.push("Glúteo");
+      if (/abdom|core/.test(hay)) guesses.push("Abdômen");
+      if (/superior|upper|push|pull/.test(hay)) guesses.push("Peito", "Costas", "Ombro");
+      if (/inferior|lower/.test(hay)) guesses.push("Pernas", "Glúteo");
+      w.muscle_groups = guesses;
+    }
+    return melhorWorkoutParaSugestao(wList, suggestion.grupos);
+  }, [suggestion, workouts]);
 
 
 
