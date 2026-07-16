@@ -395,7 +395,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "força",
         grupos,
         intensidade,
-        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} há ${escolhido.diasParado}d sem estímulo — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
+        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${escolhido.diasParado}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
