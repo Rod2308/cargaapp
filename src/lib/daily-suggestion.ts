@@ -573,11 +573,42 @@ export function sugerirTreinoDoPlano(args: {
     }
   }
 
-  const gruposEscolhido = gruposDoWorkoutNome(escolhido.label, escolhido.name);
+  // Recuperação por grupo: se o próximo do plano tem algum grupo ainda não recuperado
+  // (ex: treinou peito ontem e o próximo é peito/tríceps), avança no plano até um treino
+  // cujos grupos estejam todos liberados.
+  const gruposNaoRecuperados = (gs: MuscleGroup[]) =>
+    gs.filter((g) => diasDesdeUltimoEsforco(timeline, g, now) < MUSCLE_RECOVERY_DAYS[g]);
+
+  let gruposEscolhidoAtual = gruposDoWorkoutNome(escolhido.label, escolhido.name);
+  let pendentes = gruposNaoRecuperados(gruposEscolhidoAtual);
+  let motivoRecuperacao = "";
+  if (pendentes.length > 0) {
+    const escolhidoIdx = plano.findIndex((p) => p.id === escolhido.id);
+    for (let step = 1; step < plano.length; step++) {
+      const cand = plano[(escolhidoIdx + step) % plano.length];
+      const gs = gruposDoWorkoutNome(cand.label, cand.name);
+      if (gs.length === 0) continue;
+      if (pernasImpactadas && gs.includes("pernas")) continue;
+      if (gruposNaoRecuperados(gs).length === 0) {
+        const pulados = pendentes.map((g) => MUSCLE_LABEL[g].toLowerCase()).join(", ");
+        const dias = Math.min(
+          ...pendentes.map((g) => diasDesdeUltimoEsforco(timeline, g, now)),
+        );
+        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${dias}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
+        escolhido = cand;
+        gruposEscolhidoAtual = gs;
+        pendentes = [];
+        break;
+      }
+    }
+  }
+
+  const gruposEscolhido = gruposEscolhidoAtual;
   const intensidade: Intensidade = score >= 8 ? "alta" : score >= 6 ? "moderada" : "leve";
   const motivo = ultimaLabel
-    ? `Último treino do plano: ${ultimaLabel}. Hoje é o ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}`
-    : `Começando pelo ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}`;
+    ? `Último treino do plano: ${ultimaLabel}. Hoje é o ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}${motivoRecuperacao}`
+    : `Começando pelo ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}${motivoRecuperacao}`;
+
 
   return {
     workoutId: escolhido.id,
