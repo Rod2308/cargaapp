@@ -1,57 +1,77 @@
 ## Objetivo
 
-Analisar as sessões concluídas de cada exercício e sugerir automaticamente ajustes de **carga (kg)** e **descanso (segundos)** para o próximo treino, mostrando um badge dentro do editor de treinos (`/app/treinos/$id`) e permitindo aplicar a sugestão com um clique.
+Card "Sugestão de hoje" no dashboard que decide o treino do dia a partir de uma função pura em TypeScript — combinando histórico de treinos formais, atividades extras (esportes/cardio), check-in diário e regras de recuperação. Zero IA, zero chamada externa.
 
-## Como a sugestão é calculada (regra determinística, sem IA)
+## O que o usuário vê
 
-Para cada `workout_exercise`, olhamos as últimas **3 sessões** com séries registradas em `session_sets`:
+Na tela inicial (`/app`), logo acima de "Meus treinos":
 
-**Carga (`target_weight_kg`)**
-- Média das cargas das séries válidas de cada sessão → `avgLoad`.
-- Média das reps por sessão → `avgReps`.
-- Se `avgReps ≥ topoDaFaixa + 1` nas 2 últimas sessões → **subir 2,5 kg** (ou +5% se ≥40 kg).
-- Se `avgReps < baseDaFaixa - 1` nas 2 últimas → **descer 5%**.
-- Caso contrário → **manter**.
-- Faixa lida de `target_reps` (aceita "8-12", "10", "AMRAP"; para AMRAP usa 8-12 como referência).
+1. **Se ainda não fez check-in hoje**: card compacto pedindo os 4 números (sono h, qualidade 1-5, dor 1-5, energia 1-5), com botão "Salvar check-in".
+2. **Depois do check-in**: card com
+   - **Título**: "Sugestão de hoje"
+   - **Grupo/tipo em destaque**: ex. "Peito + Tríceps · Força"
+   - **Badge de intensidade**: Leve (verde) / Moderada (âmbar) / Alta (vermelho) / Descanso (cinza)
+   - **Frase explicativa** com dados reais: "Você jogou futebol ontem, pernas ainda cansadas — hoje foco em parte superior."
+   - **Score de recuperação** 0-10 e detalhes expansíveis ("Como calculei")
+   - **Botão "Iniciar este treino"** que abre o treino do plano cujo `label`/exercícios mais casam com o grupo sugerido, ou o modal de "esporte/atividade avulsa" quando a sugestão é descanso ativo/cardio leve.
 
-**Descanso (`target_rest_seconds`)**
-- RPE médio (`session_sets.rpe`) das últimas 2 sessões:
-  - RPE ≥ 9 → sugerir **+15s** (limite 240s).
-  - RPE ≤ 6 → sugerir **-15s** (mínimo 30s, ou 45s p/ compostos).
-  - Entre 7–8 → manter.
-- Sem RPE registrado → não sugerir mudança de descanso.
+Se o usuário for novo (menos de 3 sessões registradas), o card mostra sugestão padrão (full body moderado) com aviso "vai ficar mais preciso conforme você registrar treinos".
 
-**Sem dados suficientes** (menos de 2 sessões) → não gera sugestão, mostra "poucos dados ainda".
+## Arquivos
 
-## Onde aparece
+**Migration** (nova tabela)
+- `daily_checkins` — `user_id`, `log_date` (unique com user), `sleep_hours numeric`, `sleep_quality int 1-5`, `soreness int 1-5`, `energy int 1-5`, `created_at`. RLS: dono lê/escreve. GRANT `authenticated` + `service_role`.
 
-Dentro de `src/routes/_authenticated/app.treinos.$id.tsx`, em cada linha de exercício:
+**Novo** `src/lib/daily-suggestion.ts` — função pura, testável, sem side-effects:
+- `MUSCLE_RECOVERY_DAYS` (peito 2, costas 2, pernas 3, ombro 2, bíceps 1, tríceps 1, glúteo 2, abdômen 1)
+- `ACTIVITY_IMPACT_MAP`: mapa `activity_name → { grupo: "alto"|"medio"|"baixo" }[]` para futebol, vôlei, corrida, caminhada, natação, ciclismo (usa o mesmo nome que já está em `exercises` grupo "Esportes").
+- `combineTimeline(sessoes, atividadesExtras)` → linha do tempo unificada de 7 dias com `{ date, impactoPorGrupo, cardioMinutes }`.
+- `diasDesdeUltimoEsforco(timeline, grupo)` → considera impacto médio/alto como reset.
+- `cargaCardioSemana(timeline)` → soma minutos de cardio médio/alto; flag `alta` se ≥ 3 sessões intensas.
+- `scoreRecuperacao(checkin)` → 0-10 com pesos (sono h ×3 normalizado até 8h, qualidade ×3, dor invertida ×2, energia ×2).
+- `sugerirTreinoDoDia({ sessoes, atividadesExtras, checkin, hoje })` → aplica regras (a-f do brief) e retorna `{ tipo, grupos, intensidade, motivo, score, gruposLiberados, cardioCarga, sugerirWorkoutId? }`.
+
+**Novo** `src/components/DailyCheckinCard.tsx` — form controlado (4 campos) + mutation upsert. Zod: `sleep_hours` 0-24, restantes 1-5.
+
+**Novo** `src/components/DailySuggestionCard.tsx` — recebe o resultado da função, renderiza estado vazio (sem check-in), estado usuário novo, ou sugestão completa. Botão "Iniciar" chama a mesma `startSession` mutation já existente no dashboard, escolhendo o workout do plano cujos exercícios mais cobrem os grupos sugeridos.
+
+**Editado** `src/routes/_authenticated/app.index.tsx`:
+- Novas queries: `daily-checkin` (dia atual), `all-sessions-7d` (com `session_sets → exercises.muscle_group`), `extra-activities-7d` (sessões `workout_id is null` com `exercise.muscle_group='Esportes'`).
+- Renderiza `<DailyCheckinCard>` OU `<DailySuggestionCard>` logo após o card de recuperação.
+
+## Fluxo de dados
 
 ```text
-Supino reto         3x8-12  ·  60s  ·  40kg
-                    [ ↑ Subir p/ 42,5kg  ·  Manter descanso ]   ← chip clicável
+sessions (formais, com session_sets → exercises.muscle_group)
+sessions (extras, workout_id null, session_sets → exercises "Esportes")
+daily_checkins (hoje)
+                    │
+                    ▼
+          sugerirTreinoDoDia() ← função pura
+                    │
+                    ▼
+         DailySuggestionCard renderiza
+                    │
+                    ▼
+    onClick → startSession(workoutSugerido) já existente
 ```
 
-- Chip verde para subir, âmbar para descer, cinza neutro para "manter".
-- Tooltip mostra a base do cálculo: "Últimas 3 sessões: 10, 11, 12 reps @ 40kg".
-- Clicar aplica o `UPDATE` em `workout_exercises` (mesma mutation que já existe para editar sets/reps).
+## Regras de decisão (ordem)
 
-Botão no topo do treino: **"Aplicar todas as sugestões"** — roda um `UPDATE` em lote para os exercícios com sugestão de mudança.
+1. score ≤ 4 OU dor ≥ 4 OU ≥ 6 dias de esforço na semana → **descanso ativo, leve**
+2. score 4–6 → **funcional leve** num grupo liberado e não impactado por extra recente
+3. score > 6 → **força** no grupo liberado com mais dias parado; alta se score ≥ 8, senão moderada
+4. Se pernas foram exigidas por extra intenso nas últimas 48h → nunca sugerir pernas (força upper body)
+5. Nenhum grupo liberado + score bom → **cardio leve** (respeitando `cargaCardioSemana`) ou mobilidade
 
-## Arquivos afetados
+## Segurança e validação
 
-- **novo** `src/lib/progression.ts` — funções puras: `parseRepRange`, `analyzeExerciseHistory`, `suggestAdjustment`. Zero side-effects, 100% testável.
-- **novo** `src/lib/progression.functions.ts` — `getWorkoutSuggestions({ workout_id })` server fn que:
-  1. Busca `workout_exercises` do treino.
-  2. Para cada um, busca as últimas ~15 `session_sets` via `session_id` das sessões do dono do treino.
-  3. Aplica `suggestAdjustment` e devolve `{ workout_exercise_id, suggested_weight_kg, suggested_rest_seconds, reason, confidence }[]`.
-- **editado** `src/routes/_authenticated/app.treinos.$id.tsx` — nova `useQuery` para sugestões + UI dos chips + mutation "aplicar" (individual e em lote).
-- Sem migration, sem novas tabelas.
+- Zod nos inputs do check-in (client e server via `upsert`).
+- RLS + GRANT explícitos na nova tabela.
+- Nenhum dado do check-in em URLs ou logs.
 
-## Detalhes técnicos
+## Fora de escopo desta entrega
 
-- Query única: `session_sets.select("weight_kg, reps, rpe, workout_exercise_id, sessions!inner(started_at, user_id)").in("workout_exercise_id", ids).order("completed_at", desc).limit(200)`, agrupada em memória por `workout_exercise_id` e depois por `session_id`.
-- Cálculos ficam em `progression.ts` para poder testar e reusar depois (ex.: em relatórios do trainer).
-- Arredondamento: cargas em múltiplos de 2,5 kg; descanso em múltiplos de 15 s.
-- Confidence: `low` (2 sessões), `medium` (3), `high` (3 com desvio-padrão baixo).
-- RLS já cobre — só usamos o cliente do browser autenticado.
+- Histórico de check-ins e gráficos (só o dia atual + upsert por data).
+- Editar o mapa de impacto pela UI (fica hard-coded em `daily-suggestion.ts`).
+- Ajuste automático da intensidade dentro do workout do plano — o botão "Iniciar" apenas leva ao workout mais adequado; ajuste fino continua no editor de treino existente.

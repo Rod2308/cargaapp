@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_checkins: {
+        Row: {
+          created_at: string
+          energy: number
+          id: string
+          log_date: string
+          sleep_hours: number
+          sleep_quality: number
+          soreness: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          energy: number
+          id?: string
+          log_date: string
+          sleep_hours: number
+          sleep_quality: number
+          soreness: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          energy?: number
+          id?: string
+          log_date?: string
+          sleep_hours?: number
+          sleep_quality?: number
+          soreness?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           created_at: string
