@@ -29,7 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
-import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
+import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
