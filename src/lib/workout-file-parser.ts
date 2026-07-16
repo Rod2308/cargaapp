@@ -1,9 +1,9 @@
 // Parses .gpx / .tcx (XML) and .fit (binary) workout files entirely in the browser.
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 //
-// `fit-file-parser` (~833KB) and its `buffer` polyfill are heavy and only
-// needed when the user actually drops a .fit file. They are dynamically
-// imported inside `parseFit()` so the historico route bundle stays small.
+// `fit-file-parser` (~833KB) is heavy and only needed when the user actually
+// drops a .fit file. It is dynamically imported inside `parseFit()` so the
+// historico route bundle stays small.
 
 
 
@@ -153,15 +153,6 @@ function parseTcx(text: string): ParsedWorkout {
 
 // ----------------- FIT -----------------
 async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
-  // Buffer polyfill MUST be installed on globalThis BEFORE fit-file-parser is
-  // evaluated — the library references the Buffer global at module load time.
-  // Trailing slash forces resolution to the npm `buffer` package instead of
-  // Vite's empty Node built-in shim.
-  const bufferMod: any = await import("buffer/");
-  const BufferPolyfill: any = bufferMod.Buffer ?? bufferMod.default?.Buffer ?? bufferMod.default;
-  if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
-    (globalThis as any).Buffer = BufferPolyfill;
-  }
   const { default: FitParser } = await import("fit-file-parser");
   return new Promise((resolve, reject) => {
     const parser = new FitParser({
@@ -170,7 +161,7 @@ async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
       lengthUnit: "m",
       elapsedRecordField: true,
     });
-    parser.parse(BufferPolyfill.from(new Uint8Array(buffer)) as any, (err: string | undefined, data: any) => {
+    parser.parse(buffer as any, (err: string | undefined, data: any) => {
       if (err) return reject(new Error(`Falha ao ler .fit: ${err}`));
       try {
         const session = Array.isArray(data.sessions) ? data.sessions[0] : data.sessions;
