@@ -25,7 +25,6 @@ import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import {
   sugerirTreinoDoDia,
-  sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   type WorkoutSession,
   type ExtraActivity,
@@ -216,18 +215,7 @@ function Dashboard() {
       }
     }
 
-    // 1) Tenta rotação do plano (A→B→C…)
-    const plano = sugerirTreinoDoPlano({
-      workouts: (workouts as any[]).map((w) => ({ id: w.id, label: w.label, name: w.name })),
-      sessoes,
-      atividadesExtras: extras,
-      checkin: todayCheckin,
-    });
-    if (plano) {
-      return { suggestion: plano.sugestao, workoutId: plano.workoutId };
-    }
-
-    // 2) Fallback: sugestão geral por recuperação
+    // Sugestão baseada em análise de recuperação (sem rotação fixa do plano)
     const geral = sugerirTreinoDoDia({
       sessoes,
       atividadesExtras: extras,
