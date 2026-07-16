@@ -59,6 +59,7 @@ export function DailyCheckinCard({
     onSuccess: () => {
       toast.success(initial ? "Check-in atualizado" : "Check-in salvo!");
       qc.invalidateQueries({ queryKey: ["daily-checkin"] });
+      onSaved?.();
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
   });

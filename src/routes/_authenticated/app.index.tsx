@@ -407,6 +407,7 @@ function Dashboard() {
           userId={user.id}
           todayStr={todayStr}
           initial={todayCheckin ?? null}
+          onSaved={() => setCheckinEditOpen(false)}
         />
       ) : suggestion ? (
         <DailySuggestionCard
