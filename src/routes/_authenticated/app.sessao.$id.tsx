@@ -644,3 +644,91 @@ function ElapsedTimer({ startedAt, endedAt }: { startedAt: string; endedAt?: str
     </div>
   );
 }
+
+function ImportedMetrics({ session }: { session: any }) {
+  const started = session.started_at ? new Date(session.started_at) : null;
+  const ended = session.ended_at ? new Date(session.ended_at) : null;
+  const durationSec =
+    started && ended ? Math.max(0, Math.round((ended.getTime() - started.getTime()) / 1000)) : null;
+  const durationLabel = (() => {
+    if (durationSec == null) return null;
+    const h = Math.floor(durationSec / 3600);
+    const m = Math.floor((durationSec % 3600) / 60);
+    const s = durationSec % 60;
+    if (h > 0) return `${h}h${String(m).padStart(2, "0")}min`;
+    if (m > 0) return `${m}min ${String(s).padStart(2, "0")}s`;
+    return `${s}s`;
+  })();
+  const distanceLabel =
+    session.distance_m != null
+      ? session.distance_m >= 1000
+        ? `${(session.distance_m / 1000).toFixed(2).replace(".", ",")} km`
+        : `${session.distance_m} m`
+      : null;
+  const paceLabel = (() => {
+    if (!session.distance_m || !durationSec || session.distance_m < 100) return null;
+    const secPerKm = durationSec / (session.distance_m / 1000);
+    const m = Math.floor(secPerKm / 60);
+    const s = Math.round(secPerKm % 60);
+    return `${m}:${String(s).padStart(2, "0")} /km`;
+  })();
+  const sourceLabel: Record<string, string> = {
+    import_fit: "Arquivo .fit",
+    import_gpx: "Arquivo .gpx",
+    import_tcx: "Arquivo .tcx",
+  };
+
+  const stats: { icon: any; label: string; value: string }[] = [];
+  if (durationLabel) stats.push({ icon: Timer, label: "Duração", value: durationLabel });
+  if (distanceLabel) stats.push({ icon: Ruler, label: "Distância", value: distanceLabel });
+  if (paceLabel) stats.push({ icon: Activity, label: "Ritmo médio", value: paceLabel });
+  if (session.avg_hr != null) stats.push({ icon: Heart, label: "FC média", value: `${session.avg_hr} bpm` });
+  if (session.max_hr != null) stats.push({ icon: Activity, label: "FC máx", value: `${session.max_hr} bpm` });
+  if (session.calories != null) stats.push({ icon: Flame, label: "Calorias", value: `${session.calories} kcal` });
+
+  return (
+    <div className="card-soft mt-4 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-eyebrow text-muted-foreground">Dados do treino importado</p>
+          {started && (
+            <p className="text-xs text-muted-foreground">
+              {format(started, "d 'de' MMMM 'de' yyyy · HH:mm", { locale: ptBR })}
+            </p>
+          )}
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <FileUp className="size-3" />
+          {sourceLabel[session.source as string] ?? session.source}
+        </span>
+      </div>
+
+      {stats.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {stats.map((s) => (
+            <div key={s.label} className="flex items-center gap-2 rounded-lg bg-secondary/50 px-2 py-1.5">
+              <s.icon className="size-3.5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
+                <p className="truncate text-sm font-semibold">{s.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {session.activity_type && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Atividade: <span className="font-medium text-foreground">{translateActivityType(session.activity_type)}</span>
+        </p>
+      )}
+
+      {session.notes && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/30 p-2">
+          <StickyNote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+          <p className="text-xs text-foreground/90 whitespace-pre-wrap">{session.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
