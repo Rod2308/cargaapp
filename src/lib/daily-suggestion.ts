@@ -349,7 +349,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "funcional leve",
         grupos: [grupo],
         intensidade: "leve",
-        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${candidato?.diasParado ?? liberados[0].diasParado}d parado) mantém o ritmo sem sobrecarregar.`,
+        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${d}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
