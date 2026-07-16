@@ -402,9 +402,16 @@ function SessionPage() {
                       {done.length}/{it.target_sets}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Alvo: {it.target_sets}×{it.target_reps}
-                    {it.target_weight_kg && ` · ${it.target_weight_kg} kg`} · descanso {it.target_rest_seconds}s
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span>
+                      Alvo: {it.target_sets}×{it.target_reps}
+                      {it.target_weight_kg && ` · ${it.target_weight_kg} kg`}
+                    </span>
+                    <span aria-hidden>·</span>
+                    <RestEditor
+                      seconds={it.target_rest_seconds}
+                      onSave={(s) => updateRest.mutate({ itemId: it.id, seconds: s })}
+                    />
                   </p>
                 </div>
               </div>
