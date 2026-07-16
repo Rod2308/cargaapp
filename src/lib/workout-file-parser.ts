@@ -1,9 +1,8 @@
 // Parses .gpx / .tcx (XML) and .fit (binary) workout files entirely in the browser.
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 //
-// `@garmin/fitsdk` is only needed when the user actually
-// drops a .fit file. It is dynamically imported inside `parseFit()` so the
-// historico route bundle stays small.
+// FIT is parsed with a small native reader below to avoid browser/SSR polyfill
+// issues from Node-oriented FIT packages.
 
 
 
@@ -38,33 +37,21 @@ function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon:
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
 
-function asArray<T = any>(value: T | T[] | null | undefined): T[] {
-  if (!value) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function firstValue(value: unknown): unknown {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function readNumber(source: any, keys: string[]): number | null {
-  for (const key of keys) {
-    const value = firstValue(source?.[key]);
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-  }
-  return null;
-}
-
-function readDate(source: any, keys: string[]): string | null {
-  for (const key of keys) {
-    const iso = toIso(firstValue(source?.[key]) as Date | string | number | undefined | null);
-    if (iso) return iso;
-  }
-  return null;
-}
-
-function fitSemicirclesToDegrees(value: number): number {
+function semicirclesToDegrees(value: number): number {
   return (value * 180) / 2 ** 31;
+}
+
+function mean(values: number[]): number | null {
+  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null;
+}
+
+function positiveSum(values: Array<number | null | undefined>): number | null {
+  const total = values.reduce((sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0), 0);
+  return total > 0 ? total : null;
+}
+
+function firstPositive(values: Array<number | null | undefined>): number | null {
+  return values.find((value): value is number => typeof value === "number" && value > 0) ?? null;
 }
 
 // ----------------- GPX -----------------
@@ -183,123 +170,375 @@ function parseTcx(text: string): ParsedWorkout {
 // ----------------- FIT -----------------
 // Tolerant to alternative FIT layouts (Garmin, Wahoo, Coros, Suunto, Zwift,
 // Polar, Stryd etc.): sessions/laps/records may be missing individually.
-async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
-  const { Decoder, Stream } = await import("@garmin/fitsdk");
-  const stream = Stream.fromArrayBuffer(buffer);
-  const decoder = new Decoder(stream);
+type FitFieldDefinition = { fieldNumber: number; size: number; baseType: number };
+type FitDefinition = {
+  globalMessageNumber: number;
+  littleEndian: boolean;
+  fields: FitFieldDefinition[];
+  developerBytes: number;
+};
+type FitRecord = { timestamp?: number; distance?: number; heartRate?: number; lat?: number; lon?: number };
+type FitAggregate = {
+  timestamp?: number;
+  startTime?: number;
+  totalElapsed?: number;
+  totalTimer?: number;
+  distance?: number;
+  calories?: number;
+  avgHr?: number;
+  maxHr?: number;
+  sport?: number;
+};
 
-  if (!decoder.isFIT()) throw new Error("Arquivo FIT inválido ou corrompido");
+const FIT_EPOCH_MS = Date.UTC(1989, 11, 31);
 
-  const { messages, errors } = decoder.read({
-    applyScaleAndOffset: true,
-    expandSubFields: true,
-    expandComponents: true,
-    convertTypesToStrings: true,
-    convertDateTimesToDates: true,
-    includeUnknownData: false,
-    mergeHeartRates: true,
-  });
+function fitDateToIso(seconds: number | null | undefined): string | null {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return null;
+  return new Date(FIT_EPOCH_MS + seconds * 1000).toISOString();
+}
 
-  const sessions = asArray(messages.sessionMesgs);
-  const laps = asArray(messages.lapMesgs);
-  const records = asArray(messages.recordMesgs);
-  const activities = asArray(messages.activityMesgs);
+function sportCodeToActivity(code: number | null): string | null {
+  const map: Record<number, string> = {
+    1: "running",
+    2: "cycling",
+    5: "swimming",
+    10: "training",
+    11: "walking",
+    17: "hiking",
+    37: "cycling",
+    42: "walking",
+  };
+  return code == null ? null : map[code] ?? "training";
+}
+
+function baseTypeSize(baseType: number): number | null {
+  const sizes: Record<number, number> = {
+    0: 1,
+    1: 1,
+    2: 1,
+    3: 2,
+    4: 2,
+    5: 4,
+    6: 4,
+    7: 1,
+    8: 4,
+    9: 8,
+    10: 1,
+    11: 2,
+    12: 4,
+    13: 1,
+    14: 8,
+    15: 8,
+    16: 8,
+  };
+  return sizes[baseType & 0x1f] ?? null;
+}
+
+function decodeFitScalar(view: DataView, offset: number, baseType: number, littleEndian: boolean): number | null {
+  const type = baseType & 0x1f;
+  switch (type) {
+    case 0: {
+      const value = view.getUint8(offset);
+      return value === 0xff ? null : value;
+    }
+    case 1: {
+      const value = view.getInt8(offset);
+      return value === 0x7f ? null : value;
+    }
+    case 2: {
+      const value = view.getUint8(offset);
+      return value === 0xff ? null : value;
+    }
+    case 3: {
+      const value = view.getInt16(offset, littleEndian);
+      return value === 0x7fff ? null : value;
+    }
+    case 4: {
+      const value = view.getUint16(offset, littleEndian);
+      return value === 0xffff ? null : value;
+    }
+    case 5: {
+      const value = view.getInt32(offset, littleEndian);
+      return value === 0x7fffffff ? null : value;
+    }
+    case 6: {
+      const value = view.getUint32(offset, littleEndian);
+      return value === 0xffffffff ? null : value;
+    }
+    case 8: {
+      const value = view.getFloat32(offset, littleEndian);
+      return Number.isFinite(value) ? value : null;
+    }
+    case 9: {
+      const value = view.getFloat64(offset, littleEndian);
+      return Number.isFinite(value) ? value : null;
+    }
+    case 10: {
+      const value = view.getUint8(offset);
+      return value === 0 ? null : value;
+    }
+    case 11: {
+      const value = view.getUint16(offset, littleEndian);
+      return value === 0 ? null : value;
+    }
+    case 12: {
+      const value = view.getUint32(offset, littleEndian);
+      return value === 0 ? null : value;
+    }
+    case 13:
+      return view.getUint8(offset);
+    case 14: {
+      const value = view.getBigInt64(offset, littleEndian);
+      return value === 0x7fffffffffffffffn ? null : Number(value);
+    }
+    case 15: {
+      const value = view.getBigUint64(offset, littleEndian);
+      return value === 0xffffffffffffffffn ? null : Number(value);
+    }
+    case 16: {
+      const value = view.getBigUint64(offset, littleEndian);
+      return value === 0n ? null : Number(value);
+    }
+    default:
+      return null;
+  }
+}
+
+function decodeFitField(
+  view: DataView,
+  bytes: Uint8Array,
+  offset: number,
+  field: FitFieldDefinition,
+  littleEndian: boolean,
+): number | string | null {
+  const type = field.baseType & 0x1f;
+  if (type === 7) {
+    const raw = bytes.slice(offset, offset + field.size);
+    const end = raw.indexOf(0);
+    return new TextDecoder().decode(end >= 0 ? raw.slice(0, end) : raw).trim() || null;
+  }
+
+  const size = baseTypeSize(field.baseType);
+  if (!size || field.size < size) return null;
+
+  const values: number[] = [];
+  for (let i = 0; i + size <= field.size; i += size) {
+    const value = decodeFitScalar(view, offset + i, field.baseType, littleEndian);
+    if (value !== null) values.push(value);
+  }
+  if (!values.length) return null;
+  return values[0];
+}
+
+function numberField(message: Record<number, number | string | null>, fieldNumber: number): number | null {
+  const value = message[fieldNumber];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readFitDefinition(view: DataView, offset: number, dataEnd: number, header: number): { definition: FitDefinition; offset: number } {
+  if (offset + 6 > dataEnd) throw new Error("Definição FIT incompleta");
+  offset += 1; // reserved
+  const architecture = view.getUint8(offset++);
+  const littleEndian = architecture === 0;
+  const globalMessageNumber = view.getUint16(offset, littleEndian);
+  offset += 2;
+  const fieldCount = view.getUint8(offset++);
+  if (offset + fieldCount * 3 > dataEnd) throw new Error("Campos FIT incompletos");
+
+  const fields: FitFieldDefinition[] = [];
+  for (let i = 0; i < fieldCount; i++) {
+    fields.push({ fieldNumber: view.getUint8(offset), size: view.getUint8(offset + 1), baseType: view.getUint8(offset + 2) });
+    offset += 3;
+  }
+
+  let developerBytes = 0;
+  if (header & 0x20) {
+    if (offset >= dataEnd) throw new Error("Campos extras FIT incompletos");
+    const developerFieldCount = view.getUint8(offset++);
+    if (offset + developerFieldCount * 3 > dataEnd) throw new Error("Campos extras FIT incompletos");
+    for (let i = 0; i < developerFieldCount; i++) {
+      developerBytes += view.getUint8(offset + 1);
+      offset += 3;
+    }
+  }
+
+  return { definition: { globalMessageNumber, littleEndian, fields, developerBytes }, offset };
+}
+
+function extractFitMessage(globalMessageNumber: number, message: Record<number, number | string | null>) {
+  switch (globalMessageNumber) {
+    case 20:
+      return {
+        kind: "record" as const,
+        value: {
+          timestamp: numberField(message, 253) ?? undefined,
+          lat: numberField(message, 0) != null ? semicirclesToDegrees(numberField(message, 0)!) : undefined,
+          lon: numberField(message, 1) != null ? semicirclesToDegrees(numberField(message, 1)!) : undefined,
+          heartRate: numberField(message, 3) ?? undefined,
+          distance: numberField(message, 5) != null ? numberField(message, 5)! / 100 : undefined,
+        } satisfies FitRecord,
+      };
+    case 18:
+      return {
+        kind: "session" as const,
+        value: {
+          timestamp: numberField(message, 253) ?? undefined,
+          startTime: numberField(message, 2) ?? undefined,
+          sport: numberField(message, 5) ?? undefined,
+          totalElapsed: numberField(message, 7) != null ? numberField(message, 7)! / 1000 : undefined,
+          totalTimer: numberField(message, 8) != null ? numberField(message, 8)! / 1000 : undefined,
+          distance: numberField(message, 9) != null ? numberField(message, 9)! / 100 : undefined,
+          calories: numberField(message, 11) ?? undefined,
+          avgHr: numberField(message, 16) ?? undefined,
+          maxHr: numberField(message, 17) ?? undefined,
+        } satisfies FitAggregate,
+      };
+    case 19:
+      return {
+        kind: "lap" as const,
+        value: {
+          timestamp: numberField(message, 253) ?? undefined,
+          startTime: numberField(message, 2) ?? undefined,
+          totalElapsed: numberField(message, 7) != null ? numberField(message, 7)! / 1000 : undefined,
+          totalTimer: numberField(message, 8) != null ? numberField(message, 8)! / 1000 : undefined,
+          distance: numberField(message, 9) != null ? numberField(message, 9)! / 100 : undefined,
+          calories: numberField(message, 11) ?? undefined,
+          avgHr: numberField(message, 15) ?? undefined,
+          maxHr: numberField(message, 16) ?? undefined,
+          sport: numberField(message, 26) ?? undefined,
+        } satisfies FitAggregate,
+      };
+    case 34:
+      return {
+        kind: "activity" as const,
+        value: {
+          timestamp: numberField(message, 253) ?? undefined,
+          totalTimer: numberField(message, 0) != null ? numberField(message, 0)! / 1000 : undefined,
+        } satisfies FitAggregate,
+      };
+    case 12:
+      return { kind: "sport" as const, value: { sport: numberField(message, 0) ?? undefined } satisfies FitAggregate };
+    default:
+      return null;
+  }
+}
+
+function parseFit(buffer: ArrayBuffer): ParsedWorkout {
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length < 14) throw new Error("Arquivo FIT vazio ou incompleto");
+
+  const headerSize = view.getUint8(0);
+  const fileType = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+  if ((headerSize !== 12 && headerSize !== 14) || fileType !== ".FIT") {
+    throw new Error("Arquivo FIT inválido ou corrompido");
+  }
+
+  const declaredDataSize = view.getUint32(4, true);
+  const dataStart = headerSize;
+  const dataEnd = Math.min(bytes.length - 2, dataStart + declaredDataSize);
+  if (dataEnd <= dataStart) throw new Error("Arquivo FIT sem dados de treino");
+
+  const definitions = new Map<number, FitDefinition>();
+  const records: FitRecord[] = [];
+  const sessions: FitAggregate[] = [];
+  const laps: FitAggregate[] = [];
+  const activities: FitAggregate[] = [];
+  const sports: FitAggregate[] = [];
+  let offset = dataStart;
+  let lastTimestamp: number | null = null;
+
+  while (offset < dataEnd) {
+    const header = view.getUint8(offset++);
+    const compressedTimestamp = header & 0x80 ? header & 0x1f : null;
+    const localMessageNumber = header & 0x80 ? (header >> 5) & 0x03 : header & 0x0f;
+
+    if (!(header & 0x80) && header & 0x40) {
+      const result = readFitDefinition(view, offset, dataEnd, header);
+      definitions.set(localMessageNumber, result.definition);
+      offset = result.offset;
+      continue;
+    }
+
+    const definition = definitions.get(localMessageNumber);
+    if (!definition) break;
+
+    const message: Record<number, number | string | null> = {};
+    for (const field of definition.fields) {
+      if (offset + field.size > dataEnd) throw new Error("Mensagem FIT incompleta");
+      message[field.fieldNumber] = decodeFitField(view, bytes, offset, field, definition.littleEndian);
+      offset += field.size;
+    }
+    offset += definition.developerBytes;
+
+    if (compressedTimestamp !== null && message[253] == null && lastTimestamp != null) {
+      const base = lastTimestamp - (lastTimestamp % 32);
+      const reconstructed = base + compressedTimestamp + (compressedTimestamp < lastTimestamp % 32 ? 32 : 0);
+      message[253] = reconstructed;
+    }
+
+    const timestamp = numberField(message, 253);
+    if (timestamp != null) lastTimestamp = timestamp;
+
+    const extracted = extractFitMessage(definition.globalMessageNumber, message);
+    if (!extracted) continue;
+    if (extracted.kind === "record") records.push(extracted.value);
+    if (extracted.kind === "session") sessions.push(extracted.value);
+    if (extracted.kind === "lap") laps.push(extracted.value);
+    if (extracted.kind === "activity") activities.push(extracted.value);
+    if (extracted.kind === "sport") sports.push(extracted.value);
+  }
 
   if (!sessions.length && !laps.length && !records.length) {
-    const detail = errors?.[0]?.message ? `: ${errors[0].message}` : "";
-    throw new Error(`FIT sem mensagens de treino reconhecidas${detail}`);
+    throw new Error("FIT sem sessões, voltas ou pontos de treino reconhecidos");
   }
 
-  const session = sessions[0];
-  const activity = activities[0];
-  const started_at =
-    readDate(session, ["startTime", "start_time"]) ??
-    readDate(laps[0], ["startTime", "start_time"]) ??
-    readDate(records[0], ["timestamp"]) ??
-    readDate(activity, ["timestamp"]) ??
-    new Date().toISOString();
+  const startSeconds = Math.min(
+    ...[...sessions.map((s) => s.startTime), ...laps.map((l) => l.startTime), ...records.map((r) => r.timestamp)]
+      .filter((value): value is number => typeof value === "number" && value > 0),
+  );
+  const fallbackStart = Number.isFinite(startSeconds) ? startSeconds : null;
+  const totalElapsed = positiveSum([...sessions.map((s) => s.totalElapsed ?? s.totalTimer), ...laps.map((l) => l.totalElapsed ?? l.totalTimer)]);
+  const endSeconds = Math.max(
+    ...[...sessions.map((s) => s.timestamp), ...laps.map((l) => l.timestamp), ...records.map((r) => r.timestamp)]
+      .filter((value): value is number => typeof value === "number" && value > 0),
+  );
 
-  const totalElapsed =
-    readNumber(session, ["totalElapsedTime", "total_elapsed_time"]) ??
-    readNumber(session, ["totalTimerTime", "total_timer_time"]) ??
-    laps.reduce(
-      (sum, lap) => sum + (readNumber(lap, ["totalElapsedTime", "total_elapsed_time", "totalTimerTime", "total_timer_time"]) ?? 0),
-      0,
-    );
+  const started_at = fitDateToIso(fallbackStart) ?? new Date().toISOString();
   const ended_at =
-    readDate(session, ["timestamp"]) ??
-    readDate(laps[laps.length - 1], ["timestamp"]) ??
-    readDate(records[records.length - 1], ["timestamp"]) ??
-    new Date(new Date(started_at).getTime() + (totalElapsed || 0) * 1000).toISOString();
+    fitDateToIso(Number.isFinite(endSeconds) ? endSeconds : null) ??
+    new Date(new Date(started_at).getTime() + (totalElapsed ?? 0) * 1000).toISOString();
 
-  const recHr = records
-    .map((record) => readNumber(record, ["heartRate", "heart_rate"]))
-    .filter((value): value is number => value !== null && value > 0);
-  const lapAvgHrs = laps
-    .map((lap) => readNumber(lap, ["avgHeartRate", "avg_heart_rate"]))
-    .filter((value): value is number => value !== null && value > 0);
-  const lapMaxHrs = laps
-    .map((lap) => readNumber(lap, ["maxHeartRate", "max_heart_rate"]))
-    .filter((value): value is number => value !== null && value > 0);
+  const recordDistances = records.map((r) => r.distance).filter((value): value is number => typeof value === "number" && value > 0);
+  let distance_m = positiveSum(sessions.map((s) => s.distance)) ?? positiveSum(laps.map((l) => l.distance));
+  if (!distance_m && recordDistances.length) distance_m = Math.max(...recordDistances);
+  if (!distance_m) {
+    const points = records.filter((r): r is FitRecord & { lat: number; lon: number } => r.lat != null && r.lon != null);
+    const gpsDistance = points.reduce((sum, point, index) => (index === 0 ? 0 : sum + haversineMeters(points[index - 1], point)), 0);
+    if (gpsDistance > 0) distance_m = gpsDistance;
+  }
+
+  const recordHrs = records.map((r) => r.heartRate).filter((value): value is number => typeof value === "number" && value > 0);
   const avg_hr =
-    readNumber(session, ["avgHeartRate", "avg_heart_rate"]) ??
-    (lapAvgHrs.length ? Math.round(lapAvgHrs.reduce((a, b) => a + b, 0) / lapAvgHrs.length) : null) ??
-    (recHr.length ? Math.round(recHr.reduce((a, b) => a + b, 0) / recHr.length) : null);
-  const max_hr =
-    readNumber(session, ["maxHeartRate", "max_heart_rate"]) ??
-    (lapMaxHrs.length ? Math.max(...lapMaxHrs) : null) ??
-    (recHr.length ? Math.max(...recHr) : null);
+    mean(sessions.map((s) => s.avgHr).filter((value): value is number => typeof value === "number" && value > 0)) ??
+    mean(laps.map((l) => l.avgHr).filter((value): value is number => typeof value === "number" && value > 0)) ??
+    mean(recordHrs);
+  const maxHrValues = [
+    ...sessions.map((s) => s.maxHr),
+    ...laps.map((l) => l.maxHr),
+    ...recordHrs,
+  ].filter((value): value is number => typeof value === "number" && value > 0);
 
-  let distance_m: number | null = null;
-  const sessionDistance = readNumber(session, ["totalDistance", "total_distance"]);
-  if (sessionDistance && sessionDistance > 0) distance_m = Math.round(sessionDistance);
-  if (!distance_m) {
-    const lapDist = laps.reduce((sum, lap) => sum + (readNumber(lap, ["totalDistance", "total_distance"]) ?? 0), 0);
-    if (lapDist > 0) distance_m = Math.round(lapDist);
-  }
-  if (!distance_m) {
-    const recDist = records
-      .map((record) => readNumber(record, ["distance"]))
-      .filter((value): value is number => value !== null && value > 0);
-    if (recDist.length) distance_m = Math.round(Math.max(...recDist));
-  }
-  if (!distance_m) {
-    const gpsPoints = records
-      .map((record) => {
-        const lat = readNumber(record, ["positionLat", "position_lat"]);
-        const lon = readNumber(record, ["positionLong", "position_long"]);
-        return lat !== null && lon !== null
-          ? { lat: fitSemicirclesToDegrees(lat), lon: fitSemicirclesToDegrees(lon) }
-          : null;
-      })
-      .filter((point): point is { lat: number; lon: number } => !!point);
-    const gpsDistance = gpsPoints.reduce(
-      (sum, point, index) => (index === 0 ? 0 : sum + haversineMeters(gpsPoints[index - 1], point)),
-      0,
-    );
-    if (gpsDistance > 0) distance_m = Math.round(gpsDistance);
-  }
-
-  let calories: number | null = readNumber(session, ["totalCalories", "total_calories"]);
-  if (calories == null) {
-    const lapCals = laps.reduce((sum, lap) => sum + (readNumber(lap, ["totalCalories", "total_calories"]) ?? 0), 0);
-    if (lapCals > 0) calories = Math.round(lapCals);
-  }
-
-  const activity_type =
-    (firstValue(session?.sport) as string | undefined) ??
-    (firstValue(laps[0]?.sport) as string | undefined) ??
-    (firstValue(activity?.type) as string | undefined) ??
-    null;
+  const sportCode = firstPositive([...sessions.map((s) => s.sport), ...laps.map((l) => l.sport), ...sports.map((s) => s.sport)]);
 
   return {
     started_at,
     ended_at,
-    activity_type,
-    distance_m: distance_m ?? null,
-    avg_hr: avg_hr ?? null,
-    max_hr: max_hr ?? null,
-    calories: calories ?? null,
+    activity_type: sportCodeToActivity(sportCode),
+    distance_m: distance_m ? Math.round(distance_m) : null,
+    avg_hr,
+    max_hr: maxHrValues.length ? Math.max(...maxHrValues) : null,
+    calories: positiveSum(sessions.map((s) => s.calories)) ?? positiveSum(laps.map((l) => l.calories)),
     source: "import_fit",
   };
 }
