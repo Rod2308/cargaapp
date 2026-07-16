@@ -19,6 +19,9 @@ export default defineConfig({
       nodePolyfills({
         include: ["buffer"],
         globals: { Buffer: true },
+        protocolImports: false,
+        // SSR/Worker runtime already has Buffer via nodejs_compat; only polyfill the browser bundle.
+        exclude: ["fs", "path", "crypto", "stream", "url", "events", "http", "https", "zlib", "net"],
       }),
       imagetools(),
       mcpPlugin(),
