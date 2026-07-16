@@ -16,7 +16,6 @@
     "@ai-sdk/google": "^4.0.10",
     "@ai-sdk/openai": "^4.0.9",
     "@ai-sdk/openai-compatible": "^3.0.5",
-    "@garmin/fitsdk": "^21.208.0",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/mcp-js": "^0.20.0",
