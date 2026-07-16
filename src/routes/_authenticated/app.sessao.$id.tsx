@@ -205,15 +205,26 @@ function SessionPage() {
         <ArrowLeft className="size-4" /> Voltar
       </Link>
       <div className="mt-3">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Sessão em andamento</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          {session.source && session.source !== "manual" ? "Treino importado" : "Sessão em andamento"}
+        </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
-          {session.workouts ? `${session.workouts.label} — ${session.workouts.name}` : "Treino livre"}
+          {session.workouts
+            ? `${session.workouts.label} — ${session.workouts.name}`
+            : session.source && session.source !== "manual" && session.activity_type
+              ? translateActivityType(session.activity_type)
+              : "Treino livre"}
         </h1>
         <ElapsedTimer startedAt={session.started_at} endedAt={session.ended_at} />
       </div>
 
+      {session.source && session.source !== "manual" && (
+        <ImportedMetrics session={session} />
+      )}
+
       {/* Ações principais */}
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="lg" className="h-12 w-full gap-2 shadow-md">
