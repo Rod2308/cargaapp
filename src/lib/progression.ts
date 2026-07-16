@@ -52,22 +52,64 @@ export function computeCardioFatigue(loads: CardioLoad[], now: Date = new Date()
   const durationMin = (l: CardioLoad) =>
     l.ended_at ? Math.max(0, (new Date(l.ended_at).getTime() - new Date(l.started_at).getTime()) / 60000) : 0;
 
-  const intense = recent.some(
-    (l) =>
-      (l.avg_hr != null && l.avg_hr >= 150) ||
-      (l.max_hr != null && l.max_hr >= 175) ||
-      (durationMin(l) >= 60 && (l.avg_hr ?? 0) >= 130),
-  );
-  const moderateCount = recent.filter((l) => (l.avg_hr ?? 0) >= 130).length;
+  // Pace em min/km (menor = mais rápido = mais intenso). Só faz sentido p/ atividades com deslocamento.
+  const paceMinPerKm = (l: CardioLoad) => {
+    const dur = durationMin(l);
+    if (!l.distance_m || l.distance_m < 500 || dur <= 0) return null;
+    return dur / (l.distance_m / 1000);
+  };
+
+  // Sinais de intensidade por sessão: FC alta OU longa duração em FC moderada OU ritmo rápido OU longa distância.
+  const isIntense = (l: CardioLoad) => {
+    if (l.avg_hr != null && l.avg_hr >= 150) return true;
+    if (l.max_hr != null && l.max_hr >= 175) return true;
+    if (durationMin(l) >= 60 && (l.avg_hr ?? 0) >= 130) return true;
+    const pace = paceMinPerKm(l);
+    // Ritmo <5:00/km em corrida/bike é sinal de esforço alto mesmo sem FC.
+    if (pace != null && pace <= 5 && (l.distance_m ?? 0) >= 3000) return true;
+    // Volume alto de endurance (>15 km) também conta como carga significativa.
+    if ((l.distance_m ?? 0) >= 15000) return true;
+    return false;
+  };
+
+  const isModerate = (l: CardioLoad) => {
+    if ((l.avg_hr ?? 0) >= 130) return true;
+    const pace = paceMinPerKm(l);
+    if (pace != null && pace <= 6.5 && (l.distance_m ?? 0) >= 3000) return true;
+    if ((l.distance_m ?? 0) >= 8000) return true;
+    if (durationMin(l) >= 45) return true;
+    return false;
+  };
+
+  const intense = recent.some(isIntense);
+  const moderateCount = recent.filter(isModerate).length;
+
+  const describe = (l: CardioLoad) => {
+    const parts: string[] = [];
+    if (l.avg_hr) parts.push(`FC média ${l.avg_hr}`);
+    if (l.max_hr) parts.push(`máx ${l.max_hr}`);
+    const pace = paceMinPerKm(l);
+    if (pace != null) {
+      const m = Math.floor(pace);
+      const s = Math.round((pace - m) * 60).toString().padStart(2, "0");
+      parts.push(`ritmo ${m}:${s}/km`);
+    }
+    if (l.distance_m && l.distance_m >= 1000) parts.push(`${(l.distance_m / 1000).toFixed(1)} km`);
+    const dur = durationMin(l);
+    if (dur >= 20) parts.push(`${Math.round(dur)} min`);
+    return parts.join(" · ") || "alto volume";
+  };
 
   if (intense) {
-    const worst = recent.reduce((best, l) => ((l.avg_hr ?? 0) > (best.avg_hr ?? 0) ? l : best), recent[0]);
-    const parts: string[] = [];
-    if (worst.avg_hr) parts.push(`FC média ${worst.avg_hr}`);
-    if (worst.max_hr) parts.push(`máx ${worst.max_hr}`);
+    // Escolhe a sessão "pior" — prioriza FC alta, cai para ritmo mais rápido, e depois maior distância.
+    const worst = recent.reduce((best, l) => {
+      const score = (l.avg_hr ?? 0) * 10 + (l.max_hr ?? 0) + (l.distance_m ?? 0) / 1000;
+      const bestScore = (best.avg_hr ?? 0) * 10 + (best.max_hr ?? 0) + (best.distance_m ?? 0) / 1000;
+      return score > bestScore ? l : best;
+    }, recent[0]);
     return {
       level: "high",
-      summary: `Cardio intenso nos últimos 7 dias (${parts.join(" · ") || "alto volume"})`,
+      summary: `Cardio intenso nos últimos 7 dias (${describe(worst)})`,
       count: recent.length,
     };
   }
@@ -80,6 +122,7 @@ export function computeCardioFatigue(loads: CardioLoad[], now: Date = new Date()
   }
   return { level: "none", summary: null, count: recent.length };
 }
+
 
 export type Suggestion = {
   suggested_weight_kg: number | null;
