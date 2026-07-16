@@ -155,7 +155,8 @@ function parseTcx(text: string): ParsedWorkout {
 async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
   // Buffer polyfill MUST be installed on globalThis BEFORE fit-file-parser is
   // evaluated — the library references the Buffer global at module load time.
-  const { Buffer: BufferPolyfill } = await import("buffer");
+  const bufferMod: any = await import("buffer");
+  const BufferPolyfill: any = bufferMod.Buffer ?? bufferMod.default?.Buffer ?? bufferMod.default;
   if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
     (globalThis as any).Buffer = BufferPolyfill;
   }
