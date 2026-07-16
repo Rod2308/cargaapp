@@ -61,7 +61,7 @@ function PerfilPage() {
     await qc.cancelQueries();
     qc.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    navigate({ to: "/auth", search: { next: "" }, replace: true });
   }
 
   if (!profile) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
