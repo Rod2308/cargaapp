@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon } from "lucide-react";
+import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon, Sparkles } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
+import { suggestTodayWorkout, type TodaySuggestion } from "@/lib/today-suggestion.functions";
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
@@ -142,6 +143,22 @@ function Dashboard() {
     refetchOnWindowFocus: true,
     retry: false,
   });
+
+  // Sugestão IA do treino de hoje
+  const fetchTodaySuggestion = useServerFn(suggestTodayWorkout);
+  const {
+    data: todaySuggestion,
+    isFetching: suggestionLoading,
+    refetch: refetchSuggestion,
+  } = useQuery({
+    queryKey: ["today-suggestion", user.id, todayStr],
+    queryFn: () => fetchTodaySuggestion(),
+    staleTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+
 
 
 
@@ -292,6 +309,13 @@ function Dashboard() {
         recovery={recovery}
         loading={recoveryLoading}
         onRefresh={() => refetchRecovery()}
+      />
+
+      {/* Sugestão IA do treino de hoje */}
+      <TodaySuggestionCard
+        suggestion={todaySuggestion}
+        loading={suggestionLoading}
+        onRefresh={() => refetchSuggestion()}
       />
 
       {/* Ciclo menstrual (se ativado) */}
