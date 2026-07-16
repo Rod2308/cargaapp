@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon, Sparkles } from "lucide-react";
+import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
-import { suggestTodayWorkout, type TodaySuggestion } from "@/lib/today-suggestion.functions";
+
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
@@ -144,19 +144,8 @@ function Dashboard() {
     retry: false,
   });
 
-  // Sugestão IA do treino de hoje
-  const fetchTodaySuggestion = useServerFn(suggestTodayWorkout);
-  const {
-    data: todaySuggestion,
-    isFetching: suggestionLoading,
-    refetch: refetchSuggestion,
-  } = useQuery({
-    queryKey: ["today-suggestion", user.id, todayStr],
-    queryFn: () => fetchTodaySuggestion(),
-    staleTime: 1000 * 60 * 60,
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
+
+
 
 
 
@@ -311,12 +300,7 @@ function Dashboard() {
         onRefresh={() => refetchRecovery()}
       />
 
-      {/* Sugestão IA do treino de hoje */}
-      <TodaySuggestionCard
-        suggestion={todaySuggestion}
-        loading={suggestionLoading}
-        onRefresh={() => refetchSuggestion()}
-      />
+
 
       {/* Ciclo menstrual (se ativado) */}
       <CycleCard profile={profile} />
@@ -962,74 +946,4 @@ function CycleCard({ profile }: { profile: any }) {
   );
 }
 
-function TodaySuggestionCard({
-  suggestion,
-  loading,
-  onRefresh,
-}: {
-  suggestion: TodaySuggestion | undefined;
-  loading: boolean;
-  onRefresh: () => void;
-}) {
-  const intensityStyle: Record<TodaySuggestion["intensity"], { bar: string; badge: string; label: string }> = {
-    leve: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", label: "Leve" },
-    moderada: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Moderada" },
-    alta: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400", label: "Alta" },
-    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Descanso" },
-  };
-  const s = suggestion ? intensityStyle[suggestion.intensity] : intensityStyle.moderada;
 
-  return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
-      <span className={`absolute inset-y-0 left-0 w-1 ${s.bar}`} aria-hidden />
-      <div className="flex items-start gap-3 pl-2">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${s.badge}`}>
-          <Sparkles className="size-4" strokeWidth={2.5} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <p className="text-eyebrow uppercase text-muted-foreground">Sugestão de hoje · IA</p>
-              {suggestion && (
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.badge}`}>
-                  {s.label}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-              aria-label="Recalcular sugestão"
-            >
-              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          {loading && !suggestion ? (
-            <p className="mt-1 text-sm text-muted-foreground">Analisando seu histórico, sono e recuperação…</p>
-          ) : suggestion ? (
-            <>
-              <p className="mt-2 font-display text-base leading-snug text-foreground sm:text-lg">
-                {suggestion.muscle_groups}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-foreground">
-                  {suggestion.workout_type}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 font-semibold ${s.badge}`}>
-                  Intensidade {s.label.toLowerCase()}
-                </span>
-              </div>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                {suggestion.justification}
-              </p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Sem sugestão disponível.</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
