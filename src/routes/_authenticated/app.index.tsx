@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon } from "lucide-react";
+import { Play, Plus, Flame, Calendar as CalendarIcon, Dumbbell, Quote, Trophy, HeartPulse, RefreshCw, Moon, Pencil } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -60,7 +60,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("sessions")
-        .select("id, started_at, ended_at, notes, workout_id, workouts(name, label), session_sets(reps, weight_kg, exercises(name, muscle_group))")
+        .select("id, started_at, ended_at, notes, workout_id, title, source, activity_type, distance_m, workouts(name, label), session_sets(reps, weight_kg, exercises(name, muscle_group))")
         .eq("user_id", user.id)
         .order("started_at", { ascending: false })
         .limit(5);
@@ -260,6 +260,24 @@ function Dashboard() {
   const workoutSugeridoId = planoOuGeral.workoutId;
 
   const [checkinEditOpen, setCheckinEditOpen] = useState(false);
+
+  // Renomear sessão inline nas "Últimas sessões"
+  const qcRoot = useQueryClient();
+  const [renaming, setRenaming] = useState<{ id: string; current: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameSession = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string | null }) => {
+      const { error } = await supabase.from("sessions").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Nome atualizado");
+      setRenaming(null);
+      qcRoot.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qcRoot.invalidateQueries({ queryKey: ["history-sessions"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
 
 
@@ -649,6 +667,19 @@ function Dashboard() {
                         Cardio
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = sessionTitle(s);
+                        setRenameValue(s.title ?? current);
+                        setRenaming({ id: s.id, current });
+                      }}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      aria-label="Renomear sessão"
+                      title="Renomear"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarIcon className="size-3" />
@@ -678,6 +709,56 @@ function Dashboard() {
         )}
       </section>
       </div>
+
+      {/* Dialog de renomear sessão */}
+      <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear sessão</DialogTitle>
+          </DialogHeader>
+          {renaming && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Nome atual: <span className="font-medium text-foreground">{renaming.current}</span>
+              </p>
+              <Input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value.slice(0, 80))}
+                placeholder="Ex: Corrida no parque, Treino de peito…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renaming) {
+                    const v = renameValue.trim();
+                    renameSession.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+                  }
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Deixe em branco para restaurar o nome automático.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => renaming && renameSession.mutate({ id: renaming.id, title: null })}
+              disabled={renameSession.isPending}
+            >
+              Restaurar padrão
+            </Button>
+            <Button
+              onClick={() => {
+                if (!renaming) return;
+                const v = renameValue.trim();
+                renameSession.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+              }}
+              disabled={renameSession.isPending}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

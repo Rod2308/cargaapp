@@ -95,6 +95,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
   const save = useMutation({
     mutationFn: async () => {
       if (!parsed) throw new Error("Nada para salvar");
+      const cleanName = fileName ? fileName.replace(/\.[^.]+$/, "").trim().slice(0, 80) : null;
       const { error } = await supabase.from("sessions").insert({
         user_id: userId,
         workout_id: workoutId === "none" ? null : workoutId,
@@ -107,6 +108,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
         calories: parsed.calories,
         source: parsed.source,
         notes: notes.trim() || null,
+        title: cleanName || null,
       });
       if (error) throw error;
     },
