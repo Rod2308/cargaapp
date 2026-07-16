@@ -14,6 +14,11 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    resolve: {
+      alias: {
+        buffer: "buffer/",
+      },
+    },
     plugins: [
       imagetools(),
       mcpPlugin(),
