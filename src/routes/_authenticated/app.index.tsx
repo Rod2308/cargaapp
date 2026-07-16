@@ -642,8 +642,13 @@ function Dashboard() {
             {recent.map((s: any) => (
               <li key={s.id} className="card-lift flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <p className="truncate font-display text-sm font-bold">
-                    {sessionTitle(s)}
+                  <p className="flex items-center gap-2 truncate font-display text-sm font-bold">
+                    <span className="truncate">{sessionTitle(s)}</span>
+                    {isCardioSession(s) && (
+                      <span className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                        Cardio
+                      </span>
+                    )}
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarIcon className="size-3" />
