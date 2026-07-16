@@ -19,6 +19,7 @@ export function DailyCheckinCard({
   userId,
   todayStr,
   initial,
+  onSaved,
 }: {
   userId: string;
   todayStr: string;
@@ -28,6 +29,7 @@ export function DailyCheckinCard({
     soreness: number;
     energy: number;
   } | null;
+  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
   const [sleepHours, setSleepHours] = useState<string>(initial?.sleep_hours?.toString() ?? "7.5");
