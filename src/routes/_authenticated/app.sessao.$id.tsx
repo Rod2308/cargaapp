@@ -111,19 +111,61 @@ function SessionPage() {
   });
 
   const finish = useMutation({
-    mutationFn: async (effort: number | null) => {
+    mutationFn: async ({ effort, discomfort }: { effort: number | null; discomfort: string }) => {
       const endedAt = new Date();
+      const trimmed = discomfort.trim();
+      const patch: Record<string, any> = {
+        ended_at: endedAt.toISOString(),
+        perceived_effort: effort,
+      };
+      if (trimmed) {
+        const prev = (session?.notes ?? "").trim();
+        const marca = `[Desconforto no treino] ${trimmed}`;
+        patch.notes = prev ? `${prev}\n\n${marca}` : marca;
+      }
       await enqueueOp({
         kind: "update",
         table: "sessions",
         match: { id },
-        patch: { ended_at: endedAt.toISOString(), perceived_effort: effort },
+        patch,
       });
+
+      // Envia a queixa para o(s) treinador(es) vinculado(s)
+      if (trimmed) {
+        try {
+          const { data: userRes } = await supabase.auth.getUser();
+          const uid = userRes.user?.id;
+          if (uid) {
+            const { data: links } = await supabase
+              .from("trainer_students")
+              .select("trainer_id")
+              .eq("student_id", uid);
+            const trainers = (links ?? []).map((l: any) => l.trainer_id).filter(Boolean);
+            if (trainers.length > 0) {
+              const nomeTreino = session?.workouts?.label
+                ? `Treino ${session.workouts.label}${session.workouts.name ? ` — ${session.workouts.name}` : ""}`
+                : session?.title || "treino";
+              const rpeTxt = effort ? ` (RPE ${effort}/10)` : "";
+              const content = `🩺 Desconforto relatado ao finalizar ${nomeTreino}${rpeTxt}:\n\n"${trimmed}"`;
+              const rows = trainers.map((tid) => ({
+                sender_id: uid,
+                receiver_id: tid,
+                content,
+              }));
+              const { error: msgErr } = await supabase.from("messages").insert(rows);
+              if (msgErr) console.error("Falha ao notificar treinador:", msgErr);
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao enviar queixa ao treinador:", e);
+        }
+      }
+
       const startedAt = session?.started_at ? new Date(session.started_at) : endedAt;
       const mins = Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
-      return { mins };
+      return { mins, notified: !!trimmed };
     },
-    onSuccess: ({ mins }) => {
+    onSuccess: ({ mins, notified }) => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -131,7 +173,11 @@ function SessionPage() {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
-      toast.success(`Treino finalizado — ${label} registrados`);
+      toast.success(
+        notified
+          ? `Treino finalizado — ${label} registrados. Queixa enviada ao treinador.`
+          : `Treino finalizado — ${label} registrados`,
+      );
       navigate({ to: "/app" });
     },
   });
@@ -239,7 +285,7 @@ function SessionPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <EffortPicker
-              onConfirm={(n) => finish.mutate(n)}
+              onConfirm={(effort, discomfort) => finish.mutate({ effort, discomfort })}
               pending={finish.isPending}
             />
           </AlertDialogContent>
@@ -481,8 +527,10 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
   );
 }
 
-function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) => void; pending: boolean }) {
+function EffortPicker({ onConfirm, pending }: { onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
   const [effort, setEffort] = useState<number | null>(null);
+  const [discomfort, setDiscomfort] = useState<string>("");
+  const MAX = 500;
   return (
     <>
       <div>
@@ -506,9 +554,32 @@ function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) =>
           ))}
         </div>
       </div>
+
+      <div className="mt-4">
+        <label htmlFor="discomfort" className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span>Desconforto ou dor durante o treino (opcional)</span>
+          <span className="normal-case tracking-normal text-[10px] text-muted-foreground/70">
+            {discomfort.length}/{MAX}
+          </span>
+        </label>
+        <textarea
+          id="discomfort"
+          value={discomfort}
+          onChange={(e) => setDiscomfort(e.target.value.slice(0, MAX))}
+          rows={3}
+          placeholder="Ex: dor leve no ombro direito ao pressionar acima da cabeça, estalo no joelho no agachamento…"
+          className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-brand/40"
+        />
+        {discomfort.trim().length > 0 && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Sua queixa será enviada ao seu treinador junto do registro do treino.
+          </p>
+        )}
+      </div>
+
       <AlertDialogFooter>
         <AlertDialogCancel>Voltar</AlertDialogCancel>
-        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort)}>
+        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort, discomfort)}>
           <Flag className="size-4" /> Finalizar
         </AlertDialogAction>
       </AlertDialogFooter>
