@@ -21,6 +21,14 @@ import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
+import { DailyCheckinCard } from "@/components/DailyCheckinCard";
+import { DailySuggestionCard } from "@/components/DailySuggestionCard";
+import {
+  sugerirTreinoDoDia,
+  melhorWorkoutParaSugestao,
+  type WorkoutSession,
+  type ExtraActivity,
+} from "@/lib/daily-suggestion";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   component: Dashboard,
