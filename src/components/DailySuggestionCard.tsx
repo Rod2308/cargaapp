@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, RefreshCw, ClipboardCheck } from "lucide-react";
+import { Sparkles, Play, RefreshCw, ClipboardCheck, HeartPulse, Moon, Flame, Battery, Activity, CalendarDays } from "lucide-react";
 import type { Sugestao, Intensidade } from "@/lib/daily-suggestion";
 import { MUSCLE_LABEL } from "@/lib/daily-suggestion";
 
@@ -9,6 +9,28 @@ const INTENSITY_STYLES: Record<Intensidade, { bar: string; badge: string; label:
   alta: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Alta" },
   descanso: { bar: "bg-muted-foreground", badge: "bg-muted text-muted-foreground", label: "Descanso" },
 };
+
+function scoreTone(score: number) {
+  if (score >= 7) return { label: "Boa", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" };
+  if (score >= 5) return { label: "Moderada", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400", bar: "bg-amber-500" };
+  return { label: "Baixa", cls: "bg-destructive/15 text-destructive", bar: "bg-destructive" };
+}
+
+function cardioTone(nivel: "baixa" | "media" | "alta") {
+  if (nivel === "alta") return "bg-destructive/15 text-destructive";
+  if (nivel === "media") return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+  return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
+}
+
+function Chip({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone?: string }) {
+  return (
+    <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${tone ?? "bg-secondary text-foreground"}`}>
+      <span className="grid size-3.5 place-items-center opacity-80">{icon}</span>
+      <span className="opacity-70">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}
 
 export function DailySuggestionCard({
   sugestao,
