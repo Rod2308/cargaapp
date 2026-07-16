@@ -75,7 +75,7 @@ export function DailySuggestionCard({
             {sugestao.gruposLiberados.length > 0 && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 <b>Liberados:</b>{" "}
-                {sugestao.gruposLiberados.map((g) => `${MUSCLE_LABEL[g.grupo]} (${g.diasParado}d)`).join(", ")}
+                {sugestao.gruposLiberados.map((g) => `${MUSCLE_LABEL[g.grupo]} (${Number.isFinite(g.diasParado) ? `${g.diasParado}d` : "novo"})`).join(", ")}
               </p>
             )}
             <p className="mt-1 text-[11px] text-muted-foreground">
