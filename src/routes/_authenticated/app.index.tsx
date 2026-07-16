@@ -25,6 +25,7 @@ import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import {
   sugerirTreinoDoDia,
+  sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   type WorkoutSession,
   type ExtraActivity,
