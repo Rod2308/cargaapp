@@ -206,7 +206,7 @@ function Landing() {
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link to="/privacidade" className="hover:text-foreground">Política de Privacidade</Link>
             <Link to="/termos" className="hover:text-foreground">Termos de Uso</Link>
-            <Link to="/auth" className="hover:text-foreground">Entrar</Link>
+            <Link to="/auth" search={{ next: "" }} className="hover:text-foreground">Entrar</Link>
           </nav>
         </div>
       </footer>
