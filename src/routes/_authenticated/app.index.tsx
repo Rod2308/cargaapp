@@ -947,5 +947,3 @@ function CycleCard({ profile }: { profile: any }) {
 }
 
 
-  );
-}
