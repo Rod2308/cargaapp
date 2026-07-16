@@ -51,6 +51,52 @@ function isImported(s: SessionLike): boolean {
   return !!s.source && s.source !== "manual";
 }
 
+// Atividades consideradas cardio (aeróbicas / esportes contínuos).
+const CARDIO_ACTIVITY_KEYWORDS = [
+  "corrida", "corrid", "run",
+  "caminhada", "caminh", "walk", "hik", "trilha",
+  "ciclism", "bike", "cycl", "pedal",
+  "natacao", "natação", "swim",
+  "futebol", "society", "fut ",
+  "volei", "vôlei", "volley",
+  "basquete", "basket",
+  "tenis", "tênis", "tennis",
+  "handebol", "handball",
+  "boxe", "muay", "kickbox", "jiu",
+  "crossfit", "hiit",
+  "danca", "dança", "zumba",
+  "remo", "row",
+  "eliptico", "elíptico", "elliptical",
+  "escalada", "climb",
+  "patins", "skate",
+  "surf",
+];
+
+const CARDIO_ACTIVITY_TYPES = new Set([
+  "running", "run", "cycling", "biking", "bike", "walking", "walk",
+  "hiking", "swimming", "swim", "rowing", "row", "elliptical", "cardio",
+]);
+
+function normalize(str: string): string {
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+export function isCardioSession(s: SessionLike): boolean {
+  // Atividades importadas com activity_type conhecido
+  if (s.activity_type && CARDIO_ACTIVITY_TYPES.has(s.activity_type.toLowerCase())) return true;
+  // Distância registrada = corrida/caminhada/pedal
+  if ((s.distance_m ?? 0) > 0) return true;
+  // Treino livre com exercício do grupo "Esportes"
+  const ex = firstExercise(s);
+  if (ex?.muscle_group === "Esportes") return true;
+  // Nomes conhecidos no exercício ou no título/atividade
+  const haystack = normalize(
+    [ex?.name ?? "", s.title ?? "", s.activity_type ?? ""].join(" "),
+  );
+  if (haystack.trim() && CARDIO_ACTIVITY_KEYWORDS.some((k) => haystack.includes(k))) return true;
+  return false;
+}
+
 export function sessionTitle(s: SessionLike): string {
   if (s.title && s.title.trim()) return s.title.trim();
   if (s.workouts?.name) {

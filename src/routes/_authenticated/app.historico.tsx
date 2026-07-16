@@ -29,7 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
-import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
+import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
@@ -236,6 +236,11 @@ function HistoryPage() {
                           {imported && (
                             <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                               Importado
+                            </span>
+                          )}
+                          {isCardioSession(s) && (
+                            <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                              Cardio
                             </span>
                           )}
                         </p>
