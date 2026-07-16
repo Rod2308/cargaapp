@@ -827,3 +827,72 @@ function ImportedMetrics({ session }: { session: any }) {
     </div>
   );
 }
+
+function RestEditor({ seconds, onSave }: { seconds: number; onSave: (s: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState<string>(String(seconds));
+  useEffect(() => { setVal(String(seconds)); }, [seconds]);
+  const PRESETS = [30, 45, 60, 90, 120, 180];
+  function commit(next: number) {
+    const clamped = Math.max(5, Math.min(600, Math.round(next)));
+    if (clamped !== seconds) onSave(clamped);
+    setOpen(false);
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background/60 px-2 py-0.5 text-xs font-medium text-foreground hover:border-brand hover:text-brand"
+          aria-label="Editar tempo de descanso"
+        >
+          <Timer className="size-3" /> descanso {seconds}s
+          <Pencil className="size-2.5 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Tempo de descanso
+          </p>
+          <p className="text-[11px] text-muted-foreground">Entre 5 e 600 segundos.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={5}
+            max={600}
+            step={5}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit(Number(val) || seconds);
+            }}
+            className="h-9"
+            aria-label="Segundos de descanso"
+          />
+          <span className="text-xs text-muted-foreground">s</span>
+          <Button size="sm" onClick={() => commit(Number(val) || seconds)}>
+            Salvar
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => commit(p)}
+              className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                p === seconds
+                  ? "border-brand bg-brand/10 text-brand"
+                  : "border-border bg-background hover:bg-muted"
+              }`}
+            >
+              {p}s
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
