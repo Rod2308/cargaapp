@@ -261,6 +261,24 @@ function Dashboard() {
 
   const [checkinEditOpen, setCheckinEditOpen] = useState(false);
 
+  // Renomear sessão inline nas "Últimas sessões"
+  const qcRoot = useQueryClient();
+  const [renaming, setRenaming] = useState<{ id: string; current: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameSession = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string | null }) => {
+      const { error } = await supabase.from("sessions").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Nome atualizado");
+      setRenaming(null);
+      qcRoot.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qcRoot.invalidateQueries({ queryKey: ["history-sessions"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
 
   // Sono — últimos 7 dias e log de hoje
