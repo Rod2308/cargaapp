@@ -99,6 +99,22 @@ function SessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateRest = useMutation({
+    mutationFn: async ({ itemId, seconds }: { itemId: string; seconds: number }) => {
+      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
+        prev.map((it) => (it.id === itemId ? { ...it, target_rest_seconds: seconds } : it)),
+      );
+      await enqueueOp({
+        kind: "update",
+        table: "workout_exercises",
+        match: { id: itemId },
+        patch: { target_rest_seconds: seconds },
+      });
+      toast.success(`Descanso ajustado para ${seconds}s`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteSet = useMutation({
     mutationFn: async (setId: string) => {
       qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
