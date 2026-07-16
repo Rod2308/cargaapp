@@ -237,7 +237,23 @@ function Dashboard() {
       return { id: w.id, label: w.label, name: w.name, muscle_groups: guesses };
     });
     const wid = geral.grupos.length > 0 ? melhorWorkoutParaSugestao(wList, geral.grupos) : null;
-    return { suggestion: geral, workoutId: wid };
+    // Alinha os grupos exibidos aos grupos reais do treino do plano escolhido —
+    // evita sugerir combinações (ex: Ombro + Tríceps) que não existem no split do usuário.
+    let ajustada = geral;
+    if (wid) {
+      const w = wList.find((x) => x.id === wid);
+      if (w && w.muscle_groups.length > 0) {
+        const map: Record<string, typeof geral.grupos[number]> = {
+          Peito: "peito", Costas: "costas", Pernas: "pernas", Ombro: "ombro",
+          "Bíceps": "biceps", "Tríceps": "triceps", "Glúteo": "gluteo", "Abdômen": "abdomen",
+        };
+        const gruposReais = Array.from(new Set(w.muscle_groups.map((g) => map[g]).filter(Boolean)));
+        if (gruposReais.length > 0) {
+          ajustada = { ...geral, grupos: gruposReais as typeof geral.grupos };
+        }
+      }
+    }
+    return { suggestion: ajustada, workoutId: wid };
   }, [todayCheckin, last7Sessions, workouts]);
 
   const suggestion = planoOuGeral.suggestion;
