@@ -24,10 +24,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell } from "lucide-react";
+import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RestTimer } from "@/components/RestTimer";
+import { translateActivityType } from "@/lib/workout-file-parser";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/app/sessao/$id")({
   component: SessionPage,
