@@ -144,19 +144,8 @@ function Dashboard() {
     retry: false,
   });
 
-  // Sugestão IA do treino de hoje
-  const fetchTodaySuggestion = useServerFn(suggestTodayWorkout);
-  const {
-    data: todaySuggestion,
-    isFetching: suggestionLoading,
-    refetch: refetchSuggestion,
-  } = useQuery({
-    queryKey: ["today-suggestion", user.id, todayStr],
-    queryFn: () => fetchTodaySuggestion(),
-    staleTime: 1000 * 60 * 60,
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
+
+
 
 
 
