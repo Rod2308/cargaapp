@@ -46,7 +46,7 @@ function mean(values: number[]): number | null {
 }
 
 function positiveSum(values: Array<number | null | undefined>): number | null {
-  const total = values.reduce((sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0), 0);
+  const total = values.reduce<number>((sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0), 0);
   return total > 0 ? total : null;
 }
 
