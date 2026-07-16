@@ -1,7 +1,7 @@
 // Parses .gpx / .tcx (XML) and .fit (binary) workout files entirely in the browser.
 // Returns a normalized shape suitable for inserting into `public.sessions`.
 //
-// `fit-file-parser` (~833KB) is heavy and only needed when the user actually
+// `@garmin/fitsdk` is only needed when the user actually
 // drops a .fit file. It is dynamically imported inside `parseFit()` so the
 // historico route bundle stays small.
 
@@ -36,6 +36,35 @@ function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon:
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+function asArray<T = any>(value: T | T[] | null | undefined): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function firstValue(value: unknown): unknown {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function readNumber(source: any, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = firstValue(source?.[key]);
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function readDate(source: any, keys: string[]): string | null {
+  for (const key of keys) {
+    const iso = toIso(firstValue(source?.[key]) as Date | string | number | undefined | null);
+    if (iso) return iso;
+  }
+  return null;
+}
+
+function fitSemicirclesToDegrees(value: number): number {
+  return (value * 180) / 2 ** 31;
 }
 
 // ----------------- GPX -----------------
@@ -155,112 +184,124 @@ function parseTcx(text: string): ParsedWorkout {
 // Tolerant to alternative FIT layouts (Garmin, Wahoo, Coros, Suunto, Zwift,
 // Polar, Stryd etc.): sessions/laps/records may be missing individually.
 async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
-  const { default: FitParser } = await import("fit-file-parser");
-  return new Promise((resolve, reject) => {
-    const parser = new FitParser({
-      force: true,
-      speedUnit: "m/s",
-      lengthUnit: "m",
-      elapsedRecordField: true,
-      mode: "both",
-    });
-    parser.parse(buffer as any, (err: string | undefined, data: any) => {
-      if (err) return reject(new Error(`Falha ao ler .fit: ${err}`));
-      try {
-        const sessions: any[] = Array.isArray(data.sessions)
-          ? data.sessions
-          : data.sessions
-            ? [data.sessions]
-            : [];
-        const laps: any[] = Array.isArray(data.laps)
-          ? data.laps
-          : data.laps
-            ? [data.laps]
-            : sessions.flatMap((s: any) => s?.laps ?? []);
-        const records: any[] = Array.isArray(data.records)
-          ? data.records
-          : sessions.flatMap((s: any) => s?.records ?? []).concat(
-              laps.flatMap((l: any) => l?.records ?? []),
-            );
-        const session = sessions[0];
-        const activity = data.activity;
+  const { Decoder, Stream } = await import("@garmin/fitsdk");
+  const stream = Stream.fromArrayBuffer(buffer);
+  const decoder = new Decoder(stream);
 
-        const started_at =
-          toIso(session?.start_time) ??
-          toIso(laps[0]?.start_time) ??
-          toIso(activity?.timestamp) ??
-          toIso(records[0]?.timestamp) ??
-          new Date().toISOString();
+  if (!decoder.isFIT()) throw new Error("Arquivo FIT inválido ou corrompido");
 
-        const totalElapsed =
-          session?.total_elapsed_time ??
-          session?.total_timer_time ??
-          laps.reduce((a, l) => a + (l?.total_elapsed_time ?? l?.total_timer_time ?? 0), 0);
-        const ended_at =
-          toIso(session?.timestamp) ??
-          toIso(laps[laps.length - 1]?.timestamp) ??
-          toIso(records[records.length - 1]?.timestamp) ??
-          new Date(new Date(started_at).getTime() + (totalElapsed || 0) * 1000).toISOString();
-
-        // Heart rate: prefer session/lap aggregates, fall back to records.
-        const recHr = records
-          .map((r) => r.heart_rate)
-          .filter((h: number) => typeof h === "number" && h > 0);
-        const lapAvgHrs = laps.map((l) => l?.avg_heart_rate).filter((n) => typeof n === "number" && n > 0);
-        const lapMaxHrs = laps.map((l) => l?.max_heart_rate).filter((n) => typeof n === "number" && n > 0);
-        const avg_hr =
-          session?.avg_heart_rate ??
-          (lapAvgHrs.length ? Math.round(lapAvgHrs.reduce((a, b) => a + b, 0) / lapAvgHrs.length) : null) ??
-          (recHr.length ? Math.round(recHr.reduce((a: number, b: number) => a + b, 0) / recHr.length) : null);
-        const max_hr =
-          session?.max_heart_rate ??
-          (lapMaxHrs.length ? Math.max(...lapMaxHrs) : null) ??
-          (recHr.length ? Math.max(...(recHr as number[])) : null);
-
-        // Distance: session → laps sum → cumulative from records (some Coros/Stryd only fill records).
-        let distance_m: number | null = session?.total_distance ? Math.round(session.total_distance) : null;
-        if (!distance_m) {
-          const lapDist = laps.reduce((a, l) => a + (l?.total_distance ?? 0), 0);
-          if (lapDist > 0) distance_m = Math.round(lapDist);
-        }
-        if (!distance_m) {
-          const recDist = records
-            .map((r) => r.distance)
-            .filter((d: number) => typeof d === "number" && d > 0);
-          if (recDist.length) distance_m = Math.round(Math.max(...recDist));
-        }
-
-        // Calories: session → laps sum.
-        let calories: number | null = session?.total_calories ?? null;
-        if (calories == null) {
-          const lapCals = laps.reduce((a, l) => a + (l?.total_calories ?? 0), 0);
-          if (lapCals > 0) calories = Math.round(lapCals);
-        }
-
-        const activity_type =
-          session?.sport ??
-          laps[0]?.sport ??
-          activity?.type ??
-          activity?.sport ??
-          (Array.isArray(activity?.sessions) ? activity.sessions[0]?.sport : null) ??
-          null;
-
-        resolve({
-          started_at,
-          ended_at,
-          activity_type,
-          distance_m: distance_m ?? null,
-          avg_hr: avg_hr ?? null,
-          max_hr: max_hr ?? null,
-          calories: calories ?? null,
-          source: "import_fit",
-        });
-      } catch (e: any) {
-
-        reject(new Error(`Não foi possível extrair dados: ${e.message ?? e}`));
-      }
-    });
+  const { messages, errors } = decoder.read({
+    applyScaleAndOffset: true,
+    expandSubFields: true,
+    expandComponents: true,
+    convertTypesToStrings: true,
+    convertDateTimesToDates: true,
+    includeUnknownData: false,
+    mergeHeartRates: true,
   });
+
+  const sessions = asArray(messages.sessionMesgs);
+  const laps = asArray(messages.lapMesgs);
+  const records = asArray(messages.recordMesgs);
+  const activities = asArray(messages.activityMesgs);
+
+  if (!sessions.length && !laps.length && !records.length) {
+    const detail = errors?.[0]?.message ? `: ${errors[0].message}` : "";
+    throw new Error(`FIT sem mensagens de treino reconhecidas${detail}`);
+  }
+
+  const session = sessions[0];
+  const activity = activities[0];
+  const started_at =
+    readDate(session, ["startTime", "start_time"]) ??
+    readDate(laps[0], ["startTime", "start_time"]) ??
+    readDate(records[0], ["timestamp"]) ??
+    readDate(activity, ["timestamp"]) ??
+    new Date().toISOString();
+
+  const totalElapsed =
+    readNumber(session, ["totalElapsedTime", "total_elapsed_time"]) ??
+    readNumber(session, ["totalTimerTime", "total_timer_time"]) ??
+    laps.reduce(
+      (sum, lap) => sum + (readNumber(lap, ["totalElapsedTime", "total_elapsed_time", "totalTimerTime", "total_timer_time"]) ?? 0),
+      0,
+    );
+  const ended_at =
+    readDate(session, ["timestamp"]) ??
+    readDate(laps[laps.length - 1], ["timestamp"]) ??
+    readDate(records[records.length - 1], ["timestamp"]) ??
+    new Date(new Date(started_at).getTime() + (totalElapsed || 0) * 1000).toISOString();
+
+  const recHr = records
+    .map((record) => readNumber(record, ["heartRate", "heart_rate"]))
+    .filter((value): value is number => value !== null && value > 0);
+  const lapAvgHrs = laps
+    .map((lap) => readNumber(lap, ["avgHeartRate", "avg_heart_rate"]))
+    .filter((value): value is number => value !== null && value > 0);
+  const lapMaxHrs = laps
+    .map((lap) => readNumber(lap, ["maxHeartRate", "max_heart_rate"]))
+    .filter((value): value is number => value !== null && value > 0);
+  const avg_hr =
+    readNumber(session, ["avgHeartRate", "avg_heart_rate"]) ??
+    (lapAvgHrs.length ? Math.round(lapAvgHrs.reduce((a, b) => a + b, 0) / lapAvgHrs.length) : null) ??
+    (recHr.length ? Math.round(recHr.reduce((a, b) => a + b, 0) / recHr.length) : null);
+  const max_hr =
+    readNumber(session, ["maxHeartRate", "max_heart_rate"]) ??
+    (lapMaxHrs.length ? Math.max(...lapMaxHrs) : null) ??
+    (recHr.length ? Math.max(...recHr) : null);
+
+  let distance_m: number | null = null;
+  const sessionDistance = readNumber(session, ["totalDistance", "total_distance"]);
+  if (sessionDistance && sessionDistance > 0) distance_m = Math.round(sessionDistance);
+  if (!distance_m) {
+    const lapDist = laps.reduce((sum, lap) => sum + (readNumber(lap, ["totalDistance", "total_distance"]) ?? 0), 0);
+    if (lapDist > 0) distance_m = Math.round(lapDist);
+  }
+  if (!distance_m) {
+    const recDist = records
+      .map((record) => readNumber(record, ["distance"]))
+      .filter((value): value is number => value !== null && value > 0);
+    if (recDist.length) distance_m = Math.round(Math.max(...recDist));
+  }
+  if (!distance_m) {
+    const gpsPoints = records
+      .map((record) => {
+        const lat = readNumber(record, ["positionLat", "position_lat"]);
+        const lon = readNumber(record, ["positionLong", "position_long"]);
+        return lat !== null && lon !== null
+          ? { lat: fitSemicirclesToDegrees(lat), lon: fitSemicirclesToDegrees(lon) }
+          : null;
+      })
+      .filter((point): point is { lat: number; lon: number } => !!point);
+    const gpsDistance = gpsPoints.reduce(
+      (sum, point, index) => (index === 0 ? 0 : sum + haversineMeters(gpsPoints[index - 1], point)),
+      0,
+    );
+    if (gpsDistance > 0) distance_m = Math.round(gpsDistance);
+  }
+
+  let calories: number | null = readNumber(session, ["totalCalories", "total_calories"]);
+  if (calories == null) {
+    const lapCals = laps.reduce((sum, lap) => sum + (readNumber(lap, ["totalCalories", "total_calories"]) ?? 0), 0);
+    if (lapCals > 0) calories = Math.round(lapCals);
+  }
+
+  const activity_type =
+    (firstValue(session?.sport) as string | undefined) ??
+    (firstValue(laps[0]?.sport) as string | undefined) ??
+    (firstValue(activity?.type) as string | undefined) ??
+    null;
+
+  return {
+    started_at,
+    ended_at,
+    activity_type,
+    distance_m: distance_m ?? null,
+    avg_hr: avg_hr ?? null,
+    max_hr: max_hr ?? null,
+    calories: calories ?? null,
+    source: "import_fit",
+  };
 }
 
 

@@ -45,7 +45,7 @@ function Landing() {
           <a href="#instalar" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline">
             Instalar app
           </a>
-          <Link to="/auth" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link to="/auth" search={{ next: "" }} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Entrar
           </Link>
         </div>
@@ -70,6 +70,7 @@ function Landing() {
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
                 to="/auth"
+                search={{ next: "" }}
                 className="btn-primary inline-flex items-center gap-2 text-sm"
               >
                 Começar grátis <ArrowRight className="size-4" />

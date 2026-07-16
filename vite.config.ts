@@ -8,7 +8,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { imagetools } from "vite-imagetools";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   tanstackStart: {
@@ -16,13 +15,6 @@ export default defineConfig({
   },
   vite: {
     plugins: [
-      nodePolyfills({
-        include: ["buffer"],
-        globals: { Buffer: true },
-        protocolImports: false,
-        // SSR/Worker runtime already has Buffer via nodejs_compat; only polyfill the browser bundle.
-        exclude: ["fs", "path", "crypto", "stream", "url", "events", "http", "https", "zlib", "net"],
-      }),
       imagetools(),
       mcpPlugin(),
       VitePWA({
