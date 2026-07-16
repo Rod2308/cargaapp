@@ -89,24 +89,111 @@ export function DailySuggestionCard({
 
           <p className="mt-3 text-xs leading-relaxed text-foreground">{sugestao.motivo}</p>
 
-          <details className="mt-3 group">
-            <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-              Como calculei (score {sugestao.score.toFixed(1)}/10)
-            </summary>
-            <p className="mt-2 text-[11px] text-muted-foreground">{sugestao.scoreDetalhe}</p>
+          {/* Indicadores visuais do porquê da escolha */}
+          <div className="mt-4 space-y-3 rounded-lg border border-border/60 bg-secondary/30 p-3">
+            {/* Recuperação */}
+            {(() => {
+              const t = scoreTone(sugestao.score);
+              const pct = Math.max(4, Math.min(100, sugestao.score * 10));
+              return (
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <HeartPulse className="size-3.5" /> Recuperação
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.cls}`}>{t.label}</span>
+                      <span className="text-[11px] font-mono font-semibold tabular-nums text-foreground">{sugestao.score.toFixed(1)}/10</span>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Check-in — sono, dor, energia */}
+            {(() => {
+              const m = sugestao.scoreDetalhe.match(/Sono ([\d.]+)h · qualidade (\d)\/5 · dor (\d)\/5 · energia (\d)\/5/);
+              if (!m) return null;
+              const [, sono, qual, dor, energia] = m;
+              const dorNum = Number(dor);
+              const energiaNum = Number(energia);
+              const qualNum = Number(qual);
+              const sonoNum = Number(sono);
+              return (
+                <div>
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ClipboardCheck className="size-3.5" /> Check-in de hoje
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Chip
+                      icon={<Moon className="size-3" />}
+                      label="Sono"
+                      value={`${sono}h · ${qual}/5`}
+                      tone={sonoNum >= 7 && qualNum >= 4 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : sonoNum >= 6 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-destructive/15 text-destructive"}
+                    />
+                    <Chip
+                      icon={<Flame className="size-3" />}
+                      label="Dor"
+                      value={`${dor}/5`}
+                      tone={dorNum <= 2 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : dorNum <= 3 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-destructive/15 text-destructive"}
+                    />
+                    <Chip
+                      icon={<Battery className="size-3" />}
+                      label="Energia"
+                      value={`${energia}/5`}
+                      tone={energiaNum >= 4 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : energiaNum >= 3 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-destructive/15 text-destructive"}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Grupos parados / liberados */}
             {sugestao.gruposLiberados.length > 0 && (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                <b>Liberados:</b>{" "}
-                {sugestao.gruposLiberados.map((g) => `${MUSCLE_LABEL[g.grupo]} (${Number.isFinite(g.diasParado) ? `${g.diasParado}d` : "novo"})`).join(", ")}
-              </p>
+              <div>
+                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Activity className="size-3.5" /> Grupos recuperados
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {sugestao.gruposLiberados.map((g) => {
+                    const novo = !Number.isFinite(g.diasParado);
+                    const dias = g.diasParado;
+                    const tone = novo
+                      ? "bg-secondary text-foreground"
+                      : dias >= 4
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+                    return (
+                      <span key={g.grupo} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>
+                        {MUSCLE_LABEL[g.grupo]}
+                        <span className="opacity-70">· {novo ? "novo" : `${dias}d`}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              <b>Cardio da semana:</b> {sugestao.cardio.sessoesIntensas} sessões intensas · {sugestao.cardio.minutos} min · nível {sugestao.cardio.nivel}
-            </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              <b>Dias com esforço na semana:</b> {sugestao.diasEsforcoSemana}
-            </p>
-          </details>
+
+            {/* Carga semanal */}
+            <div className="flex flex-wrap gap-1.5">
+              <Chip
+                icon={<Activity className="size-3" />}
+                label="Cardio semana"
+                value={`${sugestao.cardio.sessoesIntensas} intensas · ${sugestao.cardio.minutos}min`}
+                tone={cardioTone(sugestao.cardio.nivel)}
+              />
+              <Chip
+                icon={<CalendarDays className="size-3" />}
+                label="Dias c/ esforço"
+                value={`${sugestao.diasEsforcoSemana}/7`}
+                tone={sugestao.diasEsforcoSemana >= 6 ? "bg-destructive/15 text-destructive" : sugestao.diasEsforcoSemana >= 4 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"}
+              />
+            </div>
+          </div>
+
 
           <div className="mt-4 flex flex-wrap gap-2">
             {sugestao.intensidade === "descanso" ? (
