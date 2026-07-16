@@ -222,10 +222,6 @@ function Dashboard() {
       atividadesExtras: extras,
       checkin: todayCheckin,
     });
-      sessoes,
-      atividadesExtras: extras,
-      checkin: todayCheckin,
-    });
     const wList = (workouts as any[]).map((w) => {
       const hay = `${w.label} ${w.name}`.toLowerCase();
       const guesses: string[] = [];
