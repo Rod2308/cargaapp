@@ -153,14 +153,13 @@ function parseTcx(text: string): ParsedWorkout {
 
 // ----------------- FIT -----------------
 async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
-  // Dynamic imports: only pay for these when a .fit file is actually parsed.
-  const [{ default: FitParser }, { Buffer: BufferPolyfill }] = await Promise.all([
-    import("fit-file-parser"),
-    import("buffer"),
-  ]);
+  // Buffer polyfill MUST be installed on globalThis BEFORE fit-file-parser is
+  // evaluated — the library references the Buffer global at module load time.
+  const { Buffer: BufferPolyfill } = await import("buffer");
   if (typeof globalThis !== "undefined" && !(globalThis as any).Buffer) {
     (globalThis as any).Buffer = BufferPolyfill;
   }
+  const { default: FitParser } = await import("fit-file-parser");
   return new Promise((resolve, reject) => {
     const parser = new FitParser({
       force: true,
