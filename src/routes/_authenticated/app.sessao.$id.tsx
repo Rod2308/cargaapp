@@ -527,8 +527,10 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
   );
 }
 
-function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) => void; pending: boolean }) {
+function EffortPicker({ onConfirm, pending }: { onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
   const [effort, setEffort] = useState<number | null>(null);
+  const [discomfort, setDiscomfort] = useState<string>("");
+  const MAX = 500;
   return (
     <>
       <div>
@@ -552,9 +554,32 @@ function EffortPicker({ onConfirm, pending }: { onConfirm: (n: number | null) =>
           ))}
         </div>
       </div>
+
+      <div className="mt-4">
+        <label htmlFor="discomfort" className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span>Desconforto ou dor durante o treino (opcional)</span>
+          <span className="normal-case tracking-normal text-[10px] text-muted-foreground/70">
+            {discomfort.length}/{MAX}
+          </span>
+        </label>
+        <textarea
+          id="discomfort"
+          value={discomfort}
+          onChange={(e) => setDiscomfort(e.target.value.slice(0, MAX))}
+          rows={3}
+          placeholder="Ex: dor leve no ombro direito ao pressionar acima da cabeça, estalo no joelho no agachamento…"
+          className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-brand/40"
+        />
+        {discomfort.trim().length > 0 && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Sua queixa será enviada ao seu treinador junto do registro do treino.
+          </p>
+        )}
+      </div>
+
       <AlertDialogFooter>
         <AlertDialogCancel>Voltar</AlertDialogCancel>
-        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort)}>
+        <AlertDialogAction disabled={pending} onClick={() => onConfirm(effort, discomfort)}>
           <Flag className="size-4" /> Finalizar
         </AlertDialogAction>
       </AlertDialogFooter>
