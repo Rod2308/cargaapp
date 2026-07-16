@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
-import { suggestTodayWorkout, type TodaySuggestion } from "@/lib/today-suggestion.functions";
+
 import { sessionTitle, sessionSubtitle } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
@@ -300,12 +300,7 @@ function Dashboard() {
         onRefresh={() => refetchRecovery()}
       />
 
-      {/* Sugestão IA do treino de hoje */}
-      <TodaySuggestionCard
-        suggestion={todaySuggestion}
-        loading={suggestionLoading}
-        onRefresh={() => refetchSuggestion()}
-      />
+
 
       {/* Ciclo menstrual (se ativado) */}
       <CycleCard profile={profile} />
