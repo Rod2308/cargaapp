@@ -667,6 +667,19 @@ function Dashboard() {
                         Cardio
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = sessionTitle(s);
+                        setRenameValue(s.title ?? current);
+                        setRenaming({ id: s.id, current });
+                      }}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      aria-label="Renomear sessão"
+                      title="Renomear"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarIcon className="size-3" />
@@ -696,6 +709,56 @@ function Dashboard() {
         )}
       </section>
       </div>
+
+      {/* Dialog de renomear sessão */}
+      <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear sessão</DialogTitle>
+          </DialogHeader>
+          {renaming && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Nome atual: <span className="font-medium text-foreground">{renaming.current}</span>
+              </p>
+              <Input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value.slice(0, 80))}
+                placeholder="Ex: Corrida no parque, Treino de peito…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renaming) {
+                    const v = renameValue.trim();
+                    renameSession.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+                  }
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Deixe em branco para restaurar o nome automático.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => renaming && renameSession.mutate({ id: renaming.id, title: null })}
+              disabled={renameSession.isPending}
+            >
+              Restaurar padrão
+            </Button>
+            <Button
+              onClick={() => {
+                if (!renaming) return;
+                const v = renameValue.trim();
+                renameSession.mutate({ id: renaming.id, title: v ? v.slice(0, 80) : null });
+              }}
+              disabled={renameSession.isPending}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
