@@ -152,6 +152,8 @@ function parseTcx(text: string): ParsedWorkout {
 }
 
 // ----------------- FIT -----------------
+// Tolerant to alternative FIT layouts (Garmin, Wahoo, Coros, Suunto, Zwift,
+// Polar, Stryd etc.): sessions/laps/records may be missing individually.
 async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
   const { default: FitParser } = await import("fit-file-parser");
   return new Promise((resolve, reject) => {
@@ -160,44 +162,101 @@ async function parseFit(buffer: ArrayBuffer): Promise<ParsedWorkout> {
       speedUnit: "m/s",
       lengthUnit: "m",
       elapsedRecordField: true,
+      mode: "both",
     });
     parser.parse(buffer as any, (err: string | undefined, data: any) => {
       if (err) return reject(new Error(`Falha ao ler .fit: ${err}`));
       try {
-        const session = Array.isArray(data.sessions) ? data.sessions[0] : data.sessions;
+        const sessions: any[] = Array.isArray(data.sessions)
+          ? data.sessions
+          : data.sessions
+            ? [data.sessions]
+            : [];
+        const laps: any[] = Array.isArray(data.laps)
+          ? data.laps
+          : data.laps
+            ? [data.laps]
+            : sessions.flatMap((s: any) => s?.laps ?? []);
+        const records: any[] = Array.isArray(data.records)
+          ? data.records
+          : sessions.flatMap((s: any) => s?.records ?? []).concat(
+              laps.flatMap((l: any) => l?.records ?? []),
+            );
+        const session = sessions[0];
         const activity = data.activity;
-        const records: any[] = data.records ?? [];
 
         const started_at =
           toIso(session?.start_time) ??
+          toIso(laps[0]?.start_time) ??
           toIso(activity?.timestamp) ??
           toIso(records[0]?.timestamp) ??
           new Date().toISOString();
 
-        const totalElapsed = session?.total_elapsed_time ?? session?.total_timer_time ?? 0;
+        const totalElapsed =
+          session?.total_elapsed_time ??
+          session?.total_timer_time ??
+          laps.reduce((a, l) => a + (l?.total_elapsed_time ?? l?.total_timer_time ?? 0), 0);
         const ended_at =
           toIso(session?.timestamp) ??
+          toIso(laps[laps.length - 1]?.timestamp) ??
           toIso(records[records.length - 1]?.timestamp) ??
-          new Date(new Date(started_at).getTime() + totalElapsed * 1000).toISOString();
+          new Date(new Date(started_at).getTime() + (totalElapsed || 0) * 1000).toISOString();
 
-        const hrs = records.map((r) => r.heart_rate).filter((h: number) => typeof h === "number" && h > 0);
+        // Heart rate: prefer session/lap aggregates, fall back to records.
+        const recHr = records
+          .map((r) => r.heart_rate)
+          .filter((h: number) => typeof h === "number" && h > 0);
+        const lapAvgHrs = laps.map((l) => l?.avg_heart_rate).filter((n) => typeof n === "number" && n > 0);
+        const lapMaxHrs = laps.map((l) => l?.max_heart_rate).filter((n) => typeof n === "number" && n > 0);
         const avg_hr =
           session?.avg_heart_rate ??
-          (hrs.length ? Math.round(hrs.reduce((a: number, b: number) => a + b, 0) / hrs.length) : null);
+          (lapAvgHrs.length ? Math.round(lapAvgHrs.reduce((a, b) => a + b, 0) / lapAvgHrs.length) : null) ??
+          (recHr.length ? Math.round(recHr.reduce((a: number, b: number) => a + b, 0) / recHr.length) : null);
         const max_hr =
-          session?.max_heart_rate ?? (hrs.length ? Math.max(...(hrs as number[])) : null);
+          session?.max_heart_rate ??
+          (lapMaxHrs.length ? Math.max(...lapMaxHrs) : null) ??
+          (recHr.length ? Math.max(...(recHr as number[])) : null);
+
+        // Distance: session → laps sum → cumulative from records (some Coros/Stryd only fill records).
+        let distance_m: number | null = session?.total_distance ? Math.round(session.total_distance) : null;
+        if (!distance_m) {
+          const lapDist = laps.reduce((a, l) => a + (l?.total_distance ?? 0), 0);
+          if (lapDist > 0) distance_m = Math.round(lapDist);
+        }
+        if (!distance_m) {
+          const recDist = records
+            .map((r) => r.distance)
+            .filter((d: number) => typeof d === "number" && d > 0);
+          if (recDist.length) distance_m = Math.round(Math.max(...recDist));
+        }
+
+        // Calories: session → laps sum.
+        let calories: number | null = session?.total_calories ?? null;
+        if (calories == null) {
+          const lapCals = laps.reduce((a, l) => a + (l?.total_calories ?? 0), 0);
+          if (lapCals > 0) calories = Math.round(lapCals);
+        }
+
+        const activity_type =
+          session?.sport ??
+          laps[0]?.sport ??
+          activity?.type ??
+          activity?.sport ??
+          (Array.isArray(activity?.sessions) ? activity.sessions[0]?.sport : null) ??
+          null;
 
         resolve({
           started_at,
           ended_at,
-          activity_type: session?.sport ?? activity?.type ?? null,
-          distance_m: session?.total_distance ? Math.round(session.total_distance) : null,
+          activity_type,
+          distance_m: distance_m ?? null,
           avg_hr: avg_hr ?? null,
           max_hr: max_hr ?? null,
-          calories: session?.total_calories ?? null,
+          calories: calories ?? null,
           source: "import_fit",
         });
       } catch (e: any) {
+
         reject(new Error(`Não foi possível extrair dados: ${e.message ?? e}`));
       }
     });
