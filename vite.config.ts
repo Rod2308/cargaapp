@@ -8,18 +8,18 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { imagetools } from "vite-imagetools";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
   vite: {
-    resolve: {
-      alias: {
-        buffer: "buffer/",
-      },
-    },
     plugins: [
+      nodePolyfills({
+        include: ["buffer"],
+        globals: { Buffer: true },
+      }),
       imagetools(),
       mcpPlugin(),
       VitePWA({
