@@ -111,19 +111,61 @@ function SessionPage() {
   });
 
   const finish = useMutation({
-    mutationFn: async (effort: number | null) => {
+    mutationFn: async ({ effort, discomfort }: { effort: number | null; discomfort: string }) => {
       const endedAt = new Date();
+      const trimmed = discomfort.trim();
+      const patch: Record<string, any> = {
+        ended_at: endedAt.toISOString(),
+        perceived_effort: effort,
+      };
+      if (trimmed) {
+        const prev = (session?.notes ?? "").trim();
+        const marca = `[Desconforto no treino] ${trimmed}`;
+        patch.notes = prev ? `${prev}\n\n${marca}` : marca;
+      }
       await enqueueOp({
         kind: "update",
         table: "sessions",
         match: { id },
-        patch: { ended_at: endedAt.toISOString(), perceived_effort: effort },
+        patch,
       });
+
+      // Envia a queixa para o(s) treinador(es) vinculado(s)
+      if (trimmed) {
+        try {
+          const { data: userRes } = await supabase.auth.getUser();
+          const uid = userRes.user?.id;
+          if (uid) {
+            const { data: links } = await supabase
+              .from("trainer_students")
+              .select("trainer_id")
+              .eq("student_id", uid);
+            const trainers = (links ?? []).map((l: any) => l.trainer_id).filter(Boolean);
+            if (trainers.length > 0) {
+              const nomeTreino = session?.workouts?.label
+                ? `Treino ${session.workouts.label}${session.workouts.name ? ` — ${session.workouts.name}` : ""}`
+                : session?.title || "treino";
+              const rpeTxt = effort ? ` (RPE ${effort}/10)` : "";
+              const content = `🩺 Desconforto relatado ao finalizar ${nomeTreino}${rpeTxt}:\n\n"${trimmed}"`;
+              const rows = trainers.map((tid) => ({
+                sender_id: uid,
+                receiver_id: tid,
+                content,
+              }));
+              const { error: msgErr } = await supabase.from("messages").insert(rows);
+              if (msgErr) console.error("Falha ao notificar treinador:", msgErr);
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao enviar queixa ao treinador:", e);
+        }
+      }
+
       const startedAt = session?.started_at ? new Date(session.started_at) : endedAt;
       const mins = Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
-      return { mins };
+      return { mins, notified: !!trimmed };
     },
-    onSuccess: ({ mins }) => {
+    onSuccess: ({ mins, notified }) => {
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -131,7 +173,11 @@ function SessionPage() {
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
-      toast.success(`Treino finalizado — ${label} registrados`);
+      toast.success(
+        notified
+          ? `Treino finalizado — ${label} registrados. Queixa enviada ao treinador.`
+          : `Treino finalizado — ${label} registrados`,
+      );
       navigate({ to: "/app" });
     },
   });
