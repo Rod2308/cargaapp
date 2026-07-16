@@ -25,6 +25,7 @@ import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import {
   sugerirTreinoDoDia,
+  sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   type WorkoutSession,
   type ExtraActivity,
@@ -181,10 +182,8 @@ function Dashboard() {
     },
   });
 
-  const [checkinEditOpen, setCheckinEditOpen] = useState(false);
-
-  const suggestion = useMemo(() => {
-    if (!todayCheckin) return null;
+  const planoOuGeral = useMemo(() => {
+    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
     const sessoes: WorkoutSession[] = [];
     const extras: ExtraActivity[] = [];
     for (const s of last7Sessions as any[]) {
@@ -216,23 +215,25 @@ function Dashboard() {
         });
       }
     }
-    return sugerirTreinoDoDia({
+
+    // 1) Tenta rotação do plano (A→B→C…)
+    const plano = sugerirTreinoDoPlano({
+      workouts: (workouts as any[]).map((w) => ({ id: w.id, label: w.label, name: w.name })),
       sessoes,
       atividadesExtras: extras,
       checkin: todayCheckin,
     });
-  }, [todayCheckin, last7Sessions]);
+    if (plano) {
+      return { suggestion: plano.sugestao, workoutId: plano.workoutId };
+    }
 
-  const workoutSugeridoId = useMemo(() => {
-    if (!suggestion || suggestion.grupos.length === 0) return null;
-    const wList = (workouts as any[]).map((w) => ({
-      id: w.id,
-      label: w.label,
-      name: w.name,
-      muscle_groups: [] as string[],
-    }));
-    // Enriquecer com grupos: buscar via last7 já não basta; usa nome/label como hint
-    for (const w of wList) {
+    // 2) Fallback: sugestão geral por recuperação
+    const geral = sugerirTreinoDoDia({
+      sessoes,
+      atividadesExtras: extras,
+      checkin: todayCheckin,
+    });
+    const wList = (workouts as any[]).map((w) => {
       const hay = `${w.label} ${w.name}`.toLowerCase();
       const guesses: string[] = [];
       if (/peito|chest/.test(hay)) guesses.push("Peito");
@@ -245,10 +246,16 @@ function Dashboard() {
       if (/abdom|core/.test(hay)) guesses.push("Abdômen");
       if (/superior|upper|push|pull/.test(hay)) guesses.push("Peito", "Costas", "Ombro");
       if (/inferior|lower/.test(hay)) guesses.push("Pernas", "Glúteo");
-      w.muscle_groups = guesses;
-    }
-    return melhorWorkoutParaSugestao(wList, suggestion.grupos);
-  }, [suggestion, workouts]);
+      return { id: w.id, label: w.label, name: w.name, muscle_groups: guesses };
+    });
+    const wid = geral.grupos.length > 0 ? melhorWorkoutParaSugestao(wList, geral.grupos) : null;
+    return { suggestion: geral, workoutId: wid };
+  }, [todayCheckin, last7Sessions, workouts]);
+
+  const suggestion = planoOuGeral.suggestion;
+  const workoutSugeridoId = planoOuGeral.workoutId;
+
+  const [checkinEditOpen, setCheckinEditOpen] = useState(false);
 
 
 

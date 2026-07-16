@@ -467,3 +467,133 @@ export function melhorWorkoutParaSugestao(
   }
   return best && best.score > 0 ? best.id : null;
 }
+
+// ============================================================================
+// Sugestão baseada em SPLIT/PLANO (ex: A, B, C, D, E).
+// Rotaciona o próximo treino do plano com base no último feito.
+// ============================================================================
+
+export type PlanoWorkout = {
+  id: string;
+  label: string | null;
+  name: string;
+};
+
+export type SugestaoPlano = {
+  sugestao: Sugestao;
+  workoutId: string;
+  workoutLabel: string;
+  workoutName: string;
+};
+
+function gruposDoWorkoutNome(label: string, name: string): MuscleGroup[] {
+  const hay = `${label} ${name}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const out: MuscleGroup[] = [];
+  if (/peito|chest/.test(hay)) out.push("peito");
+  if (/costa|dorsal|back|puxada/.test(hay)) out.push("costas");
+  if (/perna|quad|leg|posterior|panturr/.test(hay)) out.push("pernas");
+  if (/ombro|shoulder|delto/.test(hay)) out.push("ombro");
+  if (/bicep/.test(hay)) out.push("biceps");
+  if (/tricep/.test(hay)) out.push("triceps");
+  if (/gluteo/.test(hay)) out.push("gluteo");
+  if (/abdom|core|abs/.test(hay)) out.push("abdomen");
+  if (/upper|superior|push|pull/.test(hay)) out.push("peito", "costas", "ombro");
+  if (/lower|inferior/.test(hay)) out.push("pernas", "gluteo");
+  return Array.from(new Set(out));
+}
+
+export function sugerirTreinoDoPlano(args: {
+  workouts: PlanoWorkout[];
+  sessoes: WorkoutSession[];
+  atividadesExtras: ExtraActivity[];
+  checkin: DailyCheckin;
+  hoje?: Date;
+}): SugestaoPlano | null {
+  const plano = args.workouts
+    .filter((w) => w.label && /^[A-Z]$/i.test(w.label.trim()))
+    .map((w) => ({ ...w, label: w.label!.trim().toUpperCase() }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  if (plano.length < 2) return null;
+
+  const now = args.hoje ?? new Date();
+  const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
+  const cardio = cargaCardioSemana(timeline);
+  const score = scoreRecuperacao(args.checkin);
+  const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
+  const liberados = gruposLiberados(timeline, now);
+  const scoreDetalhe = `Sono ${args.checkin.sleep_hours}h · qualidade ${args.checkin.sleep_quality}/5 · dor ${args.checkin.soreness}/5 · energia ${args.checkin.energy}/5`;
+
+  // Gate de descanso — mesmo com plano, respeita sinais do corpo
+  if (score <= 4 || args.checkin.soreness >= 4 || diasComEsforco >= 6) {
+    return null; // caller cai no fluxo geral (descanso ativo)
+  }
+
+  // Encontra último treino do plano executado
+  const ordenadas = [...args.sessoes].sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
+  let ultimoIdx = -1;
+  let ultimaLabel: string | null = null;
+  for (const s of ordenadas) {
+    const l = s.workout_label?.trim().toUpperCase();
+    if (!l) continue;
+    const idx = plano.findIndex((p) => p.label === l);
+    if (idx >= 0) {
+      ultimoIdx = idx;
+      ultimaLabel = l;
+      break;
+    }
+  }
+
+  const proximoIdx = ultimoIdx < 0 ? 0 : (ultimoIdx + 1) % plano.length;
+  const proximo = plano[proximoIdx];
+
+  // Se pernas exigidas por extra intenso recente, pula para o próximo do plano que não seja de pernas
+  const pernasImpactadas = timeline.some((e) => {
+    if (e.source !== "extra") return false;
+    const dias = Math.floor((now.getTime() - new Date(e.date).getTime()) / 86400_000);
+    return dias <= 2 && (e.impact.pernas === "alto" || e.impact.pernas === "medio");
+  });
+  let escolhido = proximo;
+  let motivoExtra = "";
+  const gruposProx = gruposDoWorkoutNome(proximo.label, proximo.name);
+  if (pernasImpactadas && gruposProx.includes("pernas")) {
+    const alt = plano.find((p, i) => {
+      if (i === proximoIdx) return false;
+      const g = gruposDoWorkoutNome(p.label, p.name);
+      return g.length > 0 && !g.includes("pernas");
+    });
+    if (alt) {
+      escolhido = alt;
+      const extra = timeline.find(
+        (e) => e.source === "extra" && (e.impact.pernas === "alto" || e.impact.pernas === "medio"),
+      );
+      motivoExtra = extra
+        ? ` Pulei o treino de pernas do plano porque você fez ${extra.label.toLowerCase()} nas últimas 48h.`
+        : "";
+    }
+  }
+
+  const gruposEscolhido = gruposDoWorkoutNome(escolhido.label, escolhido.name);
+  const intensidade: Intensidade = score >= 8 ? "alta" : score >= 6 ? "moderada" : "leve";
+  const motivo = ultimaLabel
+    ? `Último treino do plano: ${ultimaLabel}. Hoje é o ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}`
+    : `Começando pelo ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}`;
+
+  return {
+    workoutId: escolhido.id,
+    workoutLabel: escolhido.label,
+    workoutName: escolhido.name,
+    sugestao: {
+      tipo: "força",
+      grupos: gruposEscolhido.length > 0 ? gruposEscolhido : ["peito", "costas"],
+      intensidade,
+      motivo,
+      score,
+      scoreDetalhe,
+      gruposLiberados: liberados,
+      cardio,
+      temPoucoHistorico: false,
+      diasEsforcoSemana: diasComEsforco,
+    },
+  };
+}
