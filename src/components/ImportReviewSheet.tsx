@@ -74,11 +74,11 @@ export function ImportReviewSheet({ userId, parsed, importSource, onSaved, onCan
       const toSave = drafts.filter((d) => d._include);
       if (!toSave.length) throw new Error("Selecione ao menos um treino.");
 
-      // Pré-carrega catálogo de exercícios do usuário para mapear por nome.
+      // Pré-carrega catálogo de exercícios (padrão + criados pelo usuário) para mapear por nome.
       const { data: catalog } = await supabase
         .from("exercises")
         .select("id, name")
-        .eq("user_id", userId);
+        .or(`is_default.eq.true,created_by.eq.${userId}`);
       const byName = new Map<string, string>();
       (catalog ?? []).forEach((e) => byName.set(e.name.toLowerCase().trim(), e.id));
 
@@ -125,7 +125,7 @@ export function ImportReviewSheet({ userId, parsed, importSource, onSaved, onCan
             if (!exerciseId) {
               const { data: created, error: exErr } = await supabase
                 .from("exercises")
-                .insert({ user_id: userId, name: ex.name.trim(), muscle_group: "Outros" })
+                .insert({ name: ex.name.trim(), muscle_group: "Outros", is_default: false, created_by: userId })
                 .select("id")
                 .single();
               if (exErr) throw exErr;
