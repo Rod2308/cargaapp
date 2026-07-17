@@ -14,10 +14,47 @@ export type ParsedWorkout = {
   avg_hr: number | null;
   max_hr: number | null;
   calories: number | null;
+  elevation_gain_m: number | null;
+  elevation_loss_m: number | null;
+  // GeoJSON LineString com pontos [lon, lat] — leve o suficiente para armazenar em jsonb.
+  route_geojson: { type: "LineString"; coordinates: [number, number][] } | null;
   source: "import_fit" | "import_gpx" | "import_tcx";
 };
 
 export type ParseError = { message: string };
+
+function elevationDeltas(elevations: Array<number | null | undefined>): { gain: number; loss: number } {
+  let gain = 0;
+  let loss = 0;
+  let previous: number | null = null;
+  for (const value of elevations) {
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    if (previous !== null) {
+      const delta = value - previous;
+      // Ignora ruído (<0.5m) — típico de altímetros barométricos.
+      if (delta > 0.5) gain += delta;
+      else if (delta < -0.5) loss += -delta;
+    }
+    previous = value;
+  }
+  return { gain: Math.round(gain), loss: Math.round(loss) };
+}
+
+function toRoute(points: Array<{ lat: number; lon: number }>): ParsedWorkout["route_geojson"] {
+  const valid = points.filter(
+    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && (p.lat !== 0 || p.lon !== 0),
+  );
+  if (valid.length < 2) return null;
+  // Downsample para no máximo ~500 pontos — mantém shape em jsonb sem estourar.
+  const step = Math.max(1, Math.floor(valid.length / 500));
+  const coords: [number, number][] = [];
+  for (let i = 0; i < valid.length; i += step) coords.push([+valid[i].lon.toFixed(6), +valid[i].lat.toFixed(6)]);
+  if (coords[coords.length - 1] !== undefined) {
+    const last = valid[valid.length - 1];
+    coords.push([+last.lon.toFixed(6), +last.lat.toFixed(6)]);
+  }
+  return { type: "LineString", coordinates: coords };
+}
 
 function toIso(d: Date | string | number | undefined | null): string | null {
   if (!d) return null;
