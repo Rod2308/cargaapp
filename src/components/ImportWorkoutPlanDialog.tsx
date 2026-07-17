@@ -20,12 +20,6 @@ import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
 
-// Parses lines like:
-//   "Supino reto 4x10"
-//   "Agachamento - 4 x 12 60kg desc 90s"
-//   "3. Puxada 4x8-10 @ 40kg desc:90"
-//   "Rosca direta: 3x15"
-// Also accepts a JSON array: [{ "name": "...", "sets": 4, "reps": "10", "weight_kg": 40, "rest_seconds": 90 }]
 export type ParsedExercise = {
   name: string;
   sets: number;
@@ -35,26 +29,28 @@ export type ParsedExercise = {
   notes?: string | null;
 };
 
+export type ParsedWorkoutBlock = {
+  label: string;
+  name: string;
+  exercises: ParsedExercise[];
+};
+
 function parseLine(raw: string): ParsedExercise | null {
   let line = raw.trim();
   if (!line) return null;
-  // strip leading numbering "1.", "1)", "- ", "* "
   line = line.replace(/^\s*(?:\d+\s*[.)-]|[-*•])\s*/, "");
 
-  // sets x reps  (accept x or ×; reps can be "8", "8-10", "AMRAP")
   const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w-]+)/i);
   if (!setsRepsMatch) return null;
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
   const reps = setsRepsMatch[2].slice(0, 12);
 
-  // name = everything before the sets marker, stripped of separators
   let name = line.slice(0, setsRepsMatch.index).trim();
   name = name.replace(/[:\-–—]+\s*$/, "").trim();
   if (!name) return null;
 
   const rest = line.slice((setsRepsMatch.index ?? 0) + setsRepsMatch[0].length);
 
-  // weight: "40kg", "@40", "@ 40kg", "carga 40"
   let weight: number | null = null;
   const wMatch =
     rest.match(/@\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/i) ||
@@ -62,7 +58,6 @@ function parseLine(raw: string): ParsedExercise | null {
     rest.match(/\bcarga\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i);
   if (wMatch) weight = parseFloat(wMatch[1].replace(",", "."));
 
-  // rest: "90s", "desc 90", "descanso: 90", "1min", "1m30"
   let restSec = 90;
   const rMin = rest.match(/(\d+)\s*m(?:in)?(?:\s*(\d+)s?)?/i);
   const rSec = rest.match(/(?:desc(?:anso)?|rest)\s*[:=]?\s*(\d+)\s*s?/i) || rest.match(/(\d+)\s*s\b/i);
@@ -73,49 +68,125 @@ function parseLine(raw: string): ParsedExercise | null {
   return { name: name.slice(0, 80), sets, reps, weight_kg: weight, rest_seconds: restSec };
 }
 
-function parseInput(text: string): ParsedExercise[] {
+// Detects header lines like: "Treino A", "A - Peito e tríceps", "Dia 1: Pernas", "# B", "Workout 2"
+function parseHeader(raw: string): { label: string; name: string } | null {
+  const line = raw.trim().replace(/^#+\s*/, "");
+  if (!line) return null;
+  // "Treino A - Nome", "Treino A: Nome", "Treino A"
+  let m = line.match(/^treino\s+([A-Za-z0-9]{1,3})\s*[:\-–—]?\s*(.*)$/i);
+  if (m) return { label: m[1].toUpperCase(), name: (m[2] || "").trim() };
+  // "Dia 1 - Nome" / "Dia 1: Nome"
+  m = line.match(/^dia\s+([0-9]{1,2})\s*[:\-–—]?\s*(.*)$/i);
+  if (m) return { label: m[1], name: (m[2] || "").trim() };
+  // "Workout A"
+  m = line.match(/^workout\s+([A-Za-z0-9]{1,3})\s*[:\-–—]?\s*(.*)$/i);
+  if (m) return { label: m[1].toUpperCase(), name: (m[2] || "").trim() };
+  // "A - Nome" / "A: Nome"  (single letter label)
+  m = line.match(/^([A-H])\s*[:\-–—]\s*(.+)$/);
+  if (m) return { label: m[1].toUpperCase(), name: m[2].trim() };
+  // "A)" or "A."
+  m = line.match(/^([A-H])\s*[.)]\s*(.*)$/);
+  if (m) return { label: m[1].toUpperCase(), name: (m[2] || "").trim() };
+  return null;
+}
+
+function parseBlocks(text: string): ParsedWorkoutBlock[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
-  // Try JSON first
+
+  // JSON support: array of blocks or single block
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
     try {
       const raw = JSON.parse(trimmed);
-      const arr = Array.isArray(raw) ? raw : raw.exercises ?? [];
-      return (arr as any[])
-        .map((r) => {
-          const name = String(r.name ?? r.exercise ?? "").trim();
-          if (!name) return null;
-          return {
-            name: name.slice(0, 80),
-            sets: Math.min(20, Math.max(1, parseInt(String(r.sets ?? r.target_sets ?? 3), 10) || 3)),
-            reps: String(r.reps ?? r.target_reps ?? "10").slice(0, 12),
-            weight_kg:
-              r.weight_kg != null || r.weight != null
-                ? parseFloat(String(r.weight_kg ?? r.weight).replace(",", ".")) || null
-                : null,
-            rest_seconds: Math.min(
-              600,
-              Math.max(0, parseInt(String(r.rest_seconds ?? r.rest ?? 90), 10) || 90),
-            ),
-            notes: r.notes ?? null,
-          } as ParsedExercise;
-        })
-        .filter(Boolean) as ParsedExercise[];
+      const arr = Array.isArray(raw) ? raw : [raw];
+      const blocks: ParsedWorkoutBlock[] = [];
+      arr.forEach((b: any, idx: number) => {
+        const exs = (b.exercises ?? []) as any[];
+        const exercises = exs
+          .map((r) => {
+            const name = String(r.name ?? r.exercise ?? "").trim();
+            if (!name) return null;
+            return {
+              name: name.slice(0, 80),
+              sets: Math.min(20, Math.max(1, parseInt(String(r.sets ?? 3), 10) || 3)),
+              reps: String(r.reps ?? "10").slice(0, 12),
+              weight_kg:
+                r.weight_kg != null || r.weight != null
+                  ? parseFloat(String(r.weight_kg ?? r.weight).replace(",", ".")) || null
+                  : null,
+              rest_seconds: Math.min(600, Math.max(0, parseInt(String(r.rest_seconds ?? r.rest ?? 90), 10) || 90)),
+              notes: r.notes ?? null,
+            } as ParsedExercise;
+          })
+          .filter(Boolean) as ParsedExercise[];
+        if (!exercises.length && !b.name && !b.label) return;
+        blocks.push({
+          label: String(b.label ?? String.fromCharCode(65 + idx)).toUpperCase().slice(0, 3),
+          name: String(b.name ?? `Treino ${String.fromCharCode(65 + idx)}`).slice(0, 80),
+          exercises,
+        });
+      });
+      return blocks;
     } catch {
-      // fall through to line parser
+      // fall through
     }
   }
-  return trimmed
-    .split(/\r?\n/)
-    .map(parseLine)
-    .filter((x): x is ParsedExercise => !!x);
+
+  const lines = trimmed.split(/\r?\n/);
+  const blocks: ParsedWorkoutBlock[] = [];
+  let current: ParsedWorkoutBlock | null = null;
+  let autoIdx = 0;
+
+  const pushCurrent = () => {
+    if (current && current.exercises.length) blocks.push(current);
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    // A line that IS an exercise takes priority
+    const exMaybe = parseLine(line);
+    const headerMaybe = exMaybe ? null : parseHeader(line);
+
+    if (headerMaybe) {
+      pushCurrent();
+      current = {
+        label: headerMaybe.label,
+        name: headerMaybe.name || `Treino ${headerMaybe.label}`,
+        exercises: [],
+      };
+      continue;
+    }
+    if (exMaybe) {
+      if (!current) {
+        current = {
+          label: String.fromCharCode(65 + autoIdx),
+          name: `Treino ${String.fromCharCode(65 + autoIdx)}`,
+          exercises: [],
+        };
+        autoIdx++;
+      }
+      current.exercises.push(exMaybe);
+    }
+  }
+  pushCurrent();
+  return blocks;
 }
 
-const EXAMPLE = `Supino reto 4x10 40kg desc 90s
-Supino inclinado com halteres 3x12 desc 60s
-Crucifixo 3x15
+const EXAMPLE = `Treino A - Peito e tríceps
+Supino reto 4x10 40kg desc 90s
+Supino inclinado 3x12 desc 60s
 Tríceps corda 4x12 desc:60
-Tríceps francês 3x10-12`;
+
+Treino B - Costas e bíceps
+Puxada frente 4x10 desc 90s
+Remada baixa 4x12
+Rosca direta 3x12
+
+Treino C - Pernas
+Agachamento 4x10 60kg desc 120s
+Leg press 3x15
+Cadeira flexora 4x12`;
 
 export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
   const qc = useQueryClient();
@@ -123,12 +194,9 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
   const online = useOnline();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [label, setLabel] = useState("A");
-  const [name, setName] = useState("");
 
-  const parsed = useMemo(() => parseInput(text), [text]);
+  const blocks = useMemo(() => parseBlocks(text), [text]);
 
-  // Dry-run data: catalog of exercises + user's existing workouts (for label conflict).
   const { data: catalog = [] } = useQuery({
     enabled: open,
     queryKey: ["exercises-catalog-lite"],
@@ -152,129 +220,130 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
     return m;
   }, [catalog]);
 
-  const plan = useMemo(() => {
-    const seen = new Set<string>();
-    return parsed.map((p) => {
-      const key = p.name.toLowerCase();
-      const match = catalogByName.get(key);
-      const duplicate = seen.has(key);
-      seen.add(key);
-      return {
-        parsed: p,
-        status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-        matchName: match?.name ?? null,
-        matchGroup: match?.muscle_group ?? null,
-      };
+  const dryRun = useMemo(() => {
+    const seenGlobal = new Set<string>();
+    return blocks.map((b) => {
+      const seenLocal = new Set<string>();
+      const rows = b.exercises.map((p) => {
+        const key = p.name.toLowerCase();
+        const match = catalogByName.get(key);
+        const duplicate = seenLocal.has(key);
+        seenLocal.add(key);
+        if (!match) seenGlobal.add(key);
+        return {
+          parsed: p,
+          status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
+          matchGroup: match?.muscle_group ?? null,
+        };
+      });
+      const conflict = (userWorkouts as any[]).some(
+        (w) => (w.label ?? "").toLowerCase() === b.label.toLowerCase(),
+      );
+      return { block: b, rows, conflict };
     });
-  }, [parsed, catalogByName]);
+  }, [blocks, catalogByName, userWorkouts]);
 
-  const summary = useMemo(() => {
+  const totals = useMemo(() => {
     let matched = 0;
     let created = 0;
     const newNames = new Set<string>();
-    for (const row of plan) {
-      if (row.status === "matched") matched++;
-      else if (row.status === "new") {
-        if (!newNames.has(row.parsed.name.toLowerCase())) {
-          newNames.add(row.parsed.name.toLowerCase());
-          created++;
+    for (const b of dryRun) {
+      for (const r of b.rows) {
+        if (r.status === "matched") matched++;
+        else if (r.status === "new") {
+          const k = r.parsed.name.toLowerCase();
+          if (!newNames.has(k)) {
+            newNames.add(k);
+            created++;
+          }
         }
       }
     }
-    return { matched, created, total: plan.length };
-  }, [plan]);
-
-  const labelConflict = useMemo(
-    () => (userWorkouts as any[]).some((w) => (w.label ?? "").toLowerCase() === label.trim().toLowerCase()),
-    [userWorkouts, label],
-  );
+    return { matched, created, workouts: dryRun.length };
+  }, [dryRun]);
 
   function reset() {
     setText("");
-    setLabel("A");
-    setName("");
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      if (parsed.length === 0) throw new Error("Nenhum exercício reconhecido");
-      if (!name.trim()) throw new Error("Dê um nome ao treino");
+      if (!blocks.length) throw new Error("Nenhum treino reconhecido");
 
-      // Count existing to compute order_idx of the new workout
       const { count } = await supabase
         .from("workouts")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId);
+      const baseIdx = count ?? 0;
 
-      const { data: workout, error: wErr } = await supabase
-        .from("workouts")
-        .insert({
-          user_id: userId,
-          label: label.trim().slice(0, 3) || "A",
-          name: name.trim().slice(0, 80),
-          order_idx: count ?? 0,
-        })
-        .select()
-        .single();
-      if (wErr) throw wErr;
-
-      // Match or create exercises (case-insensitive by name)
-      const uniqueNames = Array.from(new Set(parsed.map((p) => p.name.toLowerCase())));
+      // Resolve/create all exercises across all blocks in one round
+      const allNames = Array.from(
+        new Set(blocks.flatMap((b) => b.exercises.map((e) => e.name))),
+      );
       const { data: existing } = await supabase
         .from("exercises")
         .select("id, name")
-        .in(
-          "name",
-          // Try both original and lowercase; PostgREST is case-sensitive so fetch broader:
-          Array.from(new Set(parsed.map((p) => p.name))),
-        );
+        .in("name", allNames);
       const byName = new Map<string, string>();
       (existing ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
 
-      const missing = parsed
-        .map((p) => p.name)
-        .filter((n) => !byName.has(n.toLowerCase()))
-        .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
-
+      const missing = allNames.filter((n) => !byName.has(n.toLowerCase()));
       if (missing.length > 0) {
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
-            missing.map((n) => ({
-              name: n,
-              muscle_group: "Outros",
-              is_default: false,
-              created_by: userId,
-            })),
+            missing.map((n) => ({ name: n, muscle_group: "Outros", is_default: false, created_by: userId })),
           )
           .select("id, name");
         if (cErr) throw cErr;
         (created ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
       }
 
-      const rows = parsed.map((p, idx) => ({
-        workout_id: workout.id,
-        exercise_id: byName.get(p.name.toLowerCase())!,
-        order_idx: idx,
-        target_sets: p.sets,
-        target_reps: p.reps,
-        target_weight_kg: p.weight_kg,
-        target_rest_seconds: p.rest_seconds,
-        notes: p.notes ?? null,
-      }));
-      const { error: weErr } = await supabase.from("workout_exercises").insert(rows);
-      if (weErr) throw weErr;
+      const createdWorkouts: { id: string; name: string }[] = [];
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        const { data: workout, error: wErr } = await supabase
+          .from("workouts")
+          .insert({
+            user_id: userId,
+            label: b.label.slice(0, 3),
+            name: b.name.slice(0, 80),
+            order_idx: baseIdx + i,
+          })
+          .select()
+          .single();
+        if (wErr) throw wErr;
+        createdWorkouts.push({ id: workout.id, name: workout.name });
 
-      // uniqueNames is used above via lowercase map; touch to silence lints when noUnused is strict.
-      void uniqueNames;
-      return workout;
+        const rows = b.exercises.map((p, idx) => ({
+          workout_id: workout.id,
+          exercise_id: byName.get(p.name.toLowerCase())!,
+          order_idx: idx,
+          target_sets: p.sets,
+          target_reps: p.reps,
+          target_weight_kg: p.weight_kg,
+          target_rest_seconds: p.rest_seconds,
+          notes: p.notes ?? null,
+        }));
+        const { error: weErr } = await supabase.from("workout_exercises").insert(rows);
+        if (weErr) throw weErr;
+      }
+      return createdWorkouts;
     },
-    onSuccess: (w) => {
-      toast.success(`Treino "${w.name}" importado com ${parsed.length} exercícios`);
+    onSuccess: (created) => {
+      toast.success(
+        created.length === 1
+          ? `Treino "${created[0].name}" importado`
+          : `${created.length} treinos importados`,
+      );
       qc.invalidateQueries({ queryKey: ["workouts"] });
       setOpen(false);
       reset();
-      navigate({ to: "/app/treinos/$id", params: { id: w.id } });
+      if (created.length === 1) {
+        navigate({ to: "/app/treinos/$id", params: { id: created[0].id } });
+      } else {
+        navigate({ to: "/app/treinos" });
+      }
     },
     onError: (e: any) => toast.error(e.message ?? "Falha ao importar"),
   });
@@ -301,31 +370,20 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
           <Sparkles className="size-4" /> Importar
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Importar treino</DialogTitle>
+          <DialogTitle>Importar treino completo</DialogTitle>
           <DialogDescription>
-            Cole o treino em texto livre (uma linha por exercício) ou JSON. Exercícios novos são criados
-            automaticamente no seu catálogo.
+            Cole o plano inteiro (Treino A, B, C…). Cada bloco vira um treino separado no seu plano. Se não
+            houver cabeçalhos, tudo entra como um só treino.
           </DialogDescription>
         </DialogHeader>
 
         <OfflineNotice feature="Importação de treino" />
 
-        <div className="grid grid-cols-[80px_1fr] gap-3">
-          <div className="space-y-1.5">
-            <Label>Letra</Label>
-            <Input maxLength={3} value={label} onChange={(e) => setLabel(e.target.value.toUpperCase())} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Nome do treino</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Peito e tríceps" />
-          </div>
-        </div>
-
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label>Exercícios</Label>
+            <Label>Plano completo</Label>
             <div className="flex gap-1">
               <Button type="button" size="sm" variant="ghost" onClick={pasteFromClipboard} className="h-7 gap-1 text-xs">
                 <ClipboardPaste className="size-3.5" /> Colar
@@ -355,100 +413,93 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={7}
-            placeholder={"Supino reto 4x10 40kg desc 90s\nAgachamento 4x12 60kg\n..."}
+            rows={10}
+            placeholder={"Treino A - Peito e tríceps\nSupino reto 4x10 40kg desc 90s\n...\n\nTreino B - Costas\n..."}
             className="font-mono text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            Formato: <code>Nome do exercício NxR peso desc:segundos</code>. Exemplos: <code>4x10</code>,{" "}
-            <code>40kg</code>, <code>@40</code>, <code>desc 90</code>, <code>1min30</code>.
+            Separe os treinos com cabeçalhos como <code>Treino A - Nome</code>, <code>Dia 1: Pernas</code> ou{" "}
+            <code>B - Costas</code>. Uma linha em branco entre blocos ajuda na leitura.
           </p>
         </div>
 
-        {parsed.length > 0 && (
-          <div className="space-y-2">
+        {blocks.length > 0 && (
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs">
-              <span className="font-semibold">Prévia da importação</span>
-              <span className="text-muted-foreground">·</span>
-              <span>
-                Novo treino <b>{label.trim() || "?"}</b>
-                {name.trim() ? ` — ${name.trim()}` : ""}
+              <span className="font-semibold">
+                {totals.workouts} treino{totals.workouts > 1 ? "s" : ""} detectado
+                {totals.workouts > 1 ? "s" : ""}
               </span>
-              {labelConflict && (
-                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                  já existe outro treino com essa letra
-                </span>
-              )}
               <span className="ml-auto flex gap-1.5">
                 <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
-                  {summary.matched} vinculados
+                  {totals.matched} vinculados
                 </span>
                 <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-semibold text-sky-600 dark:text-sky-400">
-                  {summary.created} novos
+                  {totals.created} novos exercícios
                 </span>
               </span>
             </div>
 
-            <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-secondary/60 text-left">
-                  <tr>
-                    <th className="px-2 py-1.5">Exercício</th>
-                    <th className="px-2 py-1.5">Ação</th>
-                    <th className="px-2 py-1.5">Séries</th>
-                    <th className="px-2 py-1.5">Reps</th>
-                    <th className="px-2 py-1.5">Carga</th>
-                    <th className="px-2 py-1.5">Desc</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.map((row, i) => {
-                    const p = row.parsed;
-                    const badge =
-                      row.status === "matched"
-                        ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
-                        : row.status === "duplicate"
-                        ? { text: "Duplicado", cls: "bg-muted text-muted-foreground" }
-                        : { text: "Criar novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
-                    return (
-                      <tr key={i} className="border-t border-border align-top">
-                        <td className="px-2 py-1.5">
-                          <div className="font-medium">{p.name}</div>
-                          {row.status === "matched" && row.matchGroup && (
-                            <div className="text-[10px] text-muted-foreground">
-                              catálogo · {row.matchGroup}
-                            </div>
-                          )}
-                          {row.status === "new" && (
-                            <div className="text-[10px] text-muted-foreground">grupo: Outros</div>
-                          )}
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                            {badge.text}
-                          </span>
-                        </td>
-                        <td className="px-2 py-1.5">{p.sets}</td>
-                        <td className="px-2 py-1.5">{p.reps}</td>
-                        <td className="px-2 py-1.5">{p.weight_kg ? `${p.weight_kg}kg` : "—"}</td>
-                        <td className="px-2 py-1.5">{p.rest_seconds}s</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {dryRun.map((b, bi) => (
+              <div key={bi} className="rounded-xl border border-border">
+                <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/40 px-3 py-2 text-xs">
+                  <span className="rounded bg-primary/15 px-1.5 py-0.5 font-bold text-primary">
+                    {b.block.label}
+                  </span>
+                  <span className="font-semibold">{b.block.name}</span>
+                  <span className="text-muted-foreground">· {b.rows.length} exercícios</span>
+                  {b.conflict && (
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-semibold text-amber-600 dark:text-amber-400">
+                      letra já existe
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {b.rows.map((row, i) => {
+                        const p = row.parsed;
+                        const badge =
+                          row.status === "matched"
+                            ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
+                            : row.status === "duplicate"
+                            ? { text: "Duplicado", cls: "bg-muted text-muted-foreground" }
+                            : { text: "Novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
+                        return (
+                          <tr key={i} className="border-t border-border">
+                            <td className="px-2 py-1.5">
+                              <div className="font-medium">{p.name}</div>
+                              {row.matchGroup && (
+                                <div className="text-[10px] text-muted-foreground">{row.matchGroup}</div>
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                                {badge.text}
+                              </span>
+                            </td>
+                            <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">
+                              {p.sets}×{p.reps}
+                              {p.weight_kg ? ` · ${p.weight_kg}kg` : ""} · {p.rest_seconds}s
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
             <p className="text-[11px] text-muted-foreground">
-              Nada é salvo até você clicar em <b>Importar</b>. Exercícios <b>vinculados</b> reusam o item já
-              existente no seu catálogo; <b>novos</b> serão cadastrados no grupo "Outros" e você pode ajustar
-              depois.
+              Nada é salvo até você clicar em <b>Importar</b>. Exercícios novos vão para o grupo "Outros" e
+              podem ser ajustados depois.
             </p>
           </div>
         )}
 
-        {text && parsed.length === 0 && (
+        {text && blocks.length === 0 && (
           <p className="text-xs text-destructive">
-            Nenhum exercício reconhecido. Verifique se cada linha tem no formato <code>Nome NxR</code>.
+            Nenhum exercício reconhecido. Cada linha precisa ter o formato <code>Nome NxR</code>.
           </p>
         )}
 
@@ -458,9 +509,15 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
           </Button>
           <Button
             onClick={() => save.mutate()}
-            disabled={parsed.length === 0 || !name.trim() || save.isPending}
+            disabled={blocks.length === 0 || save.isPending}
           >
-            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : `Importar ${parsed.length || ""}`.trim()}
+            {save.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : blocks.length > 1 ? (
+              `Importar ${blocks.length} treinos`
+            ) : (
+              "Importar treino"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
