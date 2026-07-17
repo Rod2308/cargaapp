@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
+import { DataManagement } from "@/components/DataManagement";
 
 
 function calcAge(birth?: string | null) {
@@ -76,6 +77,8 @@ function PerfilPage() {
       ) : (
         <StudentProfile profile={profile} update={update} />
       )}
+
+      <DataManagement userId={user.id} displayName={profile.display_name ?? null} />
 
       <InstallInstructions />
 
