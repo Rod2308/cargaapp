@@ -66,6 +66,8 @@ function TreinosList() {
           <h1 className="text-3xl font-bold tracking-tight">Meus treinos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Suas divisões A, B, C...</p>
         </div>
+        <div className="flex gap-2">
+        <ImportWorkoutPlanDialog userId={user.id} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline"><Plus className="size-4" /> Novo</Button>
