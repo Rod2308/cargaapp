@@ -503,7 +503,7 @@ export async function computeRecoveryAdviceFor(
       headline: "Bora começar",
       reason: "Sem histórico ainda — corpo pronto para o primeiro treino.",
       recommendation: "Escolha um treino do plano e comece com carga moderada, focando técnica.",
-      tip: "Anote o RPE de cada série pra IA começar a te calibrar.",
+      tip: "Anote o RPE de cada série pra afinar as recomendações.",
       canDo: ["Peito", "Costas", "Ombros", "Pernas", "Core"],
       avoid: [],
       factors: [],
