@@ -136,9 +136,9 @@ function Dashboard() {
   // Data atual (usada como chave de cache — vira ao passar da meia-noite)
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  // Recuperação inteligente (IA) — inclui o dia atual na chave para que,
-  // se o usuário não treinar hoje, o score recalcule considerando o dia
-  // corrido como "não treinado".
+  // Recuperação — inclui o dia atual na chave para que, se o usuário não
+  // treinar hoje, o score recalcule considerando o dia corrido como
+  // "não treinado".
   const fetchRecovery = useServerFn(getRecoveryAdvice);
   const {
     data: recovery,
@@ -423,7 +423,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Recuperação inteligente (IA) */}
+      {/* Recuperação */}
       <RecoveryCard
         recovery={recovery}
         loading={recoveryLoading}

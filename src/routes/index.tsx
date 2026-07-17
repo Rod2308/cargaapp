@@ -56,7 +56,7 @@ function Landing() {
         <section className="grid gap-10 md:grid-cols-12 md:gap-12">
           <div className="md:col-span-7">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
-              <Sparkles className="size-3.5" style={{ color: "var(--color-brand)" }} /> com coach de IA
+              <Sparkles className="size-3.5" style={{ color: "var(--color-brand)" }} /> do seu jeito
             </span>
             <h1 className="mt-6 text-5xl leading-[1.02] tracking-tight md:text-7xl">
               Seu treino de<br />

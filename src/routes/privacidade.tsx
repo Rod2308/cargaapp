@@ -113,9 +113,6 @@ function PrivacyPage() {
             <li>
               <strong className="text-foreground">Cloudflare</strong> — CDN e execução de código na borda para servir o app.
             </li>
-            <li>
-              <strong className="text-foreground">Provedor do modelo de IA</strong> — para gerar as narrativas de recuperação são enviados apenas os dados agregados estritamente necessários (sem seu e-mail, nome ou identificador).
-            </li>
           </ul>
           <p>
             Podemos transferir dados para fora do Brasil, hipótese em que adotamos as garantias previstas nos arts. 33 a 36 da LGPD.
