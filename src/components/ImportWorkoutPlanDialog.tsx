@@ -366,29 +366,83 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
         </div>
 
         {parsed.length > 0 && (
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-secondary/60 text-left">
-                <tr>
-                  <th className="px-2 py-1.5">Exercício</th>
-                  <th className="px-2 py-1.5">Séries</th>
-                  <th className="px-2 py-1.5">Reps</th>
-                  <th className="px-2 py-1.5">Carga</th>
-                  <th className="px-2 py-1.5">Desc</th>
-                </tr>
-              </thead>
-              <tbody>
-                {parsed.map((p, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="px-2 py-1.5">{p.name}</td>
-                    <td className="px-2 py-1.5">{p.sets}</td>
-                    <td className="px-2 py-1.5">{p.reps}</td>
-                    <td className="px-2 py-1.5">{p.weight_kg ? `${p.weight_kg}kg` : "—"}</td>
-                    <td className="px-2 py-1.5">{p.rest_seconds}s</td>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs">
+              <span className="font-semibold">Prévia da importação</span>
+              <span className="text-muted-foreground">·</span>
+              <span>
+                Novo treino <b>{label.trim() || "?"}</b>
+                {name.trim() ? ` — ${name.trim()}` : ""}
+              </span>
+              {labelConflict && (
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  já existe outro treino com essa letra
+                </span>
+              )}
+              <span className="ml-auto flex gap-1.5">
+                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                  {summary.matched} vinculados
+                </span>
+                <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-semibold text-sky-600 dark:text-sky-400">
+                  {summary.created} novos
+                </span>
+              </span>
+            </div>
+
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-secondary/60 text-left">
+                  <tr>
+                    <th className="px-2 py-1.5">Exercício</th>
+                    <th className="px-2 py-1.5">Ação</th>
+                    <th className="px-2 py-1.5">Séries</th>
+                    <th className="px-2 py-1.5">Reps</th>
+                    <th className="px-2 py-1.5">Carga</th>
+                    <th className="px-2 py-1.5">Desc</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {plan.map((row, i) => {
+                    const p = row.parsed;
+                    const badge =
+                      row.status === "matched"
+                        ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
+                        : row.status === "duplicate"
+                        ? { text: "Duplicado", cls: "bg-muted text-muted-foreground" }
+                        : { text: "Criar novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
+                    return (
+                      <tr key={i} className="border-t border-border align-top">
+                        <td className="px-2 py-1.5">
+                          <div className="font-medium">{p.name}</div>
+                          {row.status === "matched" && row.matchGroup && (
+                            <div className="text-[10px] text-muted-foreground">
+                              catálogo · {row.matchGroup}
+                            </div>
+                          )}
+                          {row.status === "new" && (
+                            <div className="text-[10px] text-muted-foreground">grupo: Outros</div>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                            {badge.text}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5">{p.sets}</td>
+                        <td className="px-2 py-1.5">{p.reps}</td>
+                        <td className="px-2 py-1.5">{p.weight_kg ? `${p.weight_kg}kg` : "—"}</td>
+                        <td className="px-2 py-1.5">{p.rest_seconds}s</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Nada é salvo até você clicar em <b>Importar</b>. Exercícios <b>vinculados</b> reusam o item já
+              existente no seu catálogo; <b>novos</b> serão cadastrados no grupo "Outros" e você pode ajustar
+              depois.
+            </p>
           </div>
         )}
 
