@@ -413,6 +413,23 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
           <div className="flex items-center justify-between">
             <Label>Plano completo</Label>
             <div className="flex gap-1">
+              <label
+                className={`inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium hover:bg-accent ${extracting ? "pointer-events-none opacity-60" : ""}`}
+                title="Enviar .pdf, .txt, .md, .csv ou .json"
+              >
+                {extracting ? <Loader2 className="size-3.5 animate-spin" /> : <FileUp className="size-3.5" />}
+                Arquivo
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt,.md,.csv,.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) void handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
               <Button type="button" size="sm" variant="ghost" onClick={pasteFromClipboard} className="h-7 gap-1 text-xs">
                 <ClipboardPaste className="size-3.5" /> Colar
               </Button>
