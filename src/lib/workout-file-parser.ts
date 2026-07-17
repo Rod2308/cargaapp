@@ -162,6 +162,21 @@ function parseTcx(text: string): ParsedWorkout {
   let totalHrCount = 0;
   let maxHr = 0;
 
+  // Coleta trackpoints para elevação + rota.
+  const tps = Array.from(activity.getElementsByTagName("Trackpoint"));
+  const elevations: (number | null)[] = [];
+  const coords: { lat: number; lon: number }[] = [];
+  for (const tp of tps) {
+    const alt = parseFloat(tp.getElementsByTagName("AltitudeMeters")[0]?.textContent ?? "");
+    elevations.push(Number.isFinite(alt) ? alt : null);
+    const pos = tp.getElementsByTagName("Position")[0];
+    if (pos) {
+      const lat = parseFloat(pos.getElementsByTagName("LatitudeDegrees")[0]?.textContent ?? "");
+      const lon = parseFloat(pos.getElementsByTagName("LongitudeDegrees")[0]?.textContent ?? "");
+      if (Number.isFinite(lat) && Number.isFinite(lon)) coords.push({ lat, lon });
+    }
+  }
+
   for (const lap of laps) {
     const d = parseFloat(lap.getElementsByTagName("DistanceMeters")[0]?.textContent ?? "0");
     if (Number.isFinite(d)) distance += d;
@@ -182,7 +197,6 @@ function parseTcx(text: string): ParsedWorkout {
   const firstLapStart = laps[0]?.getAttribute("StartTime");
   const started_at = toIso(firstLapStart) ?? new Date().toISOString();
 
-  // ended_at: last trackpoint time in last lap, else start + total TotalTimeSeconds
   let ended_at: string | null = null;
   const lastLap = laps[laps.length - 1];
   if (lastLap) {
@@ -198,6 +212,8 @@ function parseTcx(text: string): ParsedWorkout {
     }
   }
 
+  const { gain, loss } = elevationDeltas(elevations);
+
   return {
     started_at,
     ended_at: ended_at ?? started_at,
@@ -206,6 +222,9 @@ function parseTcx(text: string): ParsedWorkout {
     avg_hr: totalHrCount ? Math.round(totalHrSum / totalHrCount) : null,
     max_hr: maxHr || null,
     calories: calories || null,
+    elevation_gain_m: gain || null,
+    elevation_loss_m: loss || null,
+    route_geojson: toRoute(coords),
     source: "import_tcx",
   };
 }
