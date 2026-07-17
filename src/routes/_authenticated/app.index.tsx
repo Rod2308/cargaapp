@@ -423,7 +423,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Recuperação inteligente (IA) */}
+      {/* Recuperação */}
       <RecoveryCard
         recovery={recovery}
         loading={recoveryLoading}
