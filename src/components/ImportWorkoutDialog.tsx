@@ -26,6 +26,20 @@ import { ptBR } from "date-fns/locale";
 
 const MAX_FILE_MB = 10;
 
+function toLocalDateInput(iso: string): string {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function applyDateToIso(iso: string, dateStr: string): string {
+  const original = new Date(iso);
+  const [y, m, day] = dateStr.split("-").map(Number);
+  const updated = new Date(original);
+  updated.setFullYear(y, m - 1, day);
+  return updated.toISOString();
+}
+
 function formatDuration(startIso: string, endIso: string): string {
   const seconds = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000));
   const h = Math.floor(seconds / 3600);
