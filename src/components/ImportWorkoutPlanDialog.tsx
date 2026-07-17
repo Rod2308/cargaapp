@@ -128,6 +128,67 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
 
   const parsed = useMemo(() => parseInput(text), [text]);
 
+  // Dry-run data: catalog of exercises + user's existing workouts (for label conflict).
+  const { data: catalog = [] } = useQuery({
+    enabled: open,
+    queryKey: ["exercises-catalog-lite"],
+    queryFn: async () => {
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group");
+      return data ?? [];
+    },
+  });
+  const { data: userWorkouts = [] } = useQuery({
+    enabled: open,
+    queryKey: ["workouts-labels", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("workouts").select("id, label, name").eq("user_id", userId);
+      return data ?? [];
+    },
+  });
+
+  const catalogByName = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; muscle_group: string }>();
+    (catalog as any[]).forEach((e) => m.set(String(e.name).toLowerCase(), e));
+    return m;
+  }, [catalog]);
+
+  const plan = useMemo(() => {
+    const seen = new Set<string>();
+    return parsed.map((p) => {
+      const key = p.name.toLowerCase();
+      const match = catalogByName.get(key);
+      const duplicate = seen.has(key);
+      seen.add(key);
+      return {
+        parsed: p,
+        status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
+        matchName: match?.name ?? null,
+        matchGroup: match?.muscle_group ?? null,
+      };
+    });
+  }, [parsed, catalogByName]);
+
+  const summary = useMemo(() => {
+    let matched = 0;
+    let created = 0;
+    const newNames = new Set<string>();
+    for (const row of plan) {
+      if (row.status === "matched") matched++;
+      else if (row.status === "new") {
+        if (!newNames.has(row.parsed.name.toLowerCase())) {
+          newNames.add(row.parsed.name.toLowerCase());
+          created++;
+        }
+      }
+    }
+    return { matched, created, total: plan.length };
+  }, [plan]);
+
+  const labelConflict = useMemo(
+    () => (userWorkouts as any[]).some((w) => (w.label ?? "").toLowerCase() === label.trim().toLowerCase()),
+    [userWorkouts, label],
+  );
+
   function reset() {
     setText("");
     setLabel("A");
