@@ -11,7 +11,6 @@
  * with "Server function info not found for <hash>" in production).
  */
 
-import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
