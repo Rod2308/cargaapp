@@ -2,13 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dumbbell, Sparkles, Timer, TrendingUp, ArrowRight, Smartphone, Share, MoreVertical } from "lucide-react";
+import logoAvif from "@/assets/logo.png?format=avif&quality=70&w=280&imagetools";
 import logoWebp from "@/assets/logo.png?format=webp&quality=80&w=280&imagetools";
 import logoPng from "@/assets/logo.png?w=280&imagetools";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     links: [
-      { rel: "preload", as: "image", href: logoWebp, type: "image/webp", fetchpriority: "high" },
+      { rel: "preload", as: "image", href: logoAvif, type: "image/avif", fetchpriority: "high" },
     ],
   }),
   component: Landing,
