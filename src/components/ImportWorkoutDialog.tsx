@@ -87,6 +87,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     setDragging(false);
     setParsing(false);
     setWorkoutId("none");
+    setDateStr("");
   }
 
   async function handleFile(file: File) {
