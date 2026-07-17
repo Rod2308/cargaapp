@@ -1,14 +1,9 @@
 /**
  * Recovery engine — server-only pure logic.
  *
- * This file exports the shared helper `computeRecoveryAdviceFor(supabase, userId)`
- * used by:
- *  - the `getRecoveryAdvice` server function (recovery.functions.ts)
- *  - the `get_recovery_status` tool inside the AI coach (coach.functions.ts)
- *
- * We keep it in a `.server.ts` file so it can be safely imported by other
- * server-fn handlers without going through the RPC stub (which would fail
- * with "Server function info not found for <hash>" in production).
+ * Exports `computeRecoveryAdviceFor(supabase, userId)` used by the
+ * `getRecoveryAdvice` server function. Narrative is fully deterministic
+ * (no AI).
  */
 
 import { z } from "zod";
