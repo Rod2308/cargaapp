@@ -113,11 +113,13 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     mutationFn: async () => {
       if (!parsed) throw new Error("Nada para salvar");
       const cleanName = fileName ? fileName.replace(/\.[^.]+$/, "").trim().slice(0, 80) : null;
+      const startedAt = dateStr ? applyDateToIso(parsed.started_at, dateStr) : parsed.started_at;
+      const endedAt = dateStr ? applyDateToIso(parsed.ended_at, dateStr) : parsed.ended_at;
       const { error } = await supabase.from("sessions").insert({
         user_id: userId,
         workout_id: workoutId === "none" ? null : workoutId,
-        started_at: parsed.started_at,
-        ended_at: parsed.ended_at,
+        started_at: startedAt,
+        ended_at: endedAt,
         activity_type: parsed.activity_type,
         distance_m: parsed.distance_m,
         avg_hr: parsed.avg_hr,
