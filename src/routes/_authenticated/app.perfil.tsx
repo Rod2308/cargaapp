@@ -284,7 +284,7 @@ function CycleCard({ profile, update }: { profile: any; update: any }) {
           <p className="text-eyebrow text-muted-foreground">Ciclo menstrual</p>
           <p className="mt-1 font-display text-lg font-bold leading-tight">Acompanhamento do ciclo</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            O coach ajusta carga e descanso conforme sua fase (menstrual, folicular, ovulação, lútea).
+            O app ajusta carga e descanso conforme sua fase (menstrual, folicular, ovulação, lútea).
           </p>
         </div>
 
