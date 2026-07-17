@@ -600,6 +600,11 @@ function parseFit(buffer: ArrayBuffer): ParsedWorkout {
 
   const sportCode = firstPositive([...sessions.map((s) => s.sport), ...laps.map((l) => l.sport), ...sports.map((s) => s.sport)]);
 
+  const { gain: fitGain, loss: fitLoss } = elevationDeltas(records.map((r) => r.altitude));
+  const fitCoords = records
+    .filter((r): r is FitRecord & { lat: number; lon: number } => r.lat != null && r.lon != null)
+    .map((r) => ({ lat: r.lat, lon: r.lon }));
+
   return {
     started_at,
     ended_at,
@@ -608,6 +613,9 @@ function parseFit(buffer: ArrayBuffer): ParsedWorkout {
     avg_hr,
     max_hr: maxHrValues.length ? Math.max(...maxHrValues) : null,
     calories: positiveSum(sessions.map((s) => s.calories)) ?? positiveSum(laps.map((l) => l.calories)),
+    elevation_gain_m: fitGain || null,
+    elevation_loss_m: fitLoss || null,
+    route_geojson: toRoute(fitCoords),
     source: "import_fit",
   };
 }
