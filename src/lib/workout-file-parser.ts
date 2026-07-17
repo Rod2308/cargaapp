@@ -100,15 +100,16 @@ function parseGpx(text: string): ParsedWorkout {
   const trkpts = Array.from(doc.getElementsByTagName("trkpt"));
   if (trkpts.length === 0) throw new Error("GPX sem pontos de rastreamento");
 
-  const points: { lat: number; lon: number; time: Date | null; hr: number | null }[] = trkpts.map((p) => {
+  const points: { lat: number; lon: number; time: Date | null; hr: number | null; ele: number | null }[] = trkpts.map((p) => {
     const lat = parseFloat(p.getAttribute("lat") ?? "0");
     const lon = parseFloat(p.getAttribute("lon") ?? "0");
     const timeEl = p.getElementsByTagName("time")[0];
     const time = timeEl?.textContent ? new Date(timeEl.textContent) : null;
-    // hr may live under extensions/gpxtpx:TrackPointExtension/gpxtpx:hr
     const hrEl = p.getElementsByTagNameNS("*", "hr")[0];
     const hr = hrEl?.textContent ? parseInt(hrEl.textContent, 10) : null;
-    return { lat, lon, time, hr: Number.isFinite(hr!) ? hr : null };
+    const eleEl = p.getElementsByTagName("ele")[0];
+    const ele = eleEl?.textContent ? parseFloat(eleEl.textContent) : null;
+    return { lat, lon, time, hr: Number.isFinite(hr!) ? hr : null, ele: Number.isFinite(ele!) ? ele : null };
   });
 
   let distance = 0;
@@ -126,6 +127,8 @@ function parseGpx(text: string): ParsedWorkout {
   const typeEl = doc.querySelector("trk > type");
   const activity_type = typeEl?.textContent?.toLowerCase().trim() || null;
 
+  const { gain, loss } = elevationDeltas(points.map((p) => p.ele));
+
   return {
     started_at,
     ended_at,
@@ -134,6 +137,9 @@ function parseGpx(text: string): ParsedWorkout {
     avg_hr,
     max_hr,
     calories: null,
+    elevation_gain_m: gain || null,
+    elevation_loss_m: loss || null,
+    route_geojson: toRoute(points),
     source: "import_gpx",
   };
 }
