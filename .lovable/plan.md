@@ -1,92 +1,77 @@
+## Objetivo
 
-## O que já existe hoje
-- Import de arquivo **.fit/.gpx/.tcx** funcional (`ImportWorkoutDialog` + `workout-file-parser.ts`) extraindo data, duração, distância, FC média/máx e calorias.
-- Import de **texto livre** para *planos de treino* (`ImportWorkoutPlanDialog`) — cria treinos A/B/C, não sessões do histórico.
+Card "Sugestão de hoje" no dashboard que decide o treino do dia a partir de uma função pura em TypeScript — combinando histórico de treinos formais, atividades extras (esportes/cardio), check-in diário e regras de recuperação. Zero IA, zero chamada externa.
 
-## O que vou construir
+## O que o usuário vê
 
-### 1. Novo hub "Importar treino"
-Um único diálogo com 4 abas (Arquivo / Foto / PDF / Texto), acessível por um botão destacado no Dashboard e em Histórico. As abas de Arquivo e Texto reaproveitam os diálogos que já existem, agora unificados na mesma janela.
+Na tela inicial (`/app`), logo acima de "Meus treinos":
 
-### 2. Enriquecer o parser de arquivo (GPX/TCX/FIT)
-- Extrair também **elevação (ganho/perda)** e **rota (lat/long)**.
-- Guardar a rota como GeoJSON num novo campo `sessions.route_geojson` para exibir no futuro em mapa.
-- Adicionar `elevation_gain_m` / `elevation_loss_m` ao schema.
+1. **Se ainda não fez check-in hoje**: card compacto pedindo os 4 números (sono h, qualidade 1-5, dor 1-5, energia 1-5), com botão "Salvar check-in".
+2. **Depois do check-in**: card com
+   - **Título**: "Sugestão de hoje"
+   - **Grupo/tipo em destaque**: ex. "Peito + Tríceps · Força"
+   - **Badge de intensidade**: Leve (verde) / Moderada (âmbar) / Alta (vermelho) / Descanso (cinza)
+   - **Frase explicativa** com dados reais: "Você jogou futebol ontem, pernas ainda cansadas — hoje foco em parte superior."
+   - **Score de recuperação** 0-10 e detalhes expansíveis ("Como calculei")
+   - **Botão "Iniciar este treino"** que abre o treino do plano cujo `label`/exercícios mais casam com o grupo sugerido, ou o modal de "esporte/atividade avulsa" quando a sugestão é descanso ativo/cardio leve.
 
-### 3. Foto do treino (nova aba)
-- Upload JPG/PNG (HEIC não é suportado por navegadores; vou avisar e sugerir converter).
-- Envia a imagem via server function para o **Lovable AI Gateway** usando um modelo de visão (`google/gemini-3.1-flash-image` como entrada + saída estruturada) com prompt em pt-BR pedindo JSON de exercícios/séries/reps/carga/distância/tempo.
-- Retorna prévia editável antes de salvar.
+Se o usuário for novo (menos de 3 sessões registradas), o card mostra sugestão padrão (full body moderado) com aviso "vai ficar mais preciso conforme você registrar treinos".
 
-### 4. PDF (nova aba)
-- Extrai texto no cliente com `pdfjs-dist` (funciona no browser, sem Node).
-- Se o PDF não tiver texto (escaneado), manda as **páginas renderizadas como imagem** para o mesmo endpoint de visão.
-- Interpreta com IA → JSON estruturado → prévia editável.
+## Arquivos
 
-### 5. Texto livre para *sessões* (nova aba, distinta da de plano)
-- Campo grande onde o usuário cola algo como `"seg: corrida 5km 25min / qua: agachamento 4x10 80kg"`.
-- Envia para server function com IA, que devolve lista de sessões estruturadas por data.
+**Migration** (nova tabela)
+- `daily_checkins` — `user_id`, `log_date` (unique com user), `sleep_hours numeric`, `sleep_quality int 1-5`, `soreness int 1-5`, `energy int 1-5`, `created_at`. RLS: dono lê/escreve. GRANT `authenticated` + `service_role`.
 
-### 6. Tela unificada de revisão
-Um componente único `ImportReviewSheet` mostrando cada sessão detectada como um card editável:
-- Data/hora, tipo, duração, distância, FC, calorias, elevação, exercícios (nome/séries/reps/carga).
-- Checkbox para incluir/excluir por item.
-- Badge **"Duplicado"** quando já existe sessão do mesmo usuário com mesma data/hora ±5min.
-- Botão único "Salvar N treinos" que insere em `sessions` (e `session_sets` quando houver exercícios de força).
+**Novo** `src/lib/daily-suggestion.ts` — função pura, testável, sem side-effects:
+- `MUSCLE_RECOVERY_DAYS` (peito 2, costas 2, pernas 3, ombro 2, bíceps 1, tríceps 1, glúteo 2, abdômen 1)
+- `ACTIVITY_IMPACT_MAP`: mapa `activity_name → { grupo: "alto"|"medio"|"baixo" }[]` para futebol, vôlei, corrida, caminhada, natação, ciclismo (usa o mesmo nome que já está em `exercises` grupo "Esportes").
+- `combineTimeline(sessoes, atividadesExtras)` → linha do tempo unificada de 7 dias com `{ date, impactoPorGrupo, cardioMinutes }`.
+- `diasDesdeUltimoEsforco(timeline, grupo)` → considera impacto médio/alto como reset.
+- `cargaCardioSemana(timeline)` → soma minutos de cardio médio/alto; flag `alta` se ≥ 3 sessões intensas.
+- `scoreRecuperacao(checkin)` → 0-10 com pesos (sono h ×3 normalizado até 8h, qualidade ×3, dor invertida ×2, energia ×2).
+- `sugerirTreinoDoDia({ sessoes, atividadesExtras, checkin, hoje })` → aplica regras (a-f do brief) e retorna `{ tipo, grupos, intensidade, motivo, score, gruposLiberados, cardioCarga, sugerirWorkoutId? }`.
 
-### 7. Deduplicação e metadados
-- Query prévia dos `started_at` do usuário na janela relevante para marcar duplicatas.
-- Novo campo `sessions.import_source` (`"file:strava.gpx"`, `"photo"`, `"pdf:plan.pdf"`, `"text"`) para rastreabilidade.
+**Novo** `src/components/DailyCheckinCard.tsx` — form controlado (4 campos) + mutation upsert. Zod: `sleep_hours` 0-24, restantes 1-5.
 
-### 8. Unidades
-- Ler `profiles.units_distance` (km/mi) e `units_weight` (kg/lb) para converter na exibição da prévia. O storage continua em SI (metros, kg).
-- Se essas colunas não existirem, adiciono via migração com default `km`/`kg`.
+**Novo** `src/components/DailySuggestionCard.tsx` — recebe o resultado da função, renderiza estado vazio (sem check-in), estado usuário novo, ou sugestão completa. Botão "Iniciar" chama a mesma `startSession` mutation já existente no dashboard, escolhendo o workout do plano cujos exercícios mais cobrem os grupos sugeridos.
 
-## Detalhes técnicos
+**Editado** `src/routes/_authenticated/app.index.tsx`:
+- Novas queries: `daily-checkin` (dia atual), `all-sessions-7d` (com `session_sets → exercises.muscle_group`), `extra-activities-7d` (sessões `workout_id is null` com `exercise.muscle_group='Esportes'`).
+- Renderiza `<DailyCheckinCard>` OU `<DailySuggestionCard>` logo após o card de recuperação.
 
-**Schema (uma migração):**
+## Fluxo de dados
+
+```text
+sessions (formais, com session_sets → exercises.muscle_group)
+sessions (extras, workout_id null, session_sets → exercises "Esportes")
+daily_checkins (hoje)
+                    │
+                    ▼
+          sugerirTreinoDoDia() ← função pura
+                    │
+                    ▼
+         DailySuggestionCard renderiza
+                    │
+                    ▼
+    onClick → startSession(workoutSugerido) já existente
 ```
-ALTER TABLE public.sessions
-  ADD COLUMN elevation_gain_m int,
-  ADD COLUMN elevation_loss_m int,
-  ADD COLUMN route_geojson jsonb,
-  ADD COLUMN import_source text;
 
-ALTER TABLE public.profiles
-  ADD COLUMN units_distance text DEFAULT 'km',
-  ADD COLUMN units_weight   text DEFAULT 'kg';
-```
+## Regras de decisão (ordem)
 
-**Server functions novas (em `src/lib/import.functions.ts`):**
-- `parseImageWorkout({ imageBase64, mime })` → chama Gateway com `google/gemini-3.1-flash-image` + `Output.object(schema)`.
-- `parsePdfWorkout({ pages: Array<{ text?: string; imageBase64?: string }> })` → usa `google/gemini-2.5-flash` para páginas com texto, visão para as sem.
-- `parseFreeTextWorkout({ text })` → mesmo modelo, prompt específico de texto.
-Todas usam `requireSupabaseAuth`, validam tamanho (≤10 MB por imagem, ≤20 páginas por PDF) e sanitizam erros.
+1. score ≤ 4 OU dor ≥ 4 OU ≥ 6 dias de esforço na semana → **descanso ativo, leve**
+2. score 4–6 → **funcional leve** num grupo liberado e não impactado por extra recente
+3. score > 6 → **força** no grupo liberado com mais dias parado; alta se score ≥ 8, senão moderada
+4. Se pernas foram exigidas por extra intenso nas últimas 48h → nunca sugerir pernas (força upper body)
+5. Nenhum grupo liberado + score bom → **cardio leve** (respeitando `cargaCardioSemana`) ou mobilidade
 
-**Dependências novas:**
-- `pdfjs-dist` (parse de PDF no cliente, funciona no browser).
-- Nada mais — visão vai pelo Gateway já configurado.
+## Segurança e validação
 
-**Arquivos novos:**
-- `src/components/ImportHub.tsx` (diálogo com abas)
-- `src/components/ImportPhotoTab.tsx`
-- `src/components/ImportPdfTab.tsx`
-- `src/components/ImportFreeTextTab.tsx`
-- `src/components/ImportReviewSheet.tsx`
-- `src/lib/import.functions.ts`
-- `src/lib/import-schema.ts` (Zod schema compartilhado)
-- `src/lib/pdf-extract.ts` (client-side)
+- Zod nos inputs do check-in (client e server via `upsert`).
+- RLS + GRANT explícitos na nova tabela.
+- Nenhum dado do check-in em URLs ou logs.
 
-**Arquivos alterados:**
-- `src/lib/workout-file-parser.ts` (elevação + rota)
-- `src/components/ImportWorkoutDialog.tsx` (vira aba "Arquivo" dentro do hub)
-- `src/routes/_authenticated/app.index.tsx` e `app.historico.tsx` (troca botão antigo pelo hub)
-- `src/routes/_authenticated/app.perfil.tsx` (seletor de unidades)
+## Fora de escopo desta entrega
 
-## Como planejo trabalhar
-Vou fazer tudo em uma única leva — não vou dividir em PRs. O escopo é grande mas os pedaços têm baixa dependência entre si: schema primeiro, depois server functions de IA em paralelo com o hub UI, depois a tela de revisão que costura tudo, depois enriquecimento do parser de arquivo.
-
-## Confirme antes de eu começar
-1. **OK usar Lovable AI para visão/PDF?** Consome créditos do seu workspace a cada import de foto/PDF/texto.
-2. **HEIC**: OK avisar o usuário para converter para JPG/PNG (não há parser de HEIC viável no browser sem trazer >1 MB de wasm)?
-3. **Deduplicação**: janela de ±5 minutos na mesma data está bom, ou prefere só bloquear duplicata exata?
+- Histórico de check-ins e gráficos (só o dia atual + upsert por data).
+- Editar o mapa de impacto pela UI (fica hard-coded em `daily-suggestion.ts`).
+- Ajuste automático da intensidade dentro do workout do plano — o botão "Iniciar" apenas leva ao workout mais adequado; ajuste fino continua no editor de treino existente.

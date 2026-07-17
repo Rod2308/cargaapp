@@ -106,11 +106,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
         avg_hr: parsed.avg_hr,
         max_hr: parsed.max_hr,
         calories: parsed.calories,
-        elevation_gain_m: parsed.elevation_gain_m,
-        elevation_loss_m: parsed.elevation_loss_m,
-        route_geojson: parsed.route_geojson as any,
         source: parsed.source,
-        import_source: fileName ? `file:${fileName}` : "file",
         notes: notes.trim() || null,
         title: cleanName || null,
       });

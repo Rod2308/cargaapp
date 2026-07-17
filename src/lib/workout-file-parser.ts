@@ -14,47 +14,10 @@ export type ParsedWorkout = {
   avg_hr: number | null;
   max_hr: number | null;
   calories: number | null;
-  elevation_gain_m: number | null;
-  elevation_loss_m: number | null;
-  // GeoJSON LineString com pontos [lon, lat] — leve o suficiente para armazenar em jsonb.
-  route_geojson: { type: "LineString"; coordinates: [number, number][] } | null;
   source: "import_fit" | "import_gpx" | "import_tcx";
 };
 
 export type ParseError = { message: string };
-
-function elevationDeltas(elevations: Array<number | null | undefined>): { gain: number; loss: number } {
-  let gain = 0;
-  let loss = 0;
-  let previous: number | null = null;
-  for (const value of elevations) {
-    if (typeof value !== "number" || !Number.isFinite(value)) continue;
-    if (previous !== null) {
-      const delta = value - previous;
-      // Ignora ruído (<0.5m) — típico de altímetros barométricos.
-      if (delta > 0.5) gain += delta;
-      else if (delta < -0.5) loss += -delta;
-    }
-    previous = value;
-  }
-  return { gain: Math.round(gain), loss: Math.round(loss) };
-}
-
-function toRoute(points: Array<{ lat: number; lon: number }>): ParsedWorkout["route_geojson"] {
-  const valid = points.filter(
-    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && (p.lat !== 0 || p.lon !== 0),
-  );
-  if (valid.length < 2) return null;
-  // Downsample para no máximo ~500 pontos — mantém shape em jsonb sem estourar.
-  const step = Math.max(1, Math.floor(valid.length / 500));
-  const coords: [number, number][] = [];
-  for (let i = 0; i < valid.length; i += step) coords.push([+valid[i].lon.toFixed(6), +valid[i].lat.toFixed(6)]);
-  if (coords[coords.length - 1] !== undefined) {
-    const last = valid[valid.length - 1];
-    coords.push([+last.lon.toFixed(6), +last.lat.toFixed(6)]);
-  }
-  return { type: "LineString", coordinates: coords };
-}
 
 function toIso(d: Date | string | number | undefined | null): string | null {
   if (!d) return null;
@@ -100,16 +63,15 @@ function parseGpx(text: string): ParsedWorkout {
   const trkpts = Array.from(doc.getElementsByTagName("trkpt"));
   if (trkpts.length === 0) throw new Error("GPX sem pontos de rastreamento");
 
-  const points: { lat: number; lon: number; time: Date | null; hr: number | null; ele: number | null }[] = trkpts.map((p) => {
+  const points: { lat: number; lon: number; time: Date | null; hr: number | null }[] = trkpts.map((p) => {
     const lat = parseFloat(p.getAttribute("lat") ?? "0");
     const lon = parseFloat(p.getAttribute("lon") ?? "0");
     const timeEl = p.getElementsByTagName("time")[0];
     const time = timeEl?.textContent ? new Date(timeEl.textContent) : null;
+    // hr may live under extensions/gpxtpx:TrackPointExtension/gpxtpx:hr
     const hrEl = p.getElementsByTagNameNS("*", "hr")[0];
     const hr = hrEl?.textContent ? parseInt(hrEl.textContent, 10) : null;
-    const eleEl = p.getElementsByTagName("ele")[0];
-    const ele = eleEl?.textContent ? parseFloat(eleEl.textContent) : null;
-    return { lat, lon, time, hr: Number.isFinite(hr!) ? hr : null, ele: Number.isFinite(ele!) ? ele : null };
+    return { lat, lon, time, hr: Number.isFinite(hr!) ? hr : null };
   });
 
   let distance = 0;
@@ -127,8 +89,6 @@ function parseGpx(text: string): ParsedWorkout {
   const typeEl = doc.querySelector("trk > type");
   const activity_type = typeEl?.textContent?.toLowerCase().trim() || null;
 
-  const { gain, loss } = elevationDeltas(points.map((p) => p.ele));
-
   return {
     started_at,
     ended_at,
@@ -137,9 +97,6 @@ function parseGpx(text: string): ParsedWorkout {
     avg_hr,
     max_hr,
     calories: null,
-    elevation_gain_m: gain || null,
-    elevation_loss_m: loss || null,
-    route_geojson: toRoute(points),
     source: "import_gpx",
   };
 }
@@ -162,21 +119,6 @@ function parseTcx(text: string): ParsedWorkout {
   let totalHrCount = 0;
   let maxHr = 0;
 
-  // Coleta trackpoints para elevação + rota.
-  const tps = Array.from(activity.getElementsByTagName("Trackpoint"));
-  const elevations: (number | null)[] = [];
-  const coords: { lat: number; lon: number }[] = [];
-  for (const tp of tps) {
-    const alt = parseFloat(tp.getElementsByTagName("AltitudeMeters")[0]?.textContent ?? "");
-    elevations.push(Number.isFinite(alt) ? alt : null);
-    const pos = tp.getElementsByTagName("Position")[0];
-    if (pos) {
-      const lat = parseFloat(pos.getElementsByTagName("LatitudeDegrees")[0]?.textContent ?? "");
-      const lon = parseFloat(pos.getElementsByTagName("LongitudeDegrees")[0]?.textContent ?? "");
-      if (Number.isFinite(lat) && Number.isFinite(lon)) coords.push({ lat, lon });
-    }
-  }
-
   for (const lap of laps) {
     const d = parseFloat(lap.getElementsByTagName("DistanceMeters")[0]?.textContent ?? "0");
     if (Number.isFinite(d)) distance += d;
@@ -197,6 +139,7 @@ function parseTcx(text: string): ParsedWorkout {
   const firstLapStart = laps[0]?.getAttribute("StartTime");
   const started_at = toIso(firstLapStart) ?? new Date().toISOString();
 
+  // ended_at: last trackpoint time in last lap, else start + total TotalTimeSeconds
   let ended_at: string | null = null;
   const lastLap = laps[laps.length - 1];
   if (lastLap) {
@@ -212,8 +155,6 @@ function parseTcx(text: string): ParsedWorkout {
     }
   }
 
-  const { gain, loss } = elevationDeltas(elevations);
-
   return {
     started_at,
     ended_at: ended_at ?? started_at,
@@ -222,9 +163,6 @@ function parseTcx(text: string): ParsedWorkout {
     avg_hr: totalHrCount ? Math.round(totalHrSum / totalHrCount) : null,
     max_hr: maxHr || null,
     calories: calories || null,
-    elevation_gain_m: gain || null,
-    elevation_loss_m: loss || null,
-    route_geojson: toRoute(coords),
     source: "import_tcx",
   };
 }
@@ -239,7 +177,7 @@ type FitDefinition = {
   fields: FitFieldDefinition[];
   developerBytes: number;
 };
-type FitRecord = { timestamp?: number; distance?: number; heartRate?: number; lat?: number; lon?: number; altitude?: number };
+type FitRecord = { timestamp?: number; distance?: number; heartRate?: number; lat?: number; lon?: number };
 type FitAggregate = {
   timestamp?: number;
   startTime?: number;
@@ -429,12 +367,7 @@ function readFitDefinition(view: DataView, offset: number, dataEnd: number, head
 
 function extractFitMessage(globalMessageNumber: number, message: Record<number, number | string | null>) {
   switch (globalMessageNumber) {
-    case 20: {
-      // altitude: campo 2 (uint16, escala 5, offset 500) — enhanced_altitude fica em 78.
-      const altRaw = numberField(message, 2);
-      const altEnh = numberField(message, 78);
-      const altitude =
-        altEnh != null ? altEnh / 5 - 500 : altRaw != null ? altRaw / 5 - 500 : undefined;
+    case 20:
       return {
         kind: "record" as const,
         value: {
@@ -443,10 +376,8 @@ function extractFitMessage(globalMessageNumber: number, message: Record<number, 
           lon: numberField(message, 1) != null ? semicirclesToDegrees(numberField(message, 1)!) : undefined,
           heartRate: numberField(message, 3) ?? undefined,
           distance: numberField(message, 5) != null ? numberField(message, 5)! / 100 : undefined,
-          altitude,
         } satisfies FitRecord,
       };
-    }
     case 18:
       return {
         kind: "session" as const,
@@ -600,11 +531,6 @@ function parseFit(buffer: ArrayBuffer): ParsedWorkout {
 
   const sportCode = firstPositive([...sessions.map((s) => s.sport), ...laps.map((l) => l.sport), ...sports.map((s) => s.sport)]);
 
-  const { gain: fitGain, loss: fitLoss } = elevationDeltas(records.map((r) => r.altitude));
-  const fitCoords = records
-    .filter((r): r is FitRecord & { lat: number; lon: number } => r.lat != null && r.lon != null)
-    .map((r) => ({ lat: r.lat, lon: r.lon }));
-
   return {
     started_at,
     ended_at,
@@ -613,9 +539,6 @@ function parseFit(buffer: ArrayBuffer): ParsedWorkout {
     avg_hr,
     max_hr: maxHrValues.length ? Math.max(...maxHrValues) : null,
     calories: positiveSum(sessions.map((s) => s.calories)) ?? positiveSum(laps.map((l) => l.calories)),
-    elevation_gain_m: fitGain || null,
-    elevation_loss_m: fitLoss || null,
-    route_geojson: toRoute(fitCoords),
     source: "import_fit",
   };
 }

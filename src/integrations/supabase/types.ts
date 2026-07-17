@@ -135,8 +135,6 @@ export type Database = {
           invite_code: string | null
           sex: string | null
           specialties: string | null
-          units_distance: string
-          units_weight: string
           updated_at: string
           uses_enhancers: boolean | null
           weekly_frequency: number | null
@@ -164,8 +162,6 @@ export type Database = {
           invite_code?: string | null
           sex?: string | null
           specialties?: string | null
-          units_distance?: string
-          units_weight?: string
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
@@ -193,8 +189,6 @@ export type Database = {
           invite_code?: string | null
           sex?: string | null
           specialties?: string | null
-          units_distance?: string
-          units_weight?: string
           updated_at?: string
           uses_enhancers?: boolean | null
           weekly_frequency?: number | null
@@ -267,15 +261,11 @@ export type Database = {
           avg_hr: number | null
           calories: number | null
           distance_m: number | null
-          elevation_gain_m: number | null
-          elevation_loss_m: number | null
           ended_at: string | null
           id: string
-          import_source: string | null
           max_hr: number | null
           notes: string | null
           perceived_effort: number | null
-          route_geojson: Json | null
           source: string
           started_at: string
           title: string | null
@@ -287,15 +277,11 @@ export type Database = {
           avg_hr?: number | null
           calories?: number | null
           distance_m?: number | null
-          elevation_gain_m?: number | null
-          elevation_loss_m?: number | null
           ended_at?: string | null
           id?: string
-          import_source?: string | null
           max_hr?: number | null
           notes?: string | null
           perceived_effort?: number | null
-          route_geojson?: Json | null
           source?: string
           started_at?: string
           title?: string | null
@@ -307,15 +293,11 @@ export type Database = {
           avg_hr?: number | null
           calories?: number | null
           distance_m?: number | null
-          elevation_gain_m?: number | null
-          elevation_loss_m?: number | null
           ended_at?: string | null
           id?: string
-          import_source?: string | null
           max_hr?: number | null
           notes?: string | null
           perceived_effort?: number | null
-          route_geojson?: Json | null
           source?: string
           started_at?: string
           title?: string | null

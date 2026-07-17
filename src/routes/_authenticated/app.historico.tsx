@@ -30,7 +30,7 @@ import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
-import { ImportHub } from "@/components/ImportHub";
+import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 
@@ -133,7 +133,7 @@ function HistoryPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
-          <ImportHub userId={user.id} />
+          <ImportWorkoutDialog userId={user.id} />
         </div>
       </header>
 
