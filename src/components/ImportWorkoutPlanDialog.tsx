@@ -12,13 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ClipboardPaste, FileUp, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
+import { extractTextFromFile } from "@/lib/plan-file-extractor";
 
 export type ParsedExercise = {
   name: string;
@@ -194,8 +194,36 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
   const online = useOnline();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [extracting, setExtracting] = useState(false);
 
   const blocks = useMemo(() => parseBlocks(text), [text]);
+
+  async function handleFiles(files: FileList | File[]) {
+    const arr = Array.from(files);
+    if (!arr.length) return;
+    setExtracting(true);
+    try {
+      const parts: string[] = [];
+      for (const f of arr) {
+        if (f.size > 15 * 1024 * 1024) {
+          toast.error(`${f.name}: arquivo maior que 15MB`);
+          continue;
+        }
+        try {
+          const t = await extractTextFromFile(f);
+          if (t.trim()) parts.push(`# ${f.name.replace(/\.[^.]+$/, "")}\n${t}`);
+        } catch (e: any) {
+          toast.error(`${f.name}: ${e.message ?? "falha ao ler"}`);
+        }
+      }
+      if (parts.length) {
+        setText((cur) => (cur ? cur + "\n\n" + parts.join("\n\n") : parts.join("\n\n")));
+        toast.success(`${parts.length} arquivo(s) importado(s)`);
+      }
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   const { data: catalog = [] } = useQuery({
     enabled: open,
@@ -374,8 +402,9 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
         <DialogHeader>
           <DialogTitle>Importar treino completo</DialogTitle>
           <DialogDescription>
-            Cole o plano inteiro (Treino A, B, C…). Cada bloco vira um treino separado no seu plano. Se não
-            houver cabeçalhos, tudo entra como um só treino.
+            Cole o plano ou envie um arquivo (.pdf, .txt, .md, .csv, .json). Cada bloco "Treino A/B/C" vira
+            um treino separado. Arquivos .fit/.gpx/.tcx são treinos executados — use "Importar treino" no
+            histórico.
           </DialogDescription>
         </DialogHeader>
 
@@ -385,6 +414,23 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
           <div className="flex items-center justify-between">
             <Label>Plano completo</Label>
             <div className="flex gap-1">
+              <label
+                className={`inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium hover:bg-accent ${extracting ? "pointer-events-none opacity-60" : ""}`}
+                title="Enviar .pdf, .txt, .md, .csv ou .json"
+              >
+                {extracting ? <Loader2 className="size-3.5 animate-spin" /> : <FileUp className="size-3.5" />}
+                Arquivo
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt,.md,.csv,.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) void handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
               <Button type="button" size="sm" variant="ghost" onClick={pasteFromClipboard} className="h-7 gap-1 text-xs">
                 <ClipboardPaste className="size-3.5" /> Colar
               </Button>
