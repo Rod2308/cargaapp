@@ -402,8 +402,9 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
         <DialogHeader>
           <DialogTitle>Importar treino completo</DialogTitle>
           <DialogDescription>
-            Cole o plano inteiro (Treino A, B, C…). Cada bloco vira um treino separado no seu plano. Se não
-            houver cabeçalhos, tudo entra como um só treino.
+            Cole o plano ou envie um arquivo (.pdf, .txt, .md, .csv, .json). Cada bloco "Treino A/B/C" vira
+            um treino separado. Arquivos .fit/.gpx/.tcx são treinos executados — use "Importar treino" no
+            histórico.
           </DialogDescription>
         </DialogHeader>
 
