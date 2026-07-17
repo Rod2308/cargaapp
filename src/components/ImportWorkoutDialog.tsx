@@ -100,6 +100,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     try {
       const result = await parseWorkoutFile(file);
       setParsed(result);
+      setDateStr(toLocalDateInput(result.started_at));
     } catch (e: any) {
       toast.error(e.message ?? "Não foi possível ler o arquivo");
       setFileName(null);
