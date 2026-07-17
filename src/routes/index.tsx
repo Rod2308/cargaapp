@@ -2,13 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dumbbell, Sparkles, Timer, TrendingUp, ArrowRight, Smartphone, Share, MoreVertical } from "lucide-react";
+import logoAvif from "@/assets/logo.png?format=avif&quality=70&w=280&imagetools";
 import logoWebp from "@/assets/logo.png?format=webp&quality=80&w=280&imagetools";
 import logoPng from "@/assets/logo.png?w=280&imagetools";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     links: [
-      { rel: "preload", as: "image", href: logoWebp, type: "image/webp", fetchpriority: "high" },
+      { rel: "preload", as: "image", href: logoAvif, type: "image/avif", fetchpriority: "high" },
     ],
   }),
   component: Landing,
@@ -36,6 +37,7 @@ function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
+            <source srcSet={logoAvif} type="image/avif" />
             <source srcSet={logoWebp} type="image/webp" />
             <img src={logoPng} alt="Carga" width={140} height={56} className="h-8 w-auto" decoding="async" fetchPriority="high" />
           </picture>
