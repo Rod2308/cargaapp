@@ -194,8 +194,36 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
   const online = useOnline();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [extracting, setExtracting] = useState(false);
 
   const blocks = useMemo(() => parseBlocks(text), [text]);
+
+  async function handleFiles(files: FileList | File[]) {
+    const arr = Array.from(files);
+    if (!arr.length) return;
+    setExtracting(true);
+    try {
+      const parts: string[] = [];
+      for (const f of arr) {
+        if (f.size > 15 * 1024 * 1024) {
+          toast.error(`${f.name}: arquivo maior que 15MB`);
+          continue;
+        }
+        try {
+          const t = await extractTextFromFile(f);
+          if (t.trim()) parts.push(`# ${f.name.replace(/\.[^.]+$/, "")}\n${t}`);
+        } catch (e: any) {
+          toast.error(`${f.name}: ${e.message ?? "falha ao ler"}`);
+        }
+      }
+      if (parts.length) {
+        setText((cur) => (cur ? cur + "\n\n" + parts.join("\n\n") : parts.join("\n\n")));
+        toast.success(`${parts.length} arquivo(s) importado(s)`);
+      }
+    } finally {
+      setExtracting(false);
+    }
+  }
 
   const { data: catalog = [] } = useQuery({
     enabled: open,
