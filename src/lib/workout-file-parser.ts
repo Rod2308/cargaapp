@@ -239,7 +239,7 @@ type FitDefinition = {
   fields: FitFieldDefinition[];
   developerBytes: number;
 };
-type FitRecord = { timestamp?: number; distance?: number; heartRate?: number; lat?: number; lon?: number };
+type FitRecord = { timestamp?: number; distance?: number; heartRate?: number; lat?: number; lon?: number; altitude?: number };
 type FitAggregate = {
   timestamp?: number;
   startTime?: number;
@@ -429,7 +429,12 @@ function readFitDefinition(view: DataView, offset: number, dataEnd: number, head
 
 function extractFitMessage(globalMessageNumber: number, message: Record<number, number | string | null>) {
   switch (globalMessageNumber) {
-    case 20:
+    case 20: {
+      // altitude: campo 2 (uint16, escala 5, offset 500) — enhanced_altitude fica em 78.
+      const altRaw = numberField(message, 2);
+      const altEnh = numberField(message, 78);
+      const altitude =
+        altEnh != null ? altEnh / 5 - 500 : altRaw != null ? altRaw / 5 - 500 : undefined;
       return {
         kind: "record" as const,
         value: {
@@ -438,8 +443,10 @@ function extractFitMessage(globalMessageNumber: number, message: Record<number, 
           lon: numberField(message, 1) != null ? semicirclesToDegrees(numberField(message, 1)!) : undefined,
           heartRate: numberField(message, 3) ?? undefined,
           distance: numberField(message, 5) != null ? numberField(message, 5)! / 100 : undefined,
+          altitude,
         } satisfies FitRecord,
       };
+    }
     case 18:
       return {
         kind: "session" as const,
