@@ -10,6 +10,7 @@ import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
   component: TreinosList,
