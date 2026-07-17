@@ -26,6 +26,20 @@ import { ptBR } from "date-fns/locale";
 
 const MAX_FILE_MB = 10;
 
+function toLocalDateInput(iso: string): string {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function applyDateToIso(iso: string, dateStr: string): string {
+  const original = new Date(iso);
+  const [y, m, day] = dateStr.split("-").map(Number);
+  const updated = new Date(original);
+  updated.setFullYear(y, m - 1, day);
+  return updated.toISOString();
+}
+
 function formatDuration(startIso: string, endIso: string): string {
   const seconds = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000));
   const h = Math.floor(seconds / 3600);
@@ -51,6 +65,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [workoutId, setWorkoutId] = useState<string>("none");
+  const [dateStr, setDateStr] = useState<string>("");
 
   const { data: workouts = [] } = useQuery({
     enabled: open,
@@ -72,6 +87,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     setDragging(false);
     setParsing(false);
     setWorkoutId("none");
+    setDateStr("");
   }
 
   async function handleFile(file: File) {
@@ -84,6 +100,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     try {
       const result = await parseWorkoutFile(file);
       setParsed(result);
+      setDateStr(toLocalDateInput(result.started_at));
     } catch (e: any) {
       toast.error(e.message ?? "Não foi possível ler o arquivo");
       setFileName(null);
@@ -96,11 +113,13 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
     mutationFn: async () => {
       if (!parsed) throw new Error("Nada para salvar");
       const cleanName = fileName ? fileName.replace(/\.[^.]+$/, "").trim().slice(0, 80) : null;
+      const startedAt = dateStr ? applyDateToIso(parsed.started_at, dateStr) : parsed.started_at;
+      const endedAt = dateStr ? applyDateToIso(parsed.ended_at, dateStr) : parsed.ended_at;
       const { error } = await supabase.from("sessions").insert({
         user_id: userId,
         workout_id: workoutId === "none" ? null : workoutId,
-        started_at: parsed.started_at,
-        ended_at: parsed.ended_at,
+        started_at: startedAt,
+        ended_at: endedAt,
         activity_type: parsed.activity_type,
         distance_m: parsed.distance_m,
         avg_hr: parsed.avg_hr,
@@ -214,6 +233,21 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
               </div>
               {fileName && <p className="mt-3 truncate text-[11px] text-muted-foreground">Arquivo: {fileName}</p>}
             </div>
+
+            <div>
+              <label className="text-sm font-semibold">Data do treino</label>
+              <input
+                type="date"
+                value={dateStr}
+                max={toLocalDateInput(new Date().toISOString())}
+                onChange={(e) => setDateStr(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-card p-2 text-sm outline-none focus:border-primary"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Ajuste se o treino foi feito em outro dia. O horário do arquivo é preservado.
+              </p>
+            </div>
+
 
             {workouts.length > 0 && (
               <div>
