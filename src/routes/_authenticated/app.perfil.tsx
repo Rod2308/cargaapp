@@ -246,7 +246,7 @@ function StudentProfile({ profile, update }: { profile: any; update: any }) {
             defaultValue={profile.injuries ?? ""}
             onBlur={(e) => e.target.value !== (profile.injuries ?? "") && update.mutate({ injuries: e.target.value || null })}
           />
-          <p className="text-xs text-muted-foreground">O coach evita movimentos que agravem essas áreas.</p>
+          <p className="text-xs text-muted-foreground">O app evita movimentos que agravem essas áreas.</p>
         </div>
         <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
           <div>
