@@ -10,6 +10,7 @@ import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
   component: TreinosList,
@@ -65,6 +66,8 @@ function TreinosList() {
           <h1 className="text-3xl font-bold tracking-tight">Meus treinos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Suas divisões A, B, C...</p>
         </div>
+        <div className="flex gap-2">
+        <ImportWorkoutPlanDialog userId={user.id} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline"><Plus className="size-4" /> Novo</Button>
@@ -88,6 +91,7 @@ function TreinosList() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </header>
 
       <div className="mt-5">
