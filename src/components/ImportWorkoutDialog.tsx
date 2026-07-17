@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2, FileUp, Activity, Heart, Flame, Ruler, Timer, Link as LinkIcon } from "lucide-react";
+import { Upload, Loader2, FileUp, X } from "lucide-react";
 import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const MAX_FILE_MB = 10;
+const MAX_FILES = 20;
 
 function toLocalDateInput(iso: string): string {
   const d = new Date(iso);
@@ -44,28 +45,27 @@ function formatDuration(startIso: string, endIso: string): string {
   const seconds = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000));
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
   if (h > 0) return `${h}h${String(m).padStart(2, "0")}min`;
-  if (m > 0) return `${m}min ${String(s).padStart(2, "0")}s`;
-  return `${s}s`;
+  if (m > 0) return `${m}min`;
+  return `${seconds}s`;
 }
 
-function formatDistance(m: number): string {
-  if (m >= 1000) return `${(m / 1000).toFixed(2).replace(".", ",")} km`;
-  return `${m} m`;
-}
+type PendingItem = {
+  id: string;
+  fileName: string;
+  parsed: ParsedWorkout;
+  dateStr: string;
+  workoutId: string;
+};
 
 export function ImportWorkoutDialog({ userId, onImported }: { userId: string; onImported?: () => void }) {
   const qc = useQueryClient();
   const online = useOnline();
   const [open, setOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
-  const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [notes, setNotes] = useState("");
+  const [items, setItems] = useState<PendingItem[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [workoutId, setWorkoutId] = useState<string>("none");
-  const [dateStr, setDateStr] = useState<string>("");
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
 
   const { data: workouts = [] } = useQuery({
     enabled: open,
@@ -81,68 +81,103 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
   });
 
   function reset() {
-    setParsed(null);
-    setFileName(null);
-    setNotes("");
+    setItems([]);
     setDragging(false);
     setParsing(false);
-    setWorkoutId("none");
-    setDateStr("");
+    setParseErrors([]);
   }
 
-  async function handleFile(file: File) {
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      toast.error(`Arquivo maior que ${MAX_FILE_MB}MB`);
-      return;
-    }
+  async function handleFiles(files: File[]) {
+    if (!files.length) return;
+    const slots = Math.max(0, MAX_FILES - items.length);
+    const batch = files.slice(0, slots);
+    if (files.length > slots) toast.warning(`Limite de ${MAX_FILES} arquivos por importação`);
     setParsing(true);
-    setFileName(file.name);
-    try {
-      const result = await parseWorkoutFile(file);
-      setParsed(result);
-      setDateStr(toLocalDateInput(result.started_at));
-    } catch (e: any) {
-      toast.error(e.message ?? "Não foi possível ler o arquivo");
-      setFileName(null);
-    } finally {
-      setParsing(false);
+    const errors: string[] = [];
+    const parsedItems: PendingItem[] = [];
+    for (const file of batch) {
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        errors.push(`${file.name}: maior que ${MAX_FILE_MB}MB`);
+        continue;
+      }
+      try {
+        const result = await parseWorkoutFile(file);
+        parsedItems.push({
+          id: `${file.name}-${Math.random().toString(36).slice(2, 8)}`,
+          fileName: file.name,
+          parsed: result,
+          dateStr: toLocalDateInput(result.started_at),
+          workoutId: "none",
+        });
+      } catch (e: any) {
+        errors.push(`${file.name}: ${e.message ?? "não foi possível ler"}`);
+      }
     }
+    setItems((cur) => [...cur, ...parsedItems]);
+    setParseErrors(errors);
+    setParsing(false);
+    if (errors.length) toast.error(`${errors.length} arquivo(s) com erro`);
+  }
+
+  function updateItem(id: string, patch: Partial<PendingItem>) {
+    setItems((cur) => cur.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  }
+
+  function removeItem(id: string) {
+    setItems((cur) => cur.filter((it) => it.id !== id));
+  }
+
+  function shiftDatesBackwards() {
+    // Assign consecutive dates ending today for items lacking uniqueness
+    setItems((cur) => {
+      const today = new Date();
+      return cur.map((it, idx) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (cur.length - 1 - idx));
+        return { ...it, dateStr: toLocalDateInput(d.toISOString()) };
+      });
+    });
+    toast.success("Datas distribuídas: uma por dia até hoje");
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!parsed) throw new Error("Nada para salvar");
-      const cleanName = fileName ? fileName.replace(/\.[^.]+$/, "").trim().slice(0, 80) : null;
-      const startedAt = dateStr ? applyDateToIso(parsed.started_at, dateStr) : parsed.started_at;
-      const endedAt = dateStr ? applyDateToIso(parsed.ended_at, dateStr) : parsed.ended_at;
-      const { error } = await supabase.from("sessions").insert({
-        user_id: userId,
-        workout_id: workoutId === "none" ? null : workoutId,
-        started_at: startedAt,
-        ended_at: endedAt,
-        activity_type: parsed.activity_type,
-        distance_m: parsed.distance_m,
-        avg_hr: parsed.avg_hr,
-        max_hr: parsed.max_hr,
-        calories: parsed.calories,
-        source: parsed.source,
-        notes: notes.trim() || null,
-        title: cleanName || null,
+      if (!items.length) throw new Error("Nada para importar");
+      const rows = items.map((it) => {
+        const cleanName = it.fileName.replace(/\.[^.]+$/, "").trim().slice(0, 80) || null;
+        return {
+          user_id: userId,
+          workout_id: it.workoutId === "none" ? null : it.workoutId,
+          started_at: applyDateToIso(it.parsed.started_at, it.dateStr),
+          ended_at: applyDateToIso(it.parsed.ended_at, it.dateStr),
+          activity_type: it.parsed.activity_type,
+          distance_m: it.parsed.distance_m,
+          avg_hr: it.parsed.avg_hr,
+          max_hr: it.parsed.max_hr,
+          calories: it.parsed.calories,
+          source: it.parsed.source,
+          title: cleanName,
+        };
       });
+      const { error } = await supabase.from("sessions").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
-      toast.success("Treino importado");
+    onSuccess: (count) => {
+      toast.success(count === 1 ? "Treino importado" : `${count} treinos importados`);
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["workout-recent-cardio"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
       onImported?.();
       setOpen(false);
       reset();
     },
     onError: (e: any) => toast.error(e.message ?? "Falha ao salvar"),
   });
+
+  const todayStr = toLocalDateInput(new Date().toISOString());
 
   return (
     <Dialog
@@ -157,141 +192,149 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
           <Upload className="size-3.5" /> Importar treino
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Importar treino</DialogTitle>
+          <DialogTitle>Importar treinos</DialogTitle>
           <DialogDescription>
-            Envie um arquivo <strong>.fit</strong>, <strong>.gpx</strong> ou <strong>.tcx</strong> exportado
-            do seu relógio, Strava, Garmin, Polar, Coros, Suunto etc.
+            Envie um ou vários arquivos <strong>.fit</strong>, <strong>.gpx</strong> ou{" "}
+            <strong>.tcx</strong>. Você pode ajustar a data de cada treino antes de salvar.
           </DialogDescription>
         </DialogHeader>
         <OfflineNotice feature="Importação de treino" />
 
-
-        {!parsed && !parsing && (
-          <label
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) void handleFile(f);
-            }}
-            className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-              dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-            }`}
-          >
-            <FileUp className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Toque para escolher ou arraste aqui</p>
-            <p className="text-xs text-muted-foreground">.fit, .gpx, .tcx · até {MAX_FILE_MB}MB</p>
-            <input
-              type="file"
-              accept=".fit,.gpx,.tcx"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-              }}
-            />
-          </label>
-        )}
-
-        {parsing && (
-          <div className="flex flex-col items-center gap-2 py-8">
+        <label
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const fs = Array.from(e.dataTransfer.files ?? []);
+            if (fs.length) void handleFiles(fs);
+          }}
+          className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+            dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          }`}
+        >
+          {parsing ? (
             <Loader2 className="size-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Lendo {fileName}...</p>
+          ) : (
+            <FileUp className="size-6 text-muted-foreground" />
+          )}
+          <p className="text-sm font-medium">
+            {parsing ? "Lendo arquivos..." : "Toque para escolher ou arraste vários aqui"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            .fit, .gpx, .tcx · até {MAX_FILE_MB}MB cada · máx. {MAX_FILES} por vez
+          </p>
+          <input
+            type="file"
+            multiple
+            accept=".fit,.gpx,.tcx"
+            className="hidden"
+            onChange={(e) => {
+              const fs = Array.from(e.target.files ?? []);
+              if (fs.length) void handleFiles(fs);
+              e.target.value = "";
+            }}
+          />
+        </label>
+
+        {parseErrors.length > 0 && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs">
+            <p className="font-semibold text-destructive">Erros de leitura:</p>
+            <ul className="mt-1 list-disc pl-4 text-destructive/90">
+              {parseErrors.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
           </div>
         )}
 
-        {parsed && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-eyebrow text-muted-foreground">Prévia</p>
-              <p className="mt-1 font-display text-lg">{translateActivityType(parsed.activity_type)}</p>
-              <p className="text-xs text-muted-foreground">
-                {format(new Date(parsed.started_at), "d MMM yyyy · HH:mm", { locale: ptBR })}
+        {items.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">
+                {items.length} treino{items.length > 1 ? "s" : ""} pronto{items.length > 1 ? "s" : ""} para
+                importar
               </p>
-
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <Stat icon={Timer} label="Duração" value={formatDuration(parsed.started_at, parsed.ended_at)} />
-                {parsed.distance_m != null && (
-                  <Stat icon={Ruler} label="Distância" value={formatDistance(parsed.distance_m)} />
-                )}
-                {parsed.avg_hr != null && (
-                  <Stat icon={Heart} label="FC média" value={`${parsed.avg_hr} bpm`} />
-                )}
-                {parsed.max_hr != null && (
-                  <Stat icon={Activity} label="FC máx" value={`${parsed.max_hr} bpm`} />
-                )}
-                {parsed.calories != null && (
-                  <Stat icon={Flame} label="Calorias" value={`${parsed.calories} kcal`} />
-                )}
-              </div>
-              {fileName && <p className="mt-3 truncate text-[11px] text-muted-foreground">Arquivo: {fileName}</p>}
+              {items.length > 1 && (
+                <Button size="sm" variant="ghost" onClick={shiftDatesBackwards} className="h-7 text-xs">
+                  Distribuir: 1 por dia até hoje
+                </Button>
+              )}
             </div>
 
-            <div>
-              <label className="text-sm font-semibold">Data do treino</label>
-              <input
-                type="date"
-                value={dateStr}
-                max={toLocalDateInput(new Date().toISOString())}
-                onChange={(e) => setDateStr(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-card p-2 text-sm outline-none focus:border-primary"
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Ajuste se o treino foi feito em outro dia. O horário do arquivo é preservado.
-              </p>
+            <div className="space-y-2">
+              {items.map((it) => (
+                <div key={it.id} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {translateActivityType(it.parsed.activity_type)}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">{it.fileName}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Original:{" "}
+                        {format(new Date(it.parsed.started_at), "d MMM yyyy · HH:mm", { locale: ptBR })} ·
+                        Duração: {formatDuration(it.parsed.started_at, it.parsed.ended_at)}
+                        {it.parsed.distance_m ? ` · ${(it.parsed.distance_m / 1000).toFixed(2)} km` : ""}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => removeItem(it.id)}
+                      title="Remover"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[11px] font-semibold text-muted-foreground">
+                        Data do treino
+                      </label>
+                      <input
+                        type="date"
+                        value={it.dateStr}
+                        max={todayStr}
+                        onChange={(e) => updateItem(it.id, { dateStr: e.target.value })}
+                        className="mt-0.5 w-full rounded-lg border border-border bg-background p-1.5 text-sm outline-none focus:border-primary"
+                      />
+                    </div>
+                    {workouts.length > 0 && (
+                      <div>
+                        <label className="text-[11px] font-semibold text-muted-foreground">
+                          Vincular ao plano
+                        </label>
+                        <Select
+                          value={it.workoutId}
+                          onValueChange={(v) => updateItem(it.id, { workoutId: v })}
+                        >
+                          <SelectTrigger className="mt-0.5 h-8">
+                            <SelectValue placeholder="Sem vínculo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem vínculo</SelectItem>
+                            {workouts.map((w) => (
+                              <SelectItem key={w.id} value={w.id}>
+                                {w.label ? `${w.label} — ` : ""}
+                                {w.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-
-
-            {workouts.length > 0 && (
-              <div>
-                <label className="flex items-center gap-1.5 text-sm font-semibold">
-                  <LinkIcon className="size-3.5" /> Vincular ao plano (opcional)
-                </label>
-                <Select value={workoutId} onValueChange={setWorkoutId}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Escolha um dia do plano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem vínculo</SelectItem>
-                    {workouts.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.label ? `Treino ${w.label} — ` : ""}{w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Vincular faz o Carga usar FC e volume para ajustar carga e descanso do plano.
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className="text-sm font-semibold">Observações (opcional)</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                maxLength={500}
-                rows={2}
-                placeholder="Como foi o treino?"
-                className="mt-1 w-full resize-none rounded-lg border border-border bg-card p-2 text-sm outline-none focus:border-primary"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={reset}
-              className="text-xs font-semibold text-muted-foreground underline underline-offset-4"
-            >
-              Escolher outro arquivo
-            </button>
           </div>
         )}
 
@@ -299,23 +342,17 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
           <Button variant="outline" onClick={() => setOpen(false)} disabled={save.isPending}>
             Cancelar
           </Button>
-          <Button onClick={() => save.mutate()} disabled={!parsed || save.isPending}>
-            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar no histórico"}
+          <Button onClick={() => save.mutate()} disabled={!items.length || save.isPending}>
+            {save.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : items.length > 1 ? (
+              `Salvar ${items.length} treinos`
+            ) : (
+              "Salvar no histórico"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Stat({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-2 py-1.5">
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="truncate text-sm font-semibold">{value}</p>
-      </div>
-    </div>
   );
 }
