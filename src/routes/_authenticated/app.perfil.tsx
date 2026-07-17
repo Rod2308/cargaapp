@@ -251,7 +251,7 @@ function StudentProfile({ profile, update }: { profile: any; update: any }) {
         <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
           <div>
             <p className="text-sm font-medium">Uso anabolizantes ou SARMs</p>
-            <p className="text-xs text-muted-foreground">Substâncias que aceleram ganho de massa (ex: esteroides). O coach aumenta o volume dos treinos.</p>
+            <p className="text-xs text-muted-foreground">Substâncias que aceleram ganho de massa (ex: esteroides). O app aumenta o volume dos treinos.</p>
 
           </div>
           <Switch
