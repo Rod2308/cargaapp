@@ -65,6 +65,7 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
   const [notes, setNotes] = useState("");
   const [dragging, setDragging] = useState(false);
   const [workoutId, setWorkoutId] = useState<string>("none");
+  const [dateStr, setDateStr] = useState<string>("");
 
   const { data: workouts = [] } = useQuery({
     enabled: open,
