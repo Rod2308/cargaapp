@@ -91,6 +91,7 @@ function TreinosList() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </header>
 
       <div className="mt-5">
