@@ -234,6 +234,21 @@ export function ImportWorkoutDialog({ userId, onImported }: { userId: string; on
               {fileName && <p className="mt-3 truncate text-[11px] text-muted-foreground">Arquivo: {fileName}</p>}
             </div>
 
+            <div>
+              <label className="text-sm font-semibold">Data do treino</label>
+              <input
+                type="date"
+                value={dateStr}
+                max={toLocalDateInput(new Date().toISOString())}
+                onChange={(e) => setDateStr(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-card p-2 text-sm outline-none focus:border-primary"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Ajuste se o treino foi feito em outro dia. O horário do arquivo é preservado.
+              </p>
+            </div>
+
+
             {workouts.length > 0 && (
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-semibold">
