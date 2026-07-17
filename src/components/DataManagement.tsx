@@ -65,19 +65,14 @@ type ExportPayload = {
 };
 
 async function fetchAll(userId: string): Promise<ExportPayload> {
-  const [profileRes, workoutsRes, weRes, sessionsRes, setsRes] = await Promise.all([
+  const [profileRes, workoutsRes, sessionsRes] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     supabase.from("workouts").select("id, label, name, notes, order_idx").eq("user_id", userId).order("order_idx"),
-    supabase
-      .from("workout_exercises")
-      .select("id, workout_id, exercise_id, order_idx, target_sets, target_reps, target_weight_kg, target_rest_seconds, notes, exercises(name, muscle_group)")
-      .in("workout_id", []),
     supabase
       .from("sessions")
       .select("*, workouts(label, name)")
       .eq("user_id", userId)
       .order("started_at", { ascending: false }),
-    supabase.from("session_sets").select("*, exercises(name, muscle_group)").in("session_id", []),
   ]);
 
   const workouts = workoutsRes.data ?? [];
@@ -99,10 +94,6 @@ async function fetchAll(userId: string): Promise<ExportPayload> {
         .in("session_id", sessionIds)
         .order("set_number")
     : { data: [] as any[] };
-
-  void profileRes;
-  void weRes;
-  void setsRes;
 
   const setsBySession = new Map<string, any[]>();
   for (const s of setsData ?? []) {
