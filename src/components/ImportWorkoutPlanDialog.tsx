@@ -12,13 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ClipboardPaste, FileUp, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
+import { extractTextFromFile } from "@/lib/plan-file-extractor";
 
 export type ParsedExercise = {
   name: string;
