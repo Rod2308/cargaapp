@@ -81,7 +81,7 @@ function AuthPage() {
     const parsedName = displayNameSchema.safeParse(nameCandidate);
     if (!parsedName.success) return toast.error(parsedName.error.issues[0]?.message ?? "Nome inválido.");
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsedEmail.data,
       password: parsedPassword.data,
       options: {
