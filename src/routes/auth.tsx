@@ -269,6 +269,8 @@ function AuthPage() {
 
     const needsConfirmation = !data.session;
     if (needsConfirmation) {
+      setPendingEmail(parsedEmail.data);
+      setResendCooldown(60);
       toast.success(
         `Enviamos um email de confirmação para ${parsedEmail.data}. Abra sua caixa de entrada (e a pasta de spam) e clique no link para ativar sua conta.`,
         { duration: 8000 },
@@ -278,6 +280,7 @@ function AuthPage() {
     toast.success("Conta criada com sucesso!");
     window.location.href = redirectTo;
   }
+
 
 
   async function google() {
