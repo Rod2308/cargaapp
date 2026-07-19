@@ -173,7 +173,7 @@ function Dashboard() {
       const since = new Date(Date.now() - 7 * 86400_000).toISOString();
       const { data } = await supabase
         .from("sessions")
-        .select("id, started_at, ended_at, workout_id, notes, workouts(name, label), session_sets(exercises(name, muscle_group))")
+        .select("id, started_at, ended_at, workout_id, notes, title, source, activity_type, distance_m, workouts(name, label), session_sets(exercises(name, muscle_group))")
         .eq("user_id", user.id)
         .gte("started_at", since)
         .order("started_at", { ascending: false });
@@ -193,15 +193,21 @@ function Dashboard() {
         if (g) groups.add(g);
         if (g === "Esportes" && st.exercises?.name) sportNames.push(st.exercises.name);
       }
-      const isSport = !s.workout_id && sportNames.length > 0;
+      const cardio = isCardioSession(s);
+      const isSport = !s.workout_id && (sportNames.length > 0 || cardio);
       if (isSport) {
         const dur = s.ended_at
           ? Math.max(0, (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
           : null;
+        const name =
+          sportNames[0] ??
+          s.title ??
+          s.activity_type ??
+          "cardio";
         extras.push({
           started_at: s.started_at,
           ended_at: s.ended_at,
-          activity_name: sportNames[0],
+          activity_name: name,
           duration_min: dur,
         });
       } else {
@@ -214,6 +220,7 @@ function Dashboard() {
         });
       }
     }
+
 
     // Sugestão baseada em análise de recuperação (sem rotação fixa do plano)
     const geral = sugerirTreinoDoDia({
