@@ -194,12 +194,42 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"student" | "trainer">("student");
   const [busy, setBusy] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) window.location.href = redirectTo;
     });
   }, [redirectTo]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  async function resendConfirmation() {
+    if (!pendingEmail || resendCooldown > 0 || resending) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: pendingEmail,
+      options: { emailRedirectTo: `${window.location.origin}${redirectTo}` },
+    });
+    setResending(false);
+    if (error) {
+      toast.error(translateAuthError(error));
+      // Se foi rate-limit, respeita cooldown maior.
+      const m = (error.message || "").toLowerCase();
+      if (m.includes("rate") || m.includes("too many")) setResendCooldown(60);
+      return;
+    }
+    toast.success(`Email de confirmação reenviado para ${pendingEmail}.`);
+    setResendCooldown(60);
+  }
+
 
 
 
