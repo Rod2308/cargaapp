@@ -22,10 +22,19 @@ function Landing() {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSignedIn(!!data.session);
-      setLoading(false);
-    });
+    // Defer auth check off the critical path so it doesn't compete with LCP
+    const run = () => {
+      supabase.auth.getSession().then(({ data }) => {
+        setSignedIn(!!data.session);
+        setLoading(false);
+      });
+    };
+    const w = window as any;
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run, { timeout: 1500 });
+    } else {
+      setTimeout(run, 200);
+    }
   }, []);
 
   useEffect(() => {
