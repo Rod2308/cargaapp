@@ -12,25 +12,149 @@ import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation
 
 
 
-function translateAuthError(msg: string): string {
-  const m = (msg || "").toLowerCase();
-  if (
-    m.includes("weak") ||
-    m.includes("pwned") ||
-    m.includes("compromised") ||
-    m.includes("breach") ||
-    m.includes("easy") ||
-    m.includes("common")
-  ) {
-    return "Essa senha é muito fraca ou já apareceu em vazamentos conhecidos. Escolha outra com pelo menos 8 caracteres, misturando letras maiúsculas, minúsculas, números e símbolos.";
+// Mapeia códigos e mensagens do Supabase Auth (GoTrue) para pt-BR.
+// Referência: https://supabase.com/docs/guides/auth/debugging/error-codes
+const AUTH_ERROR_CODE_MAP: Record<string, string> = {
+  anonymous_provider_disabled: "Login anônimo está desativado.",
+  bad_code_verifier: "Falha na verificação do login. Tente novamente.",
+  bad_json: "Requisição inválida. Recarregue a página e tente de novo.",
+  bad_jwt: "Sessão inválida. Faça login novamente.",
+  bad_oauth_callback: "Falha no retorno do login social. Tente novamente.",
+  bad_oauth_state: "Sessão de login social expirou. Tente novamente.",
+  captcha_failed: "Falha na verificação de segurança (captcha). Tente novamente.",
+  conflict: "Conflito ao processar a requisição. Tente novamente.",
+  email_address_invalid: "Email inválido.",
+  email_address_not_authorized: "Este email não está autorizado a acessar o app.",
+  email_exists: "Já existe uma conta com esse email.",
+  email_not_confirmed: "Confirme seu email antes de entrar. Verifique sua caixa de entrada e a pasta de spam.",
+  email_provider_disabled: "Cadastro por email está desativado.",
+  flow_state_expired: "O link expirou. Solicite um novo.",
+  flow_state_not_found: "Link inválido ou já utilizado. Solicite um novo.",
+  identity_already_exists: "Esta identidade já está vinculada a outra conta.",
+  identity_not_found: "Identidade não encontrada.",
+  insufficient_aal: "É necessária autenticação em duas etapas para continuar.",
+  invalid_credentials: "Email ou senha incorretos.",
+  invite_not_found: "Convite não encontrado ou expirado.",
+  manual_linking_disabled: "Vinculação manual de contas está desativada.",
+  mfa_challenge_expired: "O desafio de verificação expirou. Tente novamente.",
+  mfa_factor_name_conflict: "Já existe um fator com esse nome.",
+  mfa_factor_not_found: "Fator de autenticação não encontrado.",
+  mfa_verification_failed: "Código de verificação incorreto.",
+  no_authorization: "Você precisa entrar para continuar.",
+  not_admin: "Você não tem permissão para esta ação.",
+  oauth_provider_not_supported: "Provedor de login social não suportado.",
+  otp_disabled: "Login por código único está desativado.",
+  otp_expired: "O código expirou. Solicite um novo.",
+  over_email_send_rate_limit: "Muitos emails enviados. Aguarde alguns minutos e tente novamente.",
+  over_request_rate_limit: "Muitas tentativas em pouco tempo. Aguarde alguns minutos.",
+  over_sms_send_rate_limit: "Muitos SMS enviados. Aguarde alguns minutos.",
+  phone_exists: "Já existe uma conta com esse telefone.",
+  phone_not_confirmed: "Confirme seu telefone antes de entrar.",
+  phone_provider_disabled: "Cadastro por telefone está desativado.",
+  provider_disabled: "Este método de login está desativado.",
+  provider_email_needs_verification: "Confirme o email deste provedor antes de continuar.",
+  reauthentication_needed: "Confirme sua senha novamente para continuar.",
+  reauthentication_not_valid: "Falha na reautenticação. Tente novamente.",
+  refresh_token_not_found: "Sua sessão expirou. Faça login novamente.",
+  refresh_token_already_used: "Sessão expirada. Faça login novamente.",
+  request_timeout: "A solicitação demorou demais. Verifique sua conexão e tente novamente.",
+  same_password: "A nova senha precisa ser diferente da anterior.",
+  saml_assertion_no_email: "O provedor SAML não retornou um email.",
+  saml_assertion_no_user_id: "O provedor SAML não retornou um identificador de usuário.",
+  session_expired: "Sua sessão expirou. Faça login novamente.",
+  session_not_found: "Sessão não encontrada. Faça login novamente.",
+  signup_disabled: "Novos cadastros estão desativados no momento.",
+  single_identity_not_deletable: "Não é possível remover a única identidade da conta.",
+  sms_send_failed: "Não foi possível enviar o SMS. Tente novamente.",
+  too_many_enrolled_mfa_factors: "Você atingiu o limite de fatores de autenticação.",
+  unexpected_audience: "Token inválido para este aplicativo.",
+  unexpected_failure: "Ocorreu um erro inesperado. Tente novamente.",
+  user_already_exists: "Já existe uma conta com esse email.",
+  user_banned: "Esta conta foi bloqueada. Entre em contato com o suporte.",
+  user_not_found: "Usuário não encontrado.",
+  user_sso_managed: "Esta conta é gerenciada por SSO. Entre pelo seu provedor.",
+  validation_failed: "Dados inválidos. Verifique os campos e tente novamente.",
+  weak_password: "Senha muito fraca. Use uma combinação mais forte (letras maiúsculas, minúsculas, números e símbolos).",
+  password_compromised: "Essa senha apareceu em vazamentos conhecidos. Escolha outra que você nunca tenha usado.",
+  password_too_short: "Senha muito curta. Use pelo menos 8 caracteres.",
+};
+
+function translateAuthError(err: unknown): string {
+  // Suporta AuthError, PostgrestError e Error genérico.
+  const anyErr = (err ?? {}) as { code?: string; error_code?: string; name?: string; message?: string; status?: number };
+  const rawMsg = typeof err === "string" ? err : anyErr.message ?? "";
+  const code = (anyErr.code || anyErr.error_code || "").toString().toLowerCase();
+  if (code && AUTH_ERROR_CODE_MAP[code]) return AUTH_ERROR_CODE_MAP[code];
+
+  const m = rawMsg.toLowerCase();
+
+  // Senhas fracas / vazadas (HIBP / regras locais).
+  if (m.includes("pwned") || m.includes("compromised") || m.includes("breach") || m.includes("has been leaked")) {
+    return AUTH_ERROR_CODE_MAP.password_compromised;
   }
-  if (m.includes("password") && (m.includes("short") || m.includes("least"))) return "Senha muito curta. Use pelo menos 8 caracteres.";
-  if (m.includes("invalid login") || m.includes("invalid credentials")) return "Email ou senha incorretos.";
-  if (m.includes("already registered") || m.includes("already exists")) return "Já existe uma conta com esse email.";
-  if (m.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
-  if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
-  if (m.includes("invalid email")) return "Email inválido.";
-  return msg;
+  if (m.includes("weak password") || m.includes("password is too weak") || m.includes("easy") || m.includes("common password")) {
+    return AUTH_ERROR_CODE_MAP.weak_password;
+  }
+  if (m.includes("password") && (m.includes("short") || m.includes("at least") || m.includes("minimum"))) {
+    return AUTH_ERROR_CODE_MAP.password_too_short;
+  }
+  if (m.includes("password should contain") || m.includes("password must contain")) {
+    return "A senha precisa conter os caracteres exigidos (letras, números e símbolos).";
+  }
+
+  // Login / credenciais
+  if (m.includes("invalid login") || m.includes("invalid credentials") || m.includes("invalid email or password")) {
+    return AUTH_ERROR_CODE_MAP.invalid_credentials;
+  }
+  if (m.includes("email not confirmed") || m.includes("email address not confirmed")) return AUTH_ERROR_CODE_MAP.email_not_confirmed;
+  if (m.includes("phone not confirmed")) return AUTH_ERROR_CODE_MAP.phone_not_confirmed;
+  if (m.includes("user already registered") || m.includes("already been registered") || m.includes("already exists") || m.includes("duplicate key")) {
+    return AUTH_ERROR_CODE_MAP.user_already_exists;
+  }
+  if (m.includes("user not found")) return AUTH_ERROR_CODE_MAP.user_not_found;
+  if (m.includes("user banned") || m.includes("banned")) return AUTH_ERROR_CODE_MAP.user_banned;
+
+  // Formatos / validação
+  if (m.includes("invalid email") || m.includes("email address is invalid") || m.includes("email address") && m.includes("invalid")) {
+    return AUTH_ERROR_CODE_MAP.email_address_invalid;
+  }
+  if (m.includes("invalid phone")) return "Telefone inválido.";
+  if (m.includes("validation")) return AUTH_ERROR_CODE_MAP.validation_failed;
+
+  // Sessão / tokens
+  if (m.includes("jwt expired") || m.includes("session expired") || m.includes("token has expired")) return AUTH_ERROR_CODE_MAP.session_expired;
+  if (m.includes("jwt") && m.includes("invalid")) return AUTH_ERROR_CODE_MAP.bad_jwt;
+  if (m.includes("refresh token") && (m.includes("not found") || m.includes("expired") || m.includes("revoked"))) {
+    return AUTH_ERROR_CODE_MAP.refresh_token_not_found;
+  }
+
+  // OTP / MFA
+  if (m.includes("token has expired") || m.includes("otp expired")) return AUTH_ERROR_CODE_MAP.otp_expired;
+  if (m.includes("otp") && m.includes("invalid")) return "Código de verificação inválido.";
+  if (m.includes("mfa")) return AUTH_ERROR_CODE_MAP.mfa_verification_failed;
+
+  // Rate limit
+  if (m.includes("rate limit") || m.includes("too many requests") || m.includes("too many") || anyErr.status === 429) {
+    if (m.includes("email")) return AUTH_ERROR_CODE_MAP.over_email_send_rate_limit;
+    if (m.includes("sms")) return AUTH_ERROR_CODE_MAP.over_sms_send_rate_limit;
+    return AUTH_ERROR_CODE_MAP.over_request_rate_limit;
+  }
+
+  // Cadastro / provedores
+  if (m.includes("signup") && m.includes("disabled")) return AUTH_ERROR_CODE_MAP.signup_disabled;
+  if (m.includes("provider") && m.includes("disabled")) return AUTH_ERROR_CODE_MAP.provider_disabled;
+  if (m.includes("captcha")) return AUTH_ERROR_CODE_MAP.captcha_failed;
+
+  // Rede
+  if (m.includes("failed to fetch") || m.includes("network") || m.includes("networkerror")) {
+    return "Falha de conexão. Verifique sua internet e tente novamente.";
+  }
+  if (m.includes("timeout")) return AUTH_ERROR_CODE_MAP.request_timeout;
+
+  // Servidor
+  if (anyErr.status && anyErr.status >= 500) return AUTH_ERROR_CODE_MAP.unexpected_failure;
+
+  return rawMsg || "Ocorreu um erro inesperado. Tente novamente.";
 }
 
 function PasswordChecklist({ password }: { password: string }) {
