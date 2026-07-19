@@ -250,6 +250,7 @@ function AuthPage() {
       }
       return toast.error(translateAuthError(error));
     }
+    window.location.href = redirectTo;
   }
 
 
