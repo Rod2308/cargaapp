@@ -76,13 +76,17 @@ export function normalizeActivityName(raw: string | null | undefined): string | 
   for (const key of Object.keys(ACTIVITY_IMPACT_MAP)) {
     if (s.includes(key)) return key;
   }
-  if (/futebol|society|fut\b/.test(s)) return "futebol";
-  if (/corr(er|ida)|run/.test(s)) return "corrida";
+  if (/futebol|society|fut\b|soccer|football/.test(s)) return "futebol";
+  if (/corr(er|ida)|running|\brun\b|jog/.test(s)) return "corrida";
   if (/nata|swim/.test(s)) return "natacao";
-  if (/bike|ciclism|cycling|pedal/.test(s)) return "ciclismo";
-  if (/caminha|walk/.test(s)) return "caminhada";
+  if (/bike|biking|ciclism|cycling|pedal|\bride\b/.test(s)) return "ciclismo";
+  if (/caminha|walk|hik|trilha/.test(s)) return "caminhada";
   if (/volei|volley/.test(s)) return "volei";
+  if (/basquete|basket/.test(s)) return "basquete";
+  if (/tenis|tennis/.test(s)) return "tenis";
+  if (/cardio|hiit|elipt|elliptical|rem(o|ar)|row/.test(s)) return "corrida";
   return null;
+
 }
 
 // Normaliza grupos livres do banco (ex: "Peitoral", "Quadríceps") para um MuscleGroup.
