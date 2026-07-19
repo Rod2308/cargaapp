@@ -11,6 +11,28 @@ import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 
 
+
+function translateAuthError(msg: string): string {
+  const m = (msg || "").toLowerCase();
+  if (
+    m.includes("weak") ||
+    m.includes("pwned") ||
+    m.includes("compromised") ||
+    m.includes("breach") ||
+    m.includes("easy") ||
+    m.includes("common")
+  ) {
+    return "Essa senha é muito fraca ou já apareceu em vazamentos conhecidos. Escolha outra com pelo menos 8 caracteres, misturando letras maiúsculas, minúsculas, números e símbolos.";
+  }
+  if (m.includes("password") && (m.includes("short") || m.includes("least"))) return "Senha muito curta. Use pelo menos 8 caracteres.";
+  if (m.includes("invalid login") || m.includes("invalid credentials")) return "Email ou senha incorretos.";
+  if (m.includes("already registered") || m.includes("already exists")) return "Já existe uma conta com esse email.";
+  if (m.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
+  if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+  if (m.includes("invalid email")) return "Email inválido.";
+  return msg;
+}
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
