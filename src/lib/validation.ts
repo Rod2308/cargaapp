@@ -73,7 +73,7 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(8, "A senha precisa de pelo menos 8 caracteres.")
+  .min(1, "Informe uma senha.")
   .max(72, "Senha muito longa.");
 
 /** Numérico com faixa — altura, peso, idade, etc. */
