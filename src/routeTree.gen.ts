@@ -26,9 +26,11 @@ import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authent
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
+import { Route as AuthenticatedAppGruposIndexRouteImport } from './routes/_authenticated/app.grupos.index'
 import { Route as AuthenticatedAppAlunosIndexRouteImport } from './routes/_authenticated/app.alunos.index'
 import { Route as AuthenticatedAppTreinosIdRouteImport } from './routes/_authenticated/app.treinos.$id'
 import { Route as AuthenticatedAppSessaoIdRouteImport } from './routes/_authenticated/app.sessao.$id'
+import { Route as AuthenticatedAppGruposIdRouteImport } from './routes/_authenticated/app.grupos.$id'
 import { Route as AuthenticatedAppAlunosIdRouteImport } from './routes/_authenticated/app.alunos.$id'
 import { Route as AuthenticatedAppSessaoIdEditarRouteImport } from './routes/_authenticated/app.sessao.$id.editar'
 
@@ -123,6 +125,12 @@ const AuthenticatedAppTreinosIndexRoute =
     path: '/treinos/',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppGruposIndexRoute =
+  AuthenticatedAppGruposIndexRouteImport.update({
+    id: '/grupos/',
+    path: '/grupos/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppAlunosIndexRoute =
   AuthenticatedAppAlunosIndexRouteImport.update({
     id: '/alunos/',
@@ -139,6 +147,12 @@ const AuthenticatedAppSessaoIdRoute =
   AuthenticatedAppSessaoIdRouteImport.update({
     id: '/sessao/$id',
     path: '/sessao/$id',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppGruposIdRoute =
+  AuthenticatedAppGruposIdRouteImport.update({
+    id: '/grupos/$id',
+    path: '/grupos/$id',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 const AuthenticatedAppAlunosIdRoute =
@@ -171,9 +185,11 @@ export interface FileRoutesByFullPath {
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
+  '/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
+  '/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
   '/app/sessao/$id/editar': typeof AuthenticatedAppSessaoIdEditarRoute
 }
@@ -193,9 +209,11 @@ export interface FileRoutesByTo {
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
+  '/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/app/alunos': typeof AuthenticatedAppAlunosIndexRoute
+  '/app/grupos': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos': typeof AuthenticatedAppTreinosIndexRoute
   '/app/sessao/$id/editar': typeof AuthenticatedAppSessaoIdEditarRoute
 }
@@ -218,9 +236,11 @@ export interface FileRoutesById {
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
+  '/_authenticated/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
   '/_authenticated/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/_authenticated/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/_authenticated/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
+  '/_authenticated/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/_authenticated/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
   '/_authenticated/app/sessao/$id/editar': typeof AuthenticatedAppSessaoIdEditarRoute
 }
@@ -243,9 +263,11 @@ export interface FileRouteTypes {
     | '/app/perfil'
     | '/app/'
     | '/app/alunos/$id'
+    | '/app/grupos/$id'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
     | '/app/alunos/'
+    | '/app/grupos/'
     | '/app/treinos/'
     | '/app/sessao/$id/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -265,9 +287,11 @@ export interface FileRouteTypes {
     | '/app/perfil'
     | '/app'
     | '/app/alunos/$id'
+    | '/app/grupos/$id'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
     | '/app/alunos'
+    | '/app/grupos'
     | '/app/treinos'
     | '/app/sessao/$id/editar'
   id:
@@ -289,9 +313,11 @@ export interface FileRouteTypes {
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/'
     | '/_authenticated/app/alunos/$id'
+    | '/_authenticated/app/grupos/$id'
     | '/_authenticated/app/sessao/$id'
     | '/_authenticated/app/treinos/$id'
     | '/_authenticated/app/alunos/'
+    | '/_authenticated/app/grupos/'
     | '/_authenticated/app/treinos/'
     | '/_authenticated/app/sessao/$id/editar'
   fileRoutesById: FileRoutesById
@@ -430,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppTreinosIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/grupos/': {
+      id: '/_authenticated/app/grupos/'
+      path: '/grupos'
+      fullPath: '/app/grupos/'
+      preLoaderRoute: typeof AuthenticatedAppGruposIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/alunos/': {
       id: '/_authenticated/app/alunos/'
       path: '/alunos'
@@ -449,6 +482,13 @@ declare module '@tanstack/react-router' {
       path: '/sessao/$id'
       fullPath: '/app/sessao/$id'
       preLoaderRoute: typeof AuthenticatedAppSessaoIdRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/grupos/$id': {
+      id: '/_authenticated/app/grupos/$id'
+      path: '/grupos/$id'
+      fullPath: '/app/grupos/$id'
+      preLoaderRoute: typeof AuthenticatedAppGruposIdRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/alunos/$id': {
@@ -489,9 +529,11 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
+  AuthenticatedAppGruposIdRoute: typeof AuthenticatedAppGruposIdRoute
   AuthenticatedAppSessaoIdRoute: typeof AuthenticatedAppSessaoIdRouteWithChildren
   AuthenticatedAppTreinosIdRoute: typeof AuthenticatedAppTreinosIdRoute
   AuthenticatedAppAlunosIndexRoute: typeof AuthenticatedAppAlunosIndexRoute
+  AuthenticatedAppGruposIndexRoute: typeof AuthenticatedAppGruposIndexRoute
   AuthenticatedAppTreinosIndexRoute: typeof AuthenticatedAppTreinosIndexRoute
 }
 
@@ -502,9 +544,11 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
+  AuthenticatedAppGruposIdRoute: AuthenticatedAppGruposIdRoute,
   AuthenticatedAppSessaoIdRoute: AuthenticatedAppSessaoIdRouteWithChildren,
   AuthenticatedAppTreinosIdRoute: AuthenticatedAppTreinosIdRoute,
   AuthenticatedAppAlunosIndexRoute: AuthenticatedAppAlunosIndexRoute,
+  AuthenticatedAppGruposIndexRoute: AuthenticatedAppGruposIndexRoute,
   AuthenticatedAppTreinosIndexRoute: AuthenticatedAppTreinosIndexRoute,
 }
 

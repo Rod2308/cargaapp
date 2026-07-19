@@ -86,6 +86,134 @@ export type Database = {
         }
         Relationships: []
       }
+      group_members: {
+        Row: {
+          current_streak: number
+          group_id: string
+          joined_at: string
+          last_checkin_date: string | null
+          longest_streak: number
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          group_id: string
+          joined_at?: string
+          last_checkin_date?: string | null
+          longest_streak?: number
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          group_id?: string
+          joined_at?: string
+          last_checkin_date?: string | null
+          longest_streak?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_points: {
+        Row: {
+          checkin_date: string
+          created_at: string
+          group_id: string
+          id: string
+          points: number
+          reason: string
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          checkin_date: string
+          created_at?: string
+          group_id: string
+          id?: string
+          points: number
+          reason: string
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          checkin_date?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          points?: number
+          reason?: string
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_points_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_points_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          points_per_checkin: number
+          streak_bonus_enabled: boolean
+          streak_bonus_every_days: number
+          streak_bonus_points: number
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          invite_code: string
+          name: string
+          owner_id: string
+          points_per_checkin?: number
+          streak_bonus_enabled?: boolean
+          streak_bonus_every_days?: number
+          streak_bonus_points?: number
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+          points_per_checkin?: number
+          streak_bonus_enabled?: boolean
+          streak_bonus_every_days?: number
+          streak_bonus_points?: number
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -499,6 +627,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_group: {
+        Args: { _description?: string; _emoji?: string; _name: string }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          points_per_checkin: number
+          streak_bonus_enabled: boolean
+          streak_bonus_every_days: number
+          streak_bonus_points: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_invite_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -507,9 +658,40 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_owner: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_trainer_of: {
         Args: { _student: string; _trainer: string }
         Returns: boolean
+      }
+      join_group_by_code: {
+        Args: { _code: string }
+        Returns: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          points_per_checkin: number
+          streak_bonus_enabled: boolean
+          streak_bonus_every_days: number
+          streak_bonus_points: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
