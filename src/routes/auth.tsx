@@ -241,8 +241,15 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
-    if (error) return toast.error(translateAuthError(error));
-    window.location.href = redirectTo;
+    if (error) {
+      const code = (error as { code?: string }).code || "";
+      const msg = (error.message || "").toLowerCase();
+      if (code === "email_not_confirmed" || msg.includes("email not confirmed")) {
+        setPendingEmail(parsedEmail.data);
+        if (resendCooldown === 0) setResendCooldown(0);
+      }
+      return toast.error(translateAuthError(error));
+    }
   }
 
 
