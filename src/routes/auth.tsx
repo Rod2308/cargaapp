@@ -201,8 +201,8 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required minLength={8} maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-                <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
+                <Input type="password" required maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Crie uma senha" />
+                <p className="text-xs text-muted-foreground">Dica: para mais segurança, use pelo menos uma letra maiúscula e um caractere especial (ex.: !, @, #).</p>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Criar conta"}
