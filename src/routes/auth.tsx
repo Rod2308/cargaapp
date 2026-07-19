@@ -194,12 +194,42 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"student" | "trainer">("student");
   const [busy, setBusy] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) window.location.href = redirectTo;
     });
   }, [redirectTo]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  async function resendConfirmation() {
+    if (!pendingEmail || resendCooldown > 0 || resending) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: pendingEmail,
+      options: { emailRedirectTo: `${window.location.origin}${redirectTo}` },
+    });
+    setResending(false);
+    if (error) {
+      toast.error(translateAuthError(error));
+      // Se foi rate-limit, respeita cooldown maior.
+      const m = (error.message || "").toLowerCase();
+      if (m.includes("rate") || m.includes("too many")) setResendCooldown(60);
+      return;
+    }
+    toast.success(`Email de confirmação reenviado para ${pendingEmail}.`);
+    setResendCooldown(60);
+  }
+
 
 
 
@@ -211,7 +241,15 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
-    if (error) return toast.error(translateAuthError(error));
+    if (error) {
+      const code = (error as { code?: string }).code || "";
+      const msg = (error.message || "").toLowerCase();
+      if (code === "email_not_confirmed" || msg.includes("email not confirmed")) {
+        setPendingEmail(parsedEmail.data);
+        if (resendCooldown === 0) setResendCooldown(0);
+      }
+      return toast.error(translateAuthError(error));
+    }
     window.location.href = redirectTo;
   }
 
@@ -239,6 +277,8 @@ function AuthPage() {
 
     const needsConfirmation = !data.session;
     if (needsConfirmation) {
+      setPendingEmail(parsedEmail.data);
+      setResendCooldown(60);
       toast.success(
         `Enviamos um email de confirmação para ${parsedEmail.data}. Abra sua caixa de entrada (e a pasta de spam) e clique no link para ativar sua conta.`,
         { duration: 8000 },
@@ -248,6 +288,7 @@ function AuthPage() {
     toast.success("Conta criada com sucesso!");
     window.location.href = redirectTo;
   }
+
 
 
   async function google() {
@@ -290,7 +331,42 @@ function AuthPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
+        {pendingEmail && (
+          <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            <p className="font-medium">Confirme seu email para ativar a conta</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Enviamos um link para <span className="font-medium text-foreground">{pendingEmail}</span>. Não recebeu? Confira o spam ou reenvie abaixo.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={resendConfirmation}
+                disabled={resending || resendCooldown > 0}
+                className="h-8"
+              >
+                {resending ? (
+                  <><Loader2 className="mr-1 size-3.5 animate-spin" /> Enviando…</>
+                ) : resendCooldown > 0 ? (
+                  `Reenviar em ${resendCooldown}s`
+                ) : (
+                  "Reenviar email"
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setPendingEmail(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                dispensar
+              </button>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="signin">
+
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Criar conta</TabsTrigger>
