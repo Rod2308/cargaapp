@@ -187,22 +187,31 @@ function Dashboard() {
     const extras: ExtraActivity[] = [];
     for (const s of last7Sessions as any[]) {
       const groups = new Set<string>();
+      const strengthGroups = new Set<string>();
       const sportNames: string[] = [];
       for (const st of s.session_sets ?? []) {
         const g = st.exercises?.muscle_group;
-        if (g) groups.add(g);
-        if (g === "Esportes" && st.exercises?.name) sportNames.push(st.exercises.name);
+        if (g) {
+          groups.add(g);
+          if (g === "Esportes") {
+            if (st.exercises?.name) sportNames.push(st.exercises.name);
+          } else {
+            strengthGroups.add(g);
+          }
+        }
       }
       const cardio = isCardioSession(s);
-      const isSport = !s.workout_id && (sportNames.length > 0 || cardio);
-      if (isSport) {
-        const dur = s.ended_at
-          ? Math.max(0, (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
-          : null;
+      const dur = s.ended_at
+        ? Math.max(0, (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
+        : null;
+
+      // Sempre conta como cardio quando a sessão é cardio (importada, vinculada ou livre)
+      if (cardio) {
         const name =
           sportNames[0] ??
           s.title ??
           s.activity_type ??
+          s.workouts?.name ??
           "cardio";
         extras.push({
           started_at: s.started_at,
@@ -210,13 +219,16 @@ function Dashboard() {
           activity_name: name,
           duration_min: dur,
         });
-      } else {
+      }
+
+      // Se também tem componente de força (grupos musculares além de Esportes), conta como treino
+      if (strengthGroups.size > 0 || (!cardio && s.workout_id)) {
         sessoes.push({
           started_at: s.started_at,
           ended_at: s.ended_at,
           workout_label: s.workouts?.label ?? null,
           workout_name: s.workouts?.name ?? null,
-          muscle_groups: Array.from(groups),
+          muscle_groups: Array.from(strengthGroups.size > 0 ? strengthGroups : groups),
         });
       }
     }
