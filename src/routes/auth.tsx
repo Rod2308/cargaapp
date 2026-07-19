@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dumbbell, Loader2 } from "lucide-react";
+import { Dumbbell, Loader2, Check, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 
@@ -31,6 +31,27 @@ function translateAuthError(msg: string): string {
   if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
   if (m.includes("invalid email")) return "Email inválido.";
   return msg;
+}
+
+function PasswordChecklist({ password }: { password: string }) {
+  const rules = [
+    { label: "Pelo menos 8 caracteres", ok: password.length >= 8 },
+    { label: "Uma letra maiúscula (A-Z)", ok: /[A-Z]/.test(password) },
+    { label: "Uma letra minúscula (a-z)", ok: /[a-z]/.test(password) },
+    { label: "Um número (0-9)", ok: /\d/.test(password) },
+    { label: "Um símbolo (ex.: !, @, #, $)", ok: /[^A-Za-z0-9]/.test(password) },
+  ];
+  return (
+    <ul className="mt-1 space-y-1 text-xs" aria-label="Requisitos de senha recomendados">
+      {rules.map((r) => (
+        <li key={r.label} className={"flex items-center gap-1.5 " + (r.ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+          {r.ok ? <Check className="size-3.5" aria-hidden /> : <Circle className="size-3.5" aria-hidden />}
+          <span>{r.label}</span>
+        </li>
+      ))}
+      <li className="pt-1 text-[11px] text-muted-foreground">Sugestões para uma senha forte — não são obrigatórias para criar a conta.</li>
+    </ul>
+  );
 }
 
 export const Route = createFileRoute("/auth")({
@@ -202,7 +223,7 @@ function AuthPage() {
               <div className="space-y-1.5">
                 <Label>Senha</Label>
                 <Input type="password" required maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Crie uma senha" />
-                <p className="text-xs text-muted-foreground">Dica: para mais segurança, use pelo menos uma letra maiúscula e um caractere especial (ex.: !, @, #).</p>
+                <PasswordChecklist password={password} />
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Criar conta"}
