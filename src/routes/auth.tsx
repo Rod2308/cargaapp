@@ -211,7 +211,7 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
-    if (error) return toast.error(translateAuthError(error.message));
+    if (error) return toast.error(translateAuthError(error));
     window.location.href = redirectTo;
   }
 
@@ -235,7 +235,7 @@ function AuthPage() {
       },
     });
     setBusy(false);
-    if (error) return toast.error(translateAuthError(error.message));
+    if (error) return toast.error(translateAuthError(error));
 
     const needsConfirmation = !data.session;
     if (needsConfirmation) {
