@@ -81,7 +81,7 @@ function AuthPage() {
     const parsedName = displayNameSchema.safeParse(nameCandidate);
     if (!parsedName.success) return toast.error(parsedName.error.issues[0]?.message ?? "Nome inválido.");
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsedEmail.data,
       password: parsedPassword.data,
       options: {
@@ -91,7 +91,16 @@ function AuthPage() {
     });
     setBusy(false);
     if (error) return toast.error(translateAuthError(error.message));
-    toast.success("Conta criada! Verifique seu email se necessário.");
+
+    const needsConfirmation = !data.session;
+    if (needsConfirmation) {
+      toast.success(
+        `Enviamos um email de confirmação para ${parsedEmail.data}. Abra sua caixa de entrada (e a pasta de spam) e clique no link para ativar sua conta.`,
+        { duration: 8000 },
+      );
+      return;
+    }
+    toast.success("Conta criada com sucesso!");
     window.location.href = redirectTo;
   }
 
