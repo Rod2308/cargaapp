@@ -45,22 +45,9 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email: parsedEmail.data, password });
     setBusy(false);
     if (error) return toast.error(translateAuthError(error.message));
-  }
-
-function translateAuthError(msg: string): string {
-  const m = msg.toLowerCase();
-  if (m.includes("weak") || m.includes("pwned") || m.includes("compromised") || m.includes("breach") || m.includes("easy")) {
-    return "Essa senha é muito fraca ou já apareceu em vazamentos conhecidos. Escolha outra com pelo menos 8 caracteres, misturando letras, números e símbolos.";
-  }
-  if (m.includes("password") && m.includes("short")) return "Senha muito curta. Use pelo menos 8 caracteres.";
-  if (m.includes("invalid login") || m.includes("invalid credentials")) return "Email ou senha incorretos.";
-  if (m.includes("user already registered") || m.includes("already registered")) return "Já existe uma conta com esse email.";
-  if (m.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
-  if (m.includes("rate limit")) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
-  if (m.includes("invalid email")) return "Email inválido.";
-  return msg;
     window.location.href = redirectTo;
   }
+
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
