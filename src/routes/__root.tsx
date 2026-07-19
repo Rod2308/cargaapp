@@ -81,6 +81,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "preconnect", href: "https://lgxwvmhaaxiymhjqmglk.supabase.co", crossOrigin: "anonymous" },
+      { rel: "dns-prefetch", href: "https://lgxwvmhaaxiymhjqmglk.supabase.co" },
       // Non-blocking font load: fetch as "print" (ignored on screen), then swap to "all" once loaded.
       { rel: "preload", as: "style", href: "https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap", media: "print", onLoad: "this.media='all'" as any },
