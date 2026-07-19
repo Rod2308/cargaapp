@@ -331,7 +331,42 @@ function AuthPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
+        {pendingEmail && (
+          <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            <p className="font-medium">Confirme seu email para ativar a conta</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Enviamos um link para <span className="font-medium text-foreground">{pendingEmail}</span>. Não recebeu? Confira o spam ou reenvie abaixo.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={resendConfirmation}
+                disabled={resending || resendCooldown > 0}
+                className="h-8"
+              >
+                {resending ? (
+                  <><Loader2 className="mr-1 size-3.5 animate-spin" /> Enviando…</>
+                ) : resendCooldown > 0 ? (
+                  `Reenviar em ${resendCooldown}s`
+                ) : (
+                  "Reenviar email"
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setPendingEmail(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                dispensar
+              </button>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="signin">
+
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Criar conta</TabsTrigger>
