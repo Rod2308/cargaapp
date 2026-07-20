@@ -225,7 +225,7 @@ function EditSessionPage() {
             <div key={key} className="card-soft p-4">
               <h2 className="font-display text-base font-bold">
                 {name}
-                {isSport && <span className="ml-2 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">Esporte</span>}
+                {isSport && <span className="ml-2 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">Esporte</span>}
               </h2>
               <div className="mt-3 space-y-2">
                 {list.map((s, i) => {
