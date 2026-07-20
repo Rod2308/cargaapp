@@ -547,7 +547,7 @@ function SessionPage() {
                 defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
                 repsLabel={isSport ? "Minutos" : "Reps"}
                 hideWeight={isSport}
-                actionLabel={isSport ? "Registrar" : "Série"}
+                actionLabel={isSport ? "Registrar" : "Adicionar série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
