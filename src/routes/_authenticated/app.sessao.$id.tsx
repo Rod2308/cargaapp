@@ -73,6 +73,54 @@ function SessionPage() {
     },
   });
 
+  // Últimos sets por exercício (excluindo esta sessão) — base para as sugestões
+  const exerciseIds = useMemo(
+    () => Array.from(new Set((items as any[]).map((it) => it.exercise_id))),
+    [items],
+  );
+  const { data: prevSets = [] } = useQuery({
+    queryKey: ["prev-sets", session?.user_id, exerciseIds],
+    enabled: !!session?.user_id && exerciseIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("session_sets")
+        .select("weight_kg, reps, rpe, session_id, completed_at, exercise_id, sessions!inner(user_id)")
+        .eq("sessions.user_id", session!.user_id)
+        .neq("session_id", id)
+        .in("exercise_id", exerciseIds)
+        .order("completed_at", { ascending: false })
+        .limit(200);
+      return (data ?? []) as any[];
+    },
+  });
+
+  const suggestionsByItem = useMemo(() => {
+    const map = new Map<string, Suggestion>();
+    for (const it of items as any[]) {
+      const rows: ProgSetRow[] = (prevSets as any[])
+        .filter((r) => r.exercise_id === it.exercise_id)
+        .map((r) => ({
+          weight_kg: r.weight_kg,
+          reps: r.reps,
+          rpe: r.rpe,
+          session_id: r.session_id,
+          completed_at: r.completed_at,
+        }));
+      map.set(
+        it.id,
+        suggestAdjustment({
+          currentWeight: it.target_weight_kg ?? null,
+          currentRest: it.target_rest_seconds ?? 60,
+          repRange: it.target_reps,
+          rows,
+        }),
+      );
+    }
+    return map;
+  }, [items, prevSets]);
+
+
+
   const logSet = useMutation({
     mutationFn: async (row: any) => {
       const optimistic = {
