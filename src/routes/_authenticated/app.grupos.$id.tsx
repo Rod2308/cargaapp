@@ -25,6 +25,8 @@ import {
   Clock, Send, Settings, MessageCircle, BarChart3, Trash2, Check, X, UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
+import { NotificationSettingsDialog } from "@/components/NotificationSettingsDialog";
 import { toast } from "sonner";
 import {
   format, startOfWeek, startOfMonth, differenceInCalendarDays, isAfter,
@@ -203,28 +205,42 @@ function GroupDetail() {
   }, [members, points]);
 
   // Notifications: rank changes, deadline approaching, other members' check-ins
+  const { prefs: notifPrefs } = useNotificationPrefs();
+  const notifyBrowser = (title: string, body: string) => {
+    if (!notifPrefs.webPush) return;
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    if (!document.hidden) return;
+    try { new Notification(title, { body }); } catch {}
+  };
+
   const prevRankRef = useRef<number | null>(null);
   useEffect(() => {
     if (!myRank) return;
     const prev = prevRankRef.current;
-    if (prev !== null && prev !== myRank.position) {
+    if (prev !== null && prev !== myRank.position && notifPrefs.rankChange) {
       if (myRank.position < prev) {
         toast.success(`Você subiu para #${myRank.position} no ranking!`);
+        notifyBrowser("Subiu no ranking", `Agora você está em #${myRank.position}`);
       } else {
         toast.info(`Você caiu para #${myRank.position} no ranking`);
+        notifyBrowser("Mudança no ranking", `Você caiu para #${myRank.position}`);
       }
     }
     prevRankRef.current = myRank.position;
-  }, [myRank]);
+  }, [myRank, notifPrefs.rankChange, notifPrefs.webPush]);
 
   const deadlineWarnedRef = useRef(false);
   useEffect(() => {
     if (deadlineWarnedRef.current || daysLeft === null || expired) return;
+    if (!notifPrefs.deadline) return;
     if (daysLeft >= 0 && daysLeft <= 3) {
-      toast.warning(daysLeft === 0 ? "O desafio termina hoje!" : `Faltam ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para o fim do desafio`);
+      const msg = daysLeft === 0 ? "O desafio termina hoje!" : `Faltam ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para o fim do desafio`;
+      toast.warning(msg);
+      notifyBrowser("Prazo se aproximando", msg);
       deadlineWarnedRef.current = true;
     }
-  }, [daysLeft, expired]);
+  }, [daysLeft, expired, notifPrefs.deadline, notifPrefs.webPush]);
 
   useEffect(() => {
     const ch = supabase
@@ -236,18 +252,16 @@ function GroupDetail() {
           const row = payload.new as PointRow;
           qc.invalidateQueries({ queryKey: ["group-points", id] });
           qc.invalidateQueries({ queryKey: ["group-members", id] });
-          if (row.user_id !== user.id && row.reason === "checkin") {
+          if (row.user_id !== user.id && row.reason === "checkin" && notifPrefs.otherCheckins) {
             const name = profileById[row.user_id] ?? "Um membro";
             toast(`${name} fez check-in (+${row.points} pts)`, { icon: "🏋️" });
-            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-              new Notification("Novo check-in no grupo", { body: `${name} +${row.points} pts` });
-            }
+            notifyBrowser("Novo check-in no grupo", `${name} +${row.points} pts`);
           }
         },
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [id, qc, user.id, profileById]);
+  }, [id, qc, user.id, profileById, notifPrefs.otherCheckins, notifPrefs.webPush]);
 
 
   const isOwner = group?.owner_id === user.id;
@@ -408,6 +422,7 @@ function GroupDetail() {
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
+          <NotificationSettingsDialog />
           {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
             <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
