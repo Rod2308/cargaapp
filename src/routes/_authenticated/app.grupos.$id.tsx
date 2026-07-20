@@ -27,6 +27,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
 import { NotificationSettingsDialog } from "@/components/NotificationSettingsDialog";
+import { QrCodeButton } from "@/components/QrCodeButton";
 import { toast } from "sonner";
 import {
   format, startOfWeek, startOfMonth, differenceInCalendarDays, isAfter,
@@ -476,6 +477,7 @@ function GroupDetail() {
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
+          {inviteUrl && <QrCodeButton url={inviteUrl} label={`Convite ${group.name}`} />}
           <NotificationSettingsDialog />
           {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
