@@ -11,6 +11,8 @@ import { Plus, ChevronRight, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
+import { EmptyState } from "@/components/EmptyState";
+import { ListSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/")({
   beforeLoad: ({ context }) => {

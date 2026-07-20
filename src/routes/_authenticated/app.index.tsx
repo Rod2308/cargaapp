@@ -606,9 +606,11 @@ function Dashboard() {
           </div>
         </div>
         {workouts.length === 0 ? (
-          <div className="card-lift p-6 text-center text-sm text-muted-foreground">
-            Nenhum treino ainda.
-          </div>
+          <EmptyState
+            icon={Dumbbell}
+            title="Nenhum treino ainda"
+            message="Crie seu primeiro treino em Treinos para começar."
+          />
         ) : (
           <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 xl:grid-cols-4">
             {workouts.map((w) => (
@@ -671,9 +673,12 @@ function Dashboard() {
           </div>
         </div>
         {recent.length === 0 ? (
-          <div className="card-lift p-5 text-sm text-muted-foreground">
-            Nenhuma sessão registrada ainda.
-          </div>
+          <EmptyState
+            compact
+            icon={History}
+            title="Sem sessões ainda"
+            message="Inicie um treino ou marque um treino esquecido para preencher aqui."
+          />
         ) : (
           <ul className="space-y-2">
             {recent.map((s: any) => (
