@@ -766,6 +766,28 @@ function GroupSettingsDialog({ group }: { group: Group }) {
           <p className="text-xs text-muted-foreground">
             Ao atingir o limite, novos check-ins do período não geram mais pontos (mas continuam contando o streak).
           </p>
+
+          <div className="border-t border-border pt-3">
+            <Label>Quem pode entrar</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setJoinMode("open")}
+                className={`rounded-lg border p-2 text-left text-xs ${joinMode === "open" ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <p className="font-semibold text-sm">Aberto</p>
+                <p className="text-muted-foreground">Qualquer pessoa com o código entra direto.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setJoinMode("approval")}
+                className={`rounded-lg border p-2 text-left text-xs ${joinMode === "approval" ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <p className="font-semibold text-sm">Requer aprovação</p>
+                <p className="text-muted-foreground">Você aprova cada solicitação.</p>
+              </button>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
