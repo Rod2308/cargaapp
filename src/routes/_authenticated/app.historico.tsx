@@ -175,11 +175,16 @@ function HistoryPage() {
 
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
-      ) : sessions.length === 0 ? (
-        <div className="card-lift mt-4 p-6 text-center text-sm text-muted-foreground">
-          Nenhum treino registrado ainda.
+        <div className="mt-4">
+          <ListSkeleton rows={4} />
         </div>
+      ) : sessions.length === 0 ? (
+        <EmptyState
+          className="mt-4"
+          icon={CalendarClock}
+          title="Nenhum treino registrado"
+          message="Registre um treino e ele aparecerá aqui — inclusive treinos esquecidos."
+        />
       ) : (
         <div className="mt-4 space-y-5">
           {Object.entries(grouped).map(([month, list]) => (
