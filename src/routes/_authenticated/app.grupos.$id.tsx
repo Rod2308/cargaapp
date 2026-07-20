@@ -350,6 +350,11 @@ function GroupDetail() {
                   <p className="mt-0.5 text-sm font-bold">Aguardando início</p>
                   <p className="text-[11px] text-muted-foreground">começa {format(startsAt!, "d MMM", { locale: ptBR })}</p>
                 </>
+              ) : daysLeft === 0 ? (
+                <>
+                  <p className="mt-0.5 text-lg font-bold text-amber-600">Termina hoje!</p>
+                  <p className="text-[11px] text-muted-foreground">até {format(deadline, "d MMM yyyy HH:mm", { locale: ptBR })}</p>
+                </>
               ) : (
                 <>
                   <p className="mt-0.5 text-lg font-bold">{daysLeft} {daysLeft === 1 ? "dia" : "dias"}</p>
