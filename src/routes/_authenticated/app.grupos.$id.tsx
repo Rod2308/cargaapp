@@ -695,6 +695,7 @@ function GroupChat({
 function GroupSettingsDialog({ group }: { group: Group }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [startsAt, setStartsAt] = useState<string>(group.starts_at ? group.starts_at.slice(0, 10) : "");
   const [endsAt, setEndsAt] = useState<string>(group.ends_at ? group.ends_at.slice(0, 10) : "");
   const [daily, setDaily] = useState<string>(group.daily_points_cap?.toString() ?? "");
   const [weekly, setWeekly] = useState<string>(group.weekly_points_cap?.toString() ?? "");
@@ -702,7 +703,11 @@ function GroupSettingsDialog({ group }: { group: Group }) {
 
   const save = useMutation({
     mutationFn: async () => {
+      if (startsAt && endsAt && new Date(endsAt) < new Date(startsAt)) {
+        throw new Error("A data final não pode ser antes da data de início.");
+      }
       const patch = {
+        starts_at: startsAt ? new Date(startsAt + "T00:00:00").toISOString() : null,
         ends_at: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : null,
         daily_points_cap: daily ? Math.max(0, parseInt(daily, 10)) : null,
         weekly_points_cap: weekly ? Math.max(0, parseInt(weekly, 10)) : null,
@@ -730,11 +735,17 @@ function GroupSettingsDialog({ group }: { group: Group }) {
           <DialogDescription>Prazo e limites de pontuação por período.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label htmlFor="ends">Prazo do desafio</Label>
-            <Input id="ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para não ter prazo.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="starts">Início</Label>
+              <Input id="starts" type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="ends">Término</Label>
+              <Input id="ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">Deixe em branco para desafio contínuo (sem prazo).</p>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label htmlFor="daily">Limite/dia</Label>
