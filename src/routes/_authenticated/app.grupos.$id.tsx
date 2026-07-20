@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown,
-  Clock, Send, Settings, MessageCircle, BarChart3, Trash2,
+  Clock, Send, Settings, MessageCircle, BarChart3, Trash2, Check, X, UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -45,6 +45,7 @@ type Group = {
   ends_at: string | null;
   daily_points_cap: number | null;
   weekly_points_cap: number | null;
+  join_mode: "open" | "approval";
   monthly_points_cap: number | null;
 };
 
@@ -383,6 +384,17 @@ function GroupDetail() {
           >
             {group.invite_code} <Copy className="size-3.5" />
           </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!inviteUrl) return;
+              navigator.clipboard.writeText(inviteUrl);
+              toast.success("Link de convite copiado");
+            }}
+          >
+            <Copy className="size-3.5" /> Copiar link
+          </Button>
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
@@ -393,6 +405,12 @@ function GroupDetail() {
             <LeaveDialog onConfirm={() => leave.mutate()} pending={leave.isPending} />
           )}
         </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Modo de entrada: <span className="font-semibold">{group.join_mode === "approval" ? "requer aprovação do dono" : "aberto por código"}</span>
+        </p>
+
+        {isOwner && <PendingRequestsPanel groupId={group.id} />}
       </div>
 
       <Tabs defaultValue="ranking" className="mt-6">
@@ -560,6 +578,93 @@ function MiniStat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function PendingRequestsPanel({ groupId }: { groupId: string }) {
+  const qc = useQueryClient();
+  const { data: requests = [] } = useQuery({
+    queryKey: ["group-requests", groupId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("group_join_requests")
+        .select("id, user_id, created_at, status")
+        .eq("group_id", groupId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as Array<{ id: string; user_id: string; created_at: string; status: string }>;
+    },
+  });
+
+  const ids = requests.map((r) => r.user_id);
+  const { data: profs = [] } = useQuery({
+    enabled: ids.length > 0,
+    queryKey: ["group-requests-profiles", groupId, ids.sort().join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, display_name").in("id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const nameById = Object.fromEntries((profs as any[]).map((p) => [p.id, p.display_name || "Aluno"]));
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`group-requests-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "group_join_requests", filter: `group_id=eq.${groupId}` },
+        () => qc.invalidateQueries({ queryKey: ["group-requests", groupId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [groupId, qc]);
+
+  const decide = useMutation({
+    mutationFn: async ({ id, approve }: { id: string; approve: boolean }) => {
+      const { error } = await (supabase as any).rpc("decide_join_request", { _id: id, _approve: approve });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.approve ? "Membro aprovado" : "Pedido recusado");
+      qc.invalidateQueries({ queryKey: ["group-requests", groupId] });
+      qc.invalidateQueries({ queryKey: ["group-members", groupId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha"),
+  });
+
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-500">
+        <UserPlus className="size-3.5" /> {requests.length} pedido{requests.length > 1 ? "s" : ""} de entrada
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {requests.map((r) => (
+          <li key={r.id} className="flex items-center gap-2 rounded-lg bg-background p-2">
+            <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
+              {(nameById[r.user_id] ?? "?").slice(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{nameById[r.user_id] ?? "Aluno"}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {format(new Date(r.created_at), "d MMM HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => decide.mutate({ id: r.id, approve: false })} disabled={decide.isPending}>
+              <X className="size-3.5" />
+            </Button>
+            <Button size="sm" onClick={() => decide.mutate({ id: r.id, approve: true })} disabled={decide.isPending}>
+              <Check className="size-3.5" />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+
 function GroupChat({
   groupId, userId, isOwner, profileById,
 }: {
@@ -700,6 +805,7 @@ function GroupSettingsDialog({ group }: { group: Group }) {
   const [daily, setDaily] = useState<string>(group.daily_points_cap?.toString() ?? "");
   const [weekly, setWeekly] = useState<string>(group.weekly_points_cap?.toString() ?? "");
   const [monthly, setMonthly] = useState<string>(group.monthly_points_cap?.toString() ?? "");
+  const [joinMode, setJoinMode] = useState<"open" | "approval">(group.join_mode ?? "open");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -712,6 +818,7 @@ function GroupSettingsDialog({ group }: { group: Group }) {
         daily_points_cap: daily ? Math.max(0, parseInt(daily, 10)) : null,
         weekly_points_cap: weekly ? Math.max(0, parseInt(weekly, 10)) : null,
         monthly_points_cap: monthly ? Math.max(0, parseInt(monthly, 10)) : null,
+        join_mode: joinMode,
       };
       const { error } = await (supabase as any).from("groups").update(patch).eq("id", group.id);
       if (error) throw error;
@@ -763,6 +870,28 @@ function GroupSettingsDialog({ group }: { group: Group }) {
           <p className="text-xs text-muted-foreground">
             Ao atingir o limite, novos check-ins do período não geram mais pontos (mas continuam contando o streak).
           </p>
+
+          <div className="border-t border-border pt-3">
+            <Label>Quem pode entrar</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setJoinMode("open")}
+                className={`rounded-lg border p-2 text-left text-xs ${joinMode === "open" ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <p className="font-semibold text-sm">Aberto</p>
+                <p className="text-muted-foreground">Qualquer pessoa com o código entra direto.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setJoinMode("approval")}
+                className={`rounded-lg border p-2 text-left text-xs ${joinMode === "approval" ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <p className="font-semibold text-sm">Requer aprovação</p>
+                <p className="text-muted-foreground">Você aprova cada solicitação.</p>
+              </button>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>

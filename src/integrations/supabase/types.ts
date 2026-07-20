@@ -86,6 +86,44 @@ export type Database = {
         }
         Relationships: []
       }
+      group_join_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          group_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_join_requests_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           current_streak: number
@@ -211,6 +249,7 @@ export type Database = {
           ends_at: string | null
           id: string
           invite_code: string
+          join_mode: string
           monthly_points_cap: number | null
           name: string
           owner_id: string
@@ -230,6 +269,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           invite_code: string
+          join_mode?: string
           monthly_points_cap?: number | null
           name: string
           owner_id: string
@@ -249,6 +289,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           invite_code?: string
+          join_mode?: string
           monthly_points_cap?: number | null
           name?: string
           owner_id?: string
@@ -685,6 +726,7 @@ export type Database = {
           ends_at: string | null
           id: string
           invite_code: string
+          join_mode: string
           monthly_points_cap: number | null
           name: string
           owner_id: string
@@ -701,6 +743,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      decide_join_request: {
+        Args: { _approve: boolean; _id: string }
+        Returns: undefined
       }
       generate_invite_code: { Args: never; Returns: string }
       has_role: {
@@ -725,6 +771,7 @@ export type Database = {
           ends_at: string | null
           id: string
           invite_code: string
+          join_mode: string
           monthly_points_cap: number | null
           name: string
           owner_id: string
@@ -742,6 +789,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      request_or_join_by_code: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       app_role: "student" | "trainer" | "admin"
