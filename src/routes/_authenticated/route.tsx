@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { ThemeToggleButton } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -108,6 +109,9 @@ function Layout() {
   return (
     <div className="min-h-screen bg-background pb-28">
       <Outlet />
+      <ThemeToggleButton
+        className="fixed right-3 top-3 z-40"
+      />
       <nav className="fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
         <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md sm:max-w-lg">
           {tabs.map(({ to, label, icon: Icon }) => {
