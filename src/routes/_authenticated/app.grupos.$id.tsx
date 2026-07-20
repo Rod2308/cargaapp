@@ -315,6 +315,33 @@ function GroupDetail() {
     onError: (e: any) => toast.error(e.message ?? "Falha ao apagar"),
   });
 
+  async function copyToClipboard(value: string): Promise<boolean> {
+    try {
+      if (navigator?.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = value;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, value.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
   async function share() {
     if (!group) return;
     const text = `Bora treinar comigo no Carga? Entre no grupo "${group.name}" com o código ${group.invite_code} ou pelo link: ${inviteUrl}`;
@@ -327,32 +354,20 @@ function GroupDetail() {
       }
     } catch (e: any) {
       if (e?.name === "AbortError") return;
+      // iOS/Android podem falhar com NotAllowedError em iframes — cai no fallback.
     }
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Convite copiado para a área de transferência");
-      return;
-    } catch {}
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      toast.success("Convite copiado");
-    } catch {
-      toast.error("Não foi possível compartilhar. Copie o código manualmente.");
-    }
+    const ok = await copyToClipboard(text);
+    if (ok) toast.success("Convite copiado para a área de transferência");
+    else toast.error(`Não foi possível copiar. Código: ${group.invite_code}`);
   }
 
-  function copyCode() {
+  async function copyCode() {
     if (!group) return;
-    navigator.clipboard.writeText(group.invite_code);
-    toast.success("Código copiado");
+    const ok = await copyToClipboard(group.invite_code);
+    if (ok) toast.success("Código copiado");
+    else toast.error("Não foi possível copiar o código");
   }
+
 
   if (isLoading) {
     return <div className="flex justify-center p-10"><Loader2 className="size-5 animate-spin" /></div>;
