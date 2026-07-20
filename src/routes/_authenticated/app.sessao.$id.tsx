@@ -1029,3 +1029,80 @@ function RestEditor({ seconds, onSave }: { seconds: number; onSave: (s: number) 
     </Popover>
   );
 }
+
+function SuggestionHint({
+  suggestion,
+  currentWeight,
+  currentRest,
+  onApplyWeight,
+  onApplyRest,
+}: {
+  suggestion: Suggestion;
+  currentWeight: number | null;
+  currentRest: number;
+  onApplyWeight: (w: number | null) => void;
+  onApplyRest: (s: number) => void;
+}) {
+  const change = hasChange(suggestion, currentWeight, currentRest);
+  if (suggestion.sessions.length === 0) return null;
+
+  const loadIcon =
+    suggestion.loadDirection === "up" ? (
+      <TrendingUp className="size-3.5 text-emerald-500" />
+    ) : suggestion.loadDirection === "down" ? (
+      <TrendingDown className="size-3.5 text-amber-500" />
+    ) : (
+      <MinusIcon className="size-3.5 text-muted-foreground" />
+    );
+  const restIcon =
+    suggestion.restDirection === "up" ? (
+      <TrendingUp className="size-3.5 text-amber-500" />
+    ) : suggestion.restDirection === "down" ? (
+      <TrendingDown className="size-3.5 text-emerald-500" />
+    ) : (
+      <MinusIcon className="size-3.5 text-muted-foreground" />
+    );
+
+  const applyAll = () => {
+    if (change.loadChanged) onApplyWeight(suggestion.suggested_weight_kg ?? null);
+    if (change.restChanged && suggestion.suggested_rest_seconds != null) {
+      onApplyRest(suggestion.suggested_rest_seconds);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+      <div className="flex items-start gap-2">
+        <Sparkles className="size-4 shrink-0 text-brand" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Sugestão do treino anterior
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+            {suggestion.suggested_weight_kg != null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 font-medium">
+                {loadIcon} Carga {suggestion.suggested_weight_kg}kg
+              </span>
+            )}
+            {suggestion.suggested_rest_seconds != null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 font-medium">
+                {restIcon} Descanso {suggestion.suggested_rest_seconds}s
+              </span>
+            )}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            {suggestion.reason}
+          </p>
+          {change.any && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={applyAll}>
+                <Check className="size-3.5" /> Aplicar sugestão
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
