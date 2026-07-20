@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
@@ -423,19 +423,27 @@ function GroupDetail() {
         </TabsList>
 
         <TabsContent value="ranking" className="mt-4">
-          <div className="mb-3 flex gap-1 rounded-lg bg-muted p-1">
-            {(["week", "month", "all"] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition ${
-                  period === p ? "bg-background shadow-soft" : "text-muted-foreground"
-                }`}
-              >
-                {p === "week" ? "Semana" : p === "month" ? "Mês" : "Geral"}
-              </button>
-            ))}
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex flex-1 gap-1 rounded-lg bg-muted p-1">
+              {(["week", "month", "all"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+                    period === p ? "bg-background shadow-soft" : "text-muted-foreground"
+                  }`}
+                >
+                  {p === "week" ? "Semana" : p === "month" ? "Mês" : "Geral"}
+                </button>
+              ))}
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/app/grupos/$id/classificacao" params={{ id: group.id }}>
+                Ver classificação completa
+              </Link>
+            </Button>
           </div>
+
           <ol className="space-y-2">
             {ranking.map((r, i) => {
               const isMe = r.user_id === user.id;
