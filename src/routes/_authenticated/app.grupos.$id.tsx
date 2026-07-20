@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown,
-  Clock, Send, Settings, MessageCircle, BarChart3, Trash2,
+  Clock, Send, Settings, MessageCircle, BarChart3, Trash2, Check, X, UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
