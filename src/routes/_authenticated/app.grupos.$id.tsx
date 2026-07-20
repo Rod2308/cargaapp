@@ -422,6 +422,7 @@ function GroupDetail() {
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
+          <NotificationSettingsDialog />
           {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
             <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
