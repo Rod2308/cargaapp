@@ -202,7 +202,7 @@ function MensagensPage() {
           <EmptyState title="Nenhum aluno vinculado" message="Vincule alunos pelo código de convite em Alunos." />
         )}
         {students.length > 0 && filtered.length === 0 && (
-          <EmptyState compact title="Nenhum aluno encontrado" message={`Não achamos ninguém para "${studentSearch}".`} />
+          <SharedEmptyState compact title="Nenhum aluno encontrado" message={`Não achamos ninguém para "${studentSearch}".`} />
         )}
         {filtered.map((s) => (
           <StudentRow
@@ -525,7 +525,7 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
         )}
         {!isLoading && messages.length === 0 && (
           <div className="mt-6">
-            <EmptyState
+            <SharedEmptyState
               icon={MessageCircle}
               title="Nenhuma mensagem ainda"
               message={`Diga oi para ${partnerName ?? "seu contato"}!`}
