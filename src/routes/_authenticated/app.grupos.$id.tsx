@@ -266,8 +266,9 @@ function GroupDetail() {
 
   const isOwner = group?.owner_id === user.id;
   const inviteUrl = typeof window !== "undefined" && group
-    ? `${window.location.origin}/app/grupos?codigo=${group.invite_code}`
+    ? `${window.location.origin}/g/${group.invite_code}`
     : "";
+
 
   const leave = useMutation({
     mutationFn: async () => {
