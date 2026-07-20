@@ -384,6 +384,17 @@ function GroupDetail() {
           >
             {group.invite_code} <Copy className="size-3.5" />
           </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!inviteUrl) return;
+              navigator.clipboard.writeText(inviteUrl);
+              toast.success("Link de convite copiado");
+            }}
+          >
+            <Copy className="size-3.5" /> Copiar link
+          </Button>
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
@@ -394,6 +405,12 @@ function GroupDetail() {
             <LeaveDialog onConfirm={() => leave.mutate()} pending={leave.isPending} />
           )}
         </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Modo de entrada: <span className="font-semibold">{group.join_mode === "approval" ? "requer aprovação do dono" : "aberto por código"}</span>
+        </p>
+
+        {isOwner && <PendingRequestsPanel groupId={group.id} />}
       </div>
 
       <Tabs defaultValue="ranking" className="mt-6">
