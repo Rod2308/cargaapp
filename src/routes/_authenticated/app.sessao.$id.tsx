@@ -255,9 +255,10 @@ function SessionPage() {
 
   const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
 
-  function startRest(sec: number, exerciseName?: string) {
-    if (!sec || sec <= 0) return;
-    setRest({ id: Date.now(), seconds: sec, exerciseName });
+  function startRest(sec: number | null | undefined, exerciseName?: string) {
+    const s = Number(sec);
+    const seconds = Number.isFinite(s) && s > 0 ? s : 60;
+    setRest({ id: Date.now(), seconds, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
