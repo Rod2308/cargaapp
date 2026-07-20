@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/LoadingState";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,7 +152,7 @@ function EditSessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!session) return <PageSkeleton />;
 
   // Agrupar séries por exercício
   const groups = new Map<string, SetRow[]>();

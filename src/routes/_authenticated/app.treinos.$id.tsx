@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/LoadingState";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,7 +218,7 @@ function WorkoutEditor() {
     onSuccess: (s) => navigate({ to: "/app/sessao/$id", params: { id: s.id } }),
   });
 
-  if (!workout) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!workout) return <PageSkeleton />;
 
   return (
     <TooltipProvider delayDuration={200}>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ArrowLeft, Plus, ChevronRight, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ListSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/$id")({
   beforeLoad: ({ context }) => {
@@ -74,7 +75,7 @@ function AlunoDetail() {
         <ArrowLeft className="size-4" /> Meus alunos
       </button>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+      {isLoading && <ListSkeleton rows={3} />}
 
       {data?.profile && (
         <>

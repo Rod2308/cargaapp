@@ -6,6 +6,8 @@ import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trophy, Crown, Medal, Flame, Loader2 } from "lucide-react";
 import { startOfWeek, startOfMonth, differenceInCalendarDays } from "date-fns";
+import { EmptyState } from "@/components/EmptyState";
+import { ListSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/grupos/$id/classificacao")({
   component: ClassificacaoPage,
@@ -145,9 +147,9 @@ function ClassificacaoPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+        <ListSkeleton rows={5} className="mt-2" />
       ) : ranking.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Nenhum membro ainda.</p>
+        <EmptyState icon={Trophy} title="Sem participantes ainda" message="Assim que alguém pontuar, a classificação aparece aqui." />
       ) : (
         <ul className="space-y-1.5">
           {ranking.map((r, i) => {

@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Dumbbell } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { GridSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
   component: TreinosList,
@@ -98,14 +100,19 @@ function TreinosList() {
         <CardioRecoveryAlert userId={user.id} />
       </div>
 
+      {isLoading ? (
+        <div className="mt-5">
+          <GridSkeleton count={4} itemHeight="h-24" />
+        </div>
+      ) : workouts.length === 0 ? (
+        <EmptyState
+          className="mt-5"
+          icon={Dumbbell}
+          title="Nenhum treino ainda"
+          message="Toque em Novo para criar seu primeiro treino."
+        />
+      ) : (
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
-        {!isLoading && workouts.length === 0 && (
-          <div className="card-soft p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nenhum treino ainda.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Toque em <b>Novo</b> para criar seu primeiro treino.</p>
-          </div>
-        )}
         {workouts.map((w) => (
           <div key={w.id} className="card-soft flex items-center gap-3 p-4">
             <span className="inline-flex size-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
@@ -129,6 +136,7 @@ function TreinosList() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

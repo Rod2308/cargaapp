@@ -1,3 +1,4 @@
+import { PageSkeleton } from "@/components/LoadingState";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -352,7 +353,7 @@ function SessionPage() {
     setRest({ id: restIdRef.current, seconds, exerciseName });
   }
 
-  if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!session) return <PageSkeleton />;
 
   return (
     <div className="app-container pt-6">

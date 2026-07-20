@@ -27,12 +27,14 @@ import { useMemo, useState } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isAfter, startOfDay } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarClock, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
 import { toast } from "sonner";
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
 import { LinkToWorkoutButton } from "@/components/LinkToWorkoutButton";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { ListSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoryPage,
@@ -175,11 +177,16 @@ function HistoryPage() {
 
 
       {isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
-      ) : sessions.length === 0 ? (
-        <div className="card-lift mt-4 p-6 text-center text-sm text-muted-foreground">
-          Nenhum treino registrado ainda.
+        <div className="mt-4">
+          <ListSkeleton rows={4} />
         </div>
+      ) : sessions.length === 0 ? (
+        <EmptyState
+          className="mt-4"
+          icon={CalendarClock}
+          title="Nenhum treino registrado"
+          message="Registre um treino e ele aparecerá aqui — inclusive treinos esquecidos."
+        />
       ) : (
         <div className="mt-4 space-y-5">
           {Object.entries(grouped).map(([month, list]) => (
