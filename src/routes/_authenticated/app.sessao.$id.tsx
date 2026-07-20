@@ -430,24 +430,23 @@ function SessionPage() {
                 ))}
               </div>
 
-              {done.length < it.target_sets && (
-                <SetLogger
-                  key={done.length}
-                  defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
-                  defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
-                  onLog={(reps, weight) => {
-                    logSet.mutate({
-                      session_id: id,
-                      workout_exercise_id: it.id,
-                      exercise_id: it.exercise_id,
-                      set_number: done.length + 1,
-                      reps,
-                      weight_kg: weight || null,
-                    });
-                    startRest(it.target_rest_seconds, it.exercises?.name);
-                  }}
-                />
-              )}
+              <SetLogger
+                key={done.length}
+                defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
+                defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
+                actionLabel={done.length >= it.target_sets ? "Série extra" : "Série"}
+                onLog={(reps, weight) => {
+                  logSet.mutate({
+                    session_id: id,
+                    workout_exercise_id: it.id,
+                    exercise_id: it.exercise_id,
+                    set_number: done.length + 1,
+                    reps,
+                    weight_kg: weight || null,
+                  });
+                  startRest(it.target_rest_seconds, it.exercises?.name);
+                }}
+              />
             </div>
           );
         })}
