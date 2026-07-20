@@ -26,7 +26,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RestTimer } from "@/components/RestTimer";
 import { translateActivityType } from "@/lib/workout-file-parser";
@@ -41,6 +41,7 @@ function SessionPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const restIdRef = useRef(0);
 
   const { data: session } = useQuery({
     queryKey: ["session", id],
@@ -258,7 +259,8 @@ function SessionPage() {
   function startRest(sec: number | null | undefined, exerciseName?: string) {
     const s = Number(sec);
     const seconds = Number.isFinite(s) && s > 0 ? s : 60;
-    setRest({ id: Date.now(), seconds, exerciseName });
+    restIdRef.current += 1;
+    setRest({ id: restIdRef.current, seconds, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
