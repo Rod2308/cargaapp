@@ -664,11 +664,16 @@ function Dashboard() {
 
       {/* Últimas sessões */}
       <section className="mt-0">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Últimas sessões</h2>
-          <Link to="/app/historico" className="text-xs font-semibold text-foreground underline underline-offset-4">
-            Ver histórico
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/app/progresso" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Progresso
+            </Link>
+            <Link to="/app/historico" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Histórico
+            </Link>
+          </div>
         </div>
         {recent.length === 0 ? (
           <div className="card-lift p-5 text-sm text-muted-foreground">
