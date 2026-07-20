@@ -49,8 +49,18 @@ type MemberRow = {
 function GruposIndex() {
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
+  const { codigo } = Route.useSearch();
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [prefillCode, setPrefillCode] = useState<string | undefined>(codigo);
+
+  useEffect(() => {
+    if (codigo) {
+      setPrefillCode(codigo);
+      setJoinOpen(true);
+    }
+  }, [codigo]);
+
 
   const { data: memberships = [], isLoading } = useQuery({
     queryKey: ["my-groups", user.id],
