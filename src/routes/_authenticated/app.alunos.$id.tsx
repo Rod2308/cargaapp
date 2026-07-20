@@ -74,7 +74,7 @@ function AlunoDetail() {
         <ArrowLeft className="size-4" /> Meus alunos
       </button>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+      {isLoading && <ListSkeleton rows={3} />}
 
       {data?.profile && (
         <>
