@@ -765,24 +765,56 @@ function GroupChat({
         {msgs.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma mensagem ainda. Diga oi!</p>
         ) : (
-          msgs.map((m) => {
+          msgs.map((m, i) => {
             const mine = m.user_id === userId;
             const canDelete = mine || isOwner;
+            const name = mine ? "Você" : (profileById[m.user_id] ?? "Aluno");
+            const initials = (profileById[m.user_id] ?? "?")
+              .split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+            const prev = msgs[i - 1];
+            const showHeader = !prev || prev.user_id !== m.user_id ||
+              (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) > 5 * 60 * 1000;
             return (
-              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className={`group max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-                  mine ? "bg-primary text-primary-foreground" : "bg-muted"
-                }`}>
-                  {!mine && (
-                    <p className="text-[10px] font-semibold opacity-70">{profileById[m.user_id] ?? "Aluno"}</p>
+              <div key={m.id} className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : "flex-row"}`}>
+                <Avatar className={`size-7 shrink-0 ${showHeader ? "" : "invisible"}`}>
+                  <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                </Avatar>
+                <div className={`group flex max-w-[75%] flex-col ${mine ? "items-end" : "items-start"}`}>
+                  {showHeader && (
+                    <p className="mb-0.5 px-1 text-[10px] font-medium text-muted-foreground">{name}</p>
                   )}
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                  <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] opacity-70">
-                    <span>{format(new Date(m.created_at), "d MMM HH:mm", { locale: ptBR })}</span>
+                  <div className={`rounded-2xl px-3 py-2 text-sm ${
+                    mine ? "bg-primary text-primary-foreground" : "bg-muted"
+                  }`}>
+                    <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
+                    <span title={format(new Date(m.created_at), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}>
+                      {format(new Date(m.created_at), "d MMM HH:mm", { locale: ptBR })}
+                    </span>
                     {canDelete && (
-                      <button onClick={() => del.mutate(m.id)} className="opacity-0 transition group-hover:opacity-100">
-                        <Trash2 className="size-3" />
-                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            aria-label="Apagar mensagem"
+                            className="text-muted-foreground hover:text-destructive md:opacity-0 md:transition md:group-hover:opacity-100"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. A mensagem será removida para todos do grupo.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => del.mutate(m.id)}>Apagar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>
