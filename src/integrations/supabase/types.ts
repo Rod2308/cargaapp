@@ -749,6 +749,16 @@ export type Database = {
         Returns: undefined
       }
       generate_invite_code: { Args: never; Returns: string }
+      get_group_public_invite: {
+        Args: { _code: string }
+        Returns: {
+          description: string
+          emoji: string
+          is_archived: boolean
+          member_count: number
+          name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
