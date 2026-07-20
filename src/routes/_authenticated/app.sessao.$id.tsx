@@ -255,9 +255,10 @@ function SessionPage() {
 
   const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
 
-  function startRest(sec: number, exerciseName?: string) {
-    if (!sec || sec <= 0) return;
-    setRest({ id: Date.now(), seconds: sec, exerciseName });
+  function startRest(sec: number | null | undefined, exerciseName?: string) {
+    const s = Number(sec);
+    const seconds = Number.isFinite(s) && s > 0 ? s : 60;
+    setRest({ id: Date.now(), seconds, exerciseName });
   }
 
   if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
@@ -429,24 +430,23 @@ function SessionPage() {
                 ))}
               </div>
 
-              {done.length < it.target_sets && (
-                <SetLogger
-                  key={done.length}
-                  defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
-                  defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
-                  onLog={(reps, weight) => {
-                    logSet.mutate({
-                      session_id: id,
-                      workout_exercise_id: it.id,
-                      exercise_id: it.exercise_id,
-                      set_number: done.length + 1,
-                      reps,
-                      weight_kg: weight || null,
-                    });
-                    startRest(it.target_rest_seconds, it.exercises?.name);
-                  }}
-                />
-              )}
+              <SetLogger
+                key={done.length}
+                defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
+                defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
+                actionLabel={done.length >= it.target_sets ? "Série extra" : "Série"}
+                onLog={(reps, weight) => {
+                  logSet.mutate({
+                    session_id: id,
+                    workout_exercise_id: it.id,
+                    exercise_id: it.exercise_id,
+                    set_number: done.length + 1,
+                    reps,
+                    weight_kg: weight || null,
+                  });
+                  startRest(it.target_rest_seconds, it.exercises?.name);
+                }}
+              />
             </div>
           );
         })}
