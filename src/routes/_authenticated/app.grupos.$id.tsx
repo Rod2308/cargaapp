@@ -176,8 +176,73 @@ function GroupDetail() {
 
   // Deadline
   const deadline = group?.ends_at ? new Date(group.ends_at) : null;
+  const startsAt = group?.starts_at ? new Date(group.starts_at) : null;
   const daysLeft = deadline ? differenceInCalendarDays(deadline, new Date()) : null;
   const expired = deadline ? isAfter(new Date(), deadline) : false;
+  const notStarted = startsAt ? isAfter(startsAt, new Date()) : false;
+
+  // Per-member all-time stats
+  const memberStats = useMemo(() => {
+    const map = new Map<string, { checkins: number; activeDays: number; points: number; avg: number }>();
+    for (const m of members) {
+      const mine = points.filter((p) => p.user_id === m.user_id);
+      const checkins = mine.filter((p) => p.reason === "checkin").length;
+      const activeDays = new Set(mine.filter((p) => p.reason === "checkin").map((p) => p.checkin_date)).size;
+      const pts = mine.reduce((s, p) => s + p.points, 0);
+      const joined = new Date(m.joined_at);
+      const span = Math.max(1, differenceInCalendarDays(new Date(), joined) + 1);
+      map.set(m.user_id, { checkins, activeDays, points: pts, avg: checkins / span });
+    }
+    return map;
+  }, [members, points]);
+
+  // Notifications: rank changes, deadline approaching, other members' check-ins
+  const prevRankRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!myRank) return;
+    const prev = prevRankRef.current;
+    if (prev !== null && prev !== myRank.position) {
+      if (myRank.position < prev) {
+        toast.success(`Você subiu para #${myRank.position} no ranking!`);
+      } else {
+        toast.info(`Você caiu para #${myRank.position} no ranking`);
+      }
+    }
+    prevRankRef.current = myRank.position;
+  }, [myRank]);
+
+  const deadlineWarnedRef = useRef(false);
+  useEffect(() => {
+    if (deadlineWarnedRef.current || daysLeft === null || expired) return;
+    if (daysLeft >= 0 && daysLeft <= 3) {
+      toast.warning(daysLeft === 0 ? "O desafio termina hoje!" : `Faltam ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para o fim do desafio`);
+      deadlineWarnedRef.current = true;
+    }
+  }, [daysLeft, expired]);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`group-points-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "group_points", filter: `group_id=eq.${id}` },
+        (payload) => {
+          const row = payload.new as PointRow;
+          qc.invalidateQueries({ queryKey: ["group-points", id] });
+          qc.invalidateQueries({ queryKey: ["group-members", id] });
+          if (row.user_id !== user.id && row.reason === "checkin") {
+            const name = profileById[row.user_id] ?? "Um membro";
+            toast(`${name} fez check-in (+${row.points} pts)`, { icon: "🏋️" });
+            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+              new Notification("Novo check-in no grupo", { body: `${name} +${row.points} pts` });
+            }
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, qc, user.id, profileById]);
+
 
   const isOwner = group?.owner_id === user.id;
   const inviteUrl = typeof window !== "undefined" && group
