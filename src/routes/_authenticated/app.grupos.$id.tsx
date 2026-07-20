@@ -16,6 +16,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
   ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown,
   Clock, Send, Settings, MessageCircle, BarChart3, Trash2, Check, X, UserPlus,
 } from "lucide-react";
