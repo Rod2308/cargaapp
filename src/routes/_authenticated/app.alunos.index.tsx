@@ -86,13 +86,13 @@ function AlunosList() {
       </header>
 
       <div className="mt-6 grid gap-3">
-        {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
+        {isLoading && <ListSkeleton rows={3} />}
         {!isLoading && (data?.students.length ?? 0) === 0 && (
-          <div className="card-soft p-8 text-center">
-            <Users className="mx-auto size-8 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">Nenhum aluno vinculado ainda.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Peça o código de convite (ex: CRG-XXXX) que aparece no perfil do aluno.</p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="Nenhum aluno vinculado"
+            message="Peça o código de convite (ex: CRG-XXXX) que aparece no perfil do aluno."
+          />
         )}
         {data?.students.map((s) => (
           <div key={s.id} className="card-soft flex items-center gap-3 p-4">

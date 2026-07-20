@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Dumbbell } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { GridSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/treinos/")({
   component: TreinosList,
@@ -134,6 +136,7 @@ function TreinosList() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
