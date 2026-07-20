@@ -551,6 +551,15 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg bg-muted/40 px-1 py-1.5">
+      <p className="text-sm font-bold leading-none">{value}</p>
+      <p className="mt-0.5 text-[9px] uppercase text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
 function GroupChat({
   groupId, userId, isOwner, profileById,
 }: {
