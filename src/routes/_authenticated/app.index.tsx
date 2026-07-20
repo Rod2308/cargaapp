@@ -473,11 +473,6 @@ function Dashboard() {
           }}
         />
       ) : null}
-
-
-
-
-
       {/* Ciclo menstrual (se ativado) */}
       <CycleCard profile={profile} />
 
