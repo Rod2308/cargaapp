@@ -302,6 +302,19 @@ function GroupDetail() {
     onError: (e: any) => toast.error(e.message ?? "Falha ao arquivar"),
   });
 
+  const remove = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("groups").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Desafio apagado");
+      qc.invalidateQueries({ queryKey: ["my-groups"] });
+      navigate({ to: "/app/grupos" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao apagar"),
+  });
+
   function share() {
     const text = `Bora treinar comigo no Carga? Entre no grupo "${group?.name}" com o código ${group?.invite_code} ou pelo link: ${inviteUrl}`;
     if (navigator.share) {
@@ -425,7 +438,10 @@ function GroupDetail() {
           <NotificationSettingsDialog />
           {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
-            <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
+            <>
+              <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
+              <DeleteGroupDialog onConfirm={() => remove.mutate()} pending={remove.isPending} />
+            </>
           ) : (
             <LeaveDialog onConfirm={() => leave.mutate()} pending={leave.isPending} />
           )}
