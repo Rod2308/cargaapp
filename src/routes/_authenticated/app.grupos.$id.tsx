@@ -41,6 +41,7 @@ type Group = {
   points_per_checkin: number;
   streak_bonus_points: number;
   streak_bonus_every_days: number;
+  starts_at: string | null;
   ends_at: string | null;
   daily_points_cap: number | null;
   weekly_points_cap: number | null;
