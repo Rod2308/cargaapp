@@ -215,6 +215,7 @@ export type Database = {
           name: string
           owner_id: string
           points_per_checkin: number
+          starts_at: string | null
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number
@@ -233,6 +234,7 @@ export type Database = {
           name: string
           owner_id: string
           points_per_checkin?: number
+          starts_at?: string | null
           streak_bonus_enabled?: boolean
           streak_bonus_every_days?: number
           streak_bonus_points?: number
@@ -251,6 +253,7 @@ export type Database = {
           name?: string
           owner_id?: string
           points_per_checkin?: number
+          starts_at?: string | null
           streak_bonus_enabled?: boolean
           streak_bonus_every_days?: number
           streak_bonus_points?: number
@@ -686,6 +689,7 @@ export type Database = {
           name: string
           owner_id: string
           points_per_checkin: number
+          starts_at: string | null
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number
@@ -725,6 +729,7 @@ export type Database = {
           name: string
           owner_id: string
           points_per_checkin: number
+          starts_at: string | null
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number

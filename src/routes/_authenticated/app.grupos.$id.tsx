@@ -41,6 +41,7 @@ type Group = {
   points_per_checkin: number;
   streak_bonus_points: number;
   streak_bonus_every_days: number;
+  starts_at: string | null;
   ends_at: string | null;
   daily_points_cap: number | null;
   weekly_points_cap: number | null;
@@ -175,8 +176,73 @@ function GroupDetail() {
 
   // Deadline
   const deadline = group?.ends_at ? new Date(group.ends_at) : null;
+  const startsAt = group?.starts_at ? new Date(group.starts_at) : null;
   const daysLeft = deadline ? differenceInCalendarDays(deadline, new Date()) : null;
   const expired = deadline ? isAfter(new Date(), deadline) : false;
+  const notStarted = startsAt ? isAfter(startsAt, new Date()) : false;
+
+  // Per-member all-time stats
+  const memberStats = useMemo(() => {
+    const map = new Map<string, { checkins: number; activeDays: number; points: number; avg: number }>();
+    for (const m of members) {
+      const mine = points.filter((p) => p.user_id === m.user_id);
+      const checkins = mine.filter((p) => p.reason === "checkin").length;
+      const activeDays = new Set(mine.filter((p) => p.reason === "checkin").map((p) => p.checkin_date)).size;
+      const pts = mine.reduce((s, p) => s + p.points, 0);
+      const joined = new Date(m.joined_at);
+      const span = Math.max(1, differenceInCalendarDays(new Date(), joined) + 1);
+      map.set(m.user_id, { checkins, activeDays, points: pts, avg: checkins / span });
+    }
+    return map;
+  }, [members, points]);
+
+  // Notifications: rank changes, deadline approaching, other members' check-ins
+  const prevRankRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!myRank) return;
+    const prev = prevRankRef.current;
+    if (prev !== null && prev !== myRank.position) {
+      if (myRank.position < prev) {
+        toast.success(`Você subiu para #${myRank.position} no ranking!`);
+      } else {
+        toast.info(`Você caiu para #${myRank.position} no ranking`);
+      }
+    }
+    prevRankRef.current = myRank.position;
+  }, [myRank]);
+
+  const deadlineWarnedRef = useRef(false);
+  useEffect(() => {
+    if (deadlineWarnedRef.current || daysLeft === null || expired) return;
+    if (daysLeft >= 0 && daysLeft <= 3) {
+      toast.warning(daysLeft === 0 ? "O desafio termina hoje!" : `Faltam ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para o fim do desafio`);
+      deadlineWarnedRef.current = true;
+    }
+  }, [daysLeft, expired]);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`group-points-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "group_points", filter: `group_id=eq.${id}` },
+        (payload) => {
+          const row = payload.new as PointRow;
+          qc.invalidateQueries({ queryKey: ["group-points", id] });
+          qc.invalidateQueries({ queryKey: ["group-members", id] });
+          if (row.user_id !== user.id && row.reason === "checkin") {
+            const name = profileById[row.user_id] ?? "Um membro";
+            toast(`${name} fez check-in (+${row.points} pts)`, { icon: "🏋️" });
+            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+              new Notification("Novo check-in no grupo", { body: `${name} +${row.points} pts` });
+            }
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, qc, user.id, profileById]);
+
 
   const isOwner = group?.owner_id === user.id;
   const inviteUrl = typeof window !== "undefined" && group
@@ -273,6 +339,11 @@ function GroupDetail() {
             {deadline ? (
               expired ? (
                 <p className="mt-0.5 text-sm font-bold text-destructive">Encerrado</p>
+              ) : notStarted ? (
+                <>
+                  <p className="mt-0.5 text-sm font-bold">Aguardando início</p>
+                  <p className="text-[11px] text-muted-foreground">começa {format(startsAt!, "d MMM", { locale: ptBR })}</p>
+                </>
               ) : (
                 <>
                   <p className="mt-0.5 text-lg font-bold">{daysLeft} {daysLeft === 1 ? "dia" : "dias"}</p>
@@ -435,22 +506,35 @@ function GroupDetail() {
 
         <TabsContent value="membros" className="mt-4">
           <ul className="space-y-2">
-            {members.map((m) => (
-              <li key={m.user_id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold uppercase">
-                  {(profileById[m.user_id] ?? "?").slice(0, 2)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-                    {profileById[m.user_id] ?? "Aluno"}
-                    {m.user_id === group.owner_id && <Crown className="size-3.5 text-amber-500" />}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Maior sequência: {m.longest_streak} dias · entrou em {format(new Date(m.joined_at), "d MMM yyyy", { locale: ptBR })}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {members.map((m) => {
+              const s = memberStats.get(m.user_id);
+              return (
+                <li key={m.user_id} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold uppercase">
+                      {(profileById[m.user_id] ?? "?").slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                        {profileById[m.user_id] ?? "Aluno"}
+                        {m.user_id === group.owner_id && <Crown className="size-3.5 text-amber-500" />}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Maior sequência: {m.longest_streak} dias · desde {format(new Date(m.joined_at), "d MMM yyyy", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+                  {s && (
+                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                      <MiniStat label="Check-ins" value={s.checkins} />
+                      <MiniStat label="Dias ativos" value={s.activeDays} />
+                      <MiniStat label="Média/dia" value={s.avg.toFixed(2)} />
+                      <MiniStat label="Pontos" value={s.points} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </TabsContent>
       </Tabs>
@@ -463,6 +547,15 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg bg-muted/40 px-1 py-1.5">
+      <p className="text-sm font-bold leading-none">{value}</p>
+      <p className="mt-0.5 text-[9px] uppercase text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -602,6 +695,7 @@ function GroupChat({
 function GroupSettingsDialog({ group }: { group: Group }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [startsAt, setStartsAt] = useState<string>(group.starts_at ? group.starts_at.slice(0, 10) : "");
   const [endsAt, setEndsAt] = useState<string>(group.ends_at ? group.ends_at.slice(0, 10) : "");
   const [daily, setDaily] = useState<string>(group.daily_points_cap?.toString() ?? "");
   const [weekly, setWeekly] = useState<string>(group.weekly_points_cap?.toString() ?? "");
@@ -609,7 +703,11 @@ function GroupSettingsDialog({ group }: { group: Group }) {
 
   const save = useMutation({
     mutationFn: async () => {
+      if (startsAt && endsAt && new Date(endsAt) < new Date(startsAt)) {
+        throw new Error("A data final não pode ser antes da data de início.");
+      }
       const patch = {
+        starts_at: startsAt ? new Date(startsAt + "T00:00:00").toISOString() : null,
         ends_at: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : null,
         daily_points_cap: daily ? Math.max(0, parseInt(daily, 10)) : null,
         weekly_points_cap: weekly ? Math.max(0, parseInt(weekly, 10)) : null,
@@ -637,11 +735,17 @@ function GroupSettingsDialog({ group }: { group: Group }) {
           <DialogDescription>Prazo e limites de pontuação por período.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label htmlFor="ends">Prazo do desafio</Label>
-            <Input id="ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-            <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para não ter prazo.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="starts">Início</Label>
+              <Input id="starts" type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="ends">Término</Label>
+              <Input id="ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">Deixe em branco para desafio contínuo (sem prazo).</p>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <Label htmlFor="daily">Limite/dia</Label>
