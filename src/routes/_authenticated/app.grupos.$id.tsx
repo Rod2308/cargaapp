@@ -761,6 +761,10 @@ function GroupChat({
     mutationFn: async (msgId: string) => {
       const { error } = await (supabase as any).from("group_messages").delete().eq("id", msgId);
       if (error) throw error;
+      return msgId;
+    },
+    onSuccess: (msgId) => {
+      qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) => prev.filter((x) => x.id !== msgId));
     },
     onError: (e: any) => toast.error(e.message ?? "Falha ao remover"),
   });
