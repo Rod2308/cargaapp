@@ -1015,7 +1015,7 @@ function SleepCard({
   const quick = [5, 6, 7, 8, 9];
 
   return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
       <span className={`absolute inset-y-0 left-0 w-1 ${status.color}`} aria-hidden />
       <div className="flex items-start gap-3 pl-2">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
@@ -1132,7 +1132,7 @@ function CycleCard({ profile }: { profile: any }) {
   });
   if (!info) {
     return (
-      <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+      <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
         <span className="absolute inset-y-0 left-0 w-1 bg-muted" aria-hidden />
         <div className="flex items-start gap-3 pl-2">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
@@ -1163,7 +1163,7 @@ function CycleCard({ profile }: { profile: any }) {
   };
 
   return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
       <span className={`absolute inset-y-0 left-0 w-1 ${bar[info.phase]}`} aria-hidden />
       <div className="flex items-start gap-3 pl-2">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full ${badge[info.phase]}`}>
