@@ -128,6 +128,30 @@ function SessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const removeExerciseItem = useMutation({
+    mutationFn: async (item: { id: string; exercise_id: string }) => {
+      qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
+        prev.filter((s) => s.workout_exercise_id !== item.id),
+      );
+      qc.setQueryData(["session-items", id], (prev: any[] = []) =>
+        prev.filter((it) => it.id !== item.id),
+      );
+      await enqueueOp({
+        kind: "delete",
+        table: "session_sets",
+        match: { session_id: id, workout_exercise_id: item.id },
+      });
+      await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
+      toast.success("Exercício removido");
+    },
+    onError: (e: any) => toast.error(e.message),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["session-items", id] });
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+    },
+  });
+
+
   const finish = useMutation({
     mutationFn: async ({ effort, discomfort }: { effort: number | null; discomfort: string }) => {
       const endedAt = new Date();
