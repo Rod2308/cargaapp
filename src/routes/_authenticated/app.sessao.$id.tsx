@@ -481,7 +481,49 @@ function SessionPage() {
         />
       )}
 
+      {(() => {
+        const changes = (items as any[])
+          .map((it) => {
+            const s = suggestionsByItem.get(it.id);
+            if (!s) return null;
+            const curW = it.target_weight_kg ?? null;
+            const curR = it.target_rest_seconds ?? 60;
+            if (!hasChange(s, curW, curR)) return null;
+            return { it, s, curW, curR };
+          })
+          .filter(Boolean) as { it: any; s: Suggestion; curW: number | null; curR: number }[];
+        if (changes.length === 0) return null;
+        return (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <div className="flex items-start gap-2 text-sm">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>
+                Há sugestões de ajuste em <strong>{changes.length}</strong>{" "}
+                {changes.length === 1 ? "exercício" : "exercícios"} desta sessão.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                for (const c of changes) {
+                  if (c.s.suggested_weight_kg !== c.curW) {
+                    updateTargetWeight.mutate({ itemId: c.it.id, weight: c.s.suggested_weight_kg });
+                  }
+                  if (c.s.suggested_rest_seconds != null && c.s.suggested_rest_seconds !== c.curR) {
+                    updateRest.mutate({ itemId: c.it.id, seconds: c.s.suggested_rest_seconds });
+                  }
+                }
+                toast.success(`Sugestões aplicadas em ${changes.length} exercício(s)`);
+              }}
+            >
+              Aplicar em todos
+            </Button>
+          </div>
+        );
+      })()}
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
+
         {items.map((it: any, idx: number) => {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
           const suggestion = suggestionsByItem.get(it.id);
