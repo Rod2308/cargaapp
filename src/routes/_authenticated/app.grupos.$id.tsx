@@ -3,19 +3,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown,
+  Clock, Send, Settings, MessageCircle, BarChart3, Trash2,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import {
+  format, startOfWeek, startOfMonth, differenceInCalendarDays, isAfter,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/app/grupos/$id")({
@@ -33,6 +41,10 @@ type Group = {
   points_per_checkin: number;
   streak_bonus_points: number;
   streak_bonus_every_days: number;
+  ends_at: string | null;
+  daily_points_cap: number | null;
+  weekly_points_cap: number | null;
+  monthly_points_cap: number | null;
 };
 
 type Member = {
@@ -51,6 +63,13 @@ type PointRow = {
   checkin_date: string;
   created_at: string;
   session_id: string | null;
+};
+
+type ChatMsg = {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
 };
 
 function GroupDetail() {
@@ -108,7 +127,7 @@ function GroupDetail() {
         .select("id, user_id, points, reason, checkin_date, created_at, session_id")
         .eq("group_id", id)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return (data ?? []) as PointRow[];
     },
@@ -133,6 +152,31 @@ function GroupDetail() {
     }));
     return rows.sort((a, b) => b.points - a.points || b.current_streak - a.current_streak);
   }, [points, members, profileById, period]);
+
+  const myRank = useMemo(() => {
+    const idx = ranking.findIndex((r) => r.user_id === user.id);
+    return idx >= 0 ? { position: idx + 1, points: ranking[idx].points } : null;
+  }, [ranking, user.id]);
+
+  // Personal stats (all-time within group)
+  const myStats = useMemo(() => {
+    const mine = points.filter((p) => p.user_id === user.id);
+    const totalPoints = mine.reduce((s, p) => s + p.points, 0);
+    const checkins = mine.filter((p) => p.reason === "checkin").length;
+    const activeDays = new Set(mine.filter((p) => p.reason === "checkin").map((p) => p.checkin_date)).size;
+    const me = members.find((m) => m.user_id === user.id);
+    const joined = me ? new Date(me.joined_at) : null;
+    const spanDays = joined
+      ? Math.max(1, differenceInCalendarDays(new Date(), joined) + 1)
+      : 1;
+    const avgPerDay = checkins / spanDays;
+    return { totalPoints, checkins, activeDays, avgPerDay };
+  }, [points, members, user.id]);
+
+  // Deadline
+  const deadline = group?.ends_at ? new Date(group.ends_at) : null;
+  const daysLeft = deadline ? differenceInCalendarDays(deadline, new Date()) : null;
+  const expired = deadline ? isAfter(new Date(), deadline) : false;
 
   const isOwner = group?.owner_id === user.id;
   const inviteUrl = typeof window !== "undefined" && group
@@ -215,10 +259,51 @@ function GroupDetail() {
             <h1 className="truncate text-xl font-bold">{group.name}</h1>
             {group.description && <p className="mt-0.5 text-sm text-muted-foreground">{group.description}</p>}
             <p className="mt-1 text-xs text-muted-foreground">
-              {group.points_per_checkin} pts por treino · bônus de {group.streak_bonus_points} pts a cada {group.streak_bonus_every_days} dias
+              {group.points_per_checkin} pts por treino · bônus {group.streak_bonus_points} pts a cada {group.streak_bonus_every_days} dias
             </p>
           </div>
         </div>
+
+        {/* Deadline + my rank */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className={`rounded-xl border p-3 ${expired ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/30"}`}>
+            <p className="flex items-center gap-1 text-[11px] font-semibold uppercase text-muted-foreground">
+              <Clock className="size-3" /> Prazo
+            </p>
+            {deadline ? (
+              expired ? (
+                <p className="mt-0.5 text-sm font-bold text-destructive">Encerrado</p>
+              ) : (
+                <>
+                  <p className="mt-0.5 text-lg font-bold">{daysLeft} {daysLeft === 1 ? "dia" : "dias"}</p>
+                  <p className="text-[11px] text-muted-foreground">até {format(deadline, "d MMM yyyy", { locale: ptBR })}</p>
+                </>
+              )
+            ) : (
+              <p className="mt-0.5 text-sm text-muted-foreground">Sem prazo</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground">Sua posição</p>
+            {myRank ? (
+              <>
+                <p className="mt-0.5 text-lg font-bold">#{myRank.position} <span className="text-xs font-normal text-muted-foreground">de {ranking.length}</span></p>
+                <p className="text-[11px] text-muted-foreground">{myRank.points} pts na {period === "week" ? "semana" : period === "month" ? "mês" : "geral"}</p>
+              </>
+            ) : (
+              <p className="mt-0.5 text-sm text-muted-foreground">—</p>
+            )}
+          </div>
+        </div>
+
+        {(group.daily_points_cap || group.weekly_points_cap || group.monthly_points_cap) && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Limites de pontos —
+            {group.daily_points_cap ? ` ${group.daily_points_cap}/dia` : ""}
+            {group.weekly_points_cap ? ` · ${group.weekly_points_cap}/semana` : ""}
+            {group.monthly_points_cap ? ` · ${group.monthly_points_cap}/mês` : ""}
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
@@ -230,6 +315,7 @@ function GroupDetail() {
           <Button variant="outline" size="sm" onClick={share}>
             <Share2 className="size-3.5" /> Compartilhar
           </Button>
+          {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
             <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
           ) : (
@@ -239,9 +325,11 @@ function GroupDetail() {
       </div>
 
       <Tabs defaultValue="ranking" className="mt-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="ranking">Ranking</TabsTrigger>
-          <TabsTrigger value="atividade">Atividade</TabsTrigger>
+          <TabsTrigger value="chat"><MessageCircle className="size-3.5" /></TabsTrigger>
+          <TabsTrigger value="stats"><BarChart3 className="size-3.5" /></TabsTrigger>
+          <TabsTrigger value="atividade">Feed</TabsTrigger>
           <TabsTrigger value="membros">Membros</TabsTrigger>
         </TabsList>
 
@@ -303,6 +391,22 @@ function GroupDetail() {
           </ol>
         </TabsContent>
 
+        <TabsContent value="chat" className="mt-4">
+          <GroupChat groupId={id} userId={user.id} isOwner={isOwner} profileById={profileById} />
+        </TabsContent>
+
+        <TabsContent value="stats" className="mt-4">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Check-ins totais" value={myStats.checkins} />
+            <StatCard label="Dias ativos" value={myStats.activeDays} />
+            <StatCard label="Média check-ins/dia" value={myStats.avgPerDay.toFixed(2)} />
+            <StatCard label="Pontos totais" value={myStats.totalPoints} />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Estatísticas contadas desde que você entrou no grupo.
+          </p>
+        </TabsContent>
+
         <TabsContent value="atividade" className="mt-4">
           {points.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Sem atividade ainda.</p>
@@ -351,6 +455,219 @@ function GroupDetail() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function GroupChat({
+  groupId, userId, isOwner, profileById,
+}: {
+  groupId: string; userId: string; isOwner: boolean; profileById: Record<string, string>;
+}) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: msgs = [] } = useQuery({
+    queryKey: ["group-chat", groupId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("group_messages")
+        .select("id, user_id, content, created_at")
+        .eq("group_id", groupId)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as ChatMsg[];
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`group-chat-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
+        (payload) => {
+          const m = payload.new as ChatMsg;
+          qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) =>
+            prev.some((x) => x.id === m.id) ? prev : [...prev, m],
+          );
+          if (m.user_id !== userId && "Notification" in window && Notification.permission === "granted" && document.hidden) {
+            new Notification(profileById[m.user_id] ?? "Nova mensagem", { body: m.content.slice(0, 120) });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
+        (payload) => {
+          const old = payload.old as { id: string };
+          qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) => prev.filter((x) => x.id !== old.id));
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [groupId, qc, userId, profileById]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [msgs.length]);
+
+  const send = useMutation({
+    mutationFn: async () => {
+      const content = text.trim();
+      if (!content) return;
+      const { error } = await (supabase as any).from("group_messages").insert({
+        group_id: groupId, user_id: userId, content,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => setText(""),
+    onError: (e: any) => toast.error(e.message ?? "Falha ao enviar"),
+  });
+
+  const del = useMutation({
+    mutationFn: async (msgId: string) => {
+      const { error } = await (supabase as any).from("group_messages").delete().eq("id", msgId);
+      if (error) throw error;
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao remover"),
+  });
+
+  function askNotifications() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") Notification.requestPermission();
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card">
+      <div ref={scrollRef} className="max-h-[420px] min-h-[240px] space-y-2 overflow-y-auto p-3">
+        {msgs.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma mensagem ainda. Diga oi!</p>
+        ) : (
+          msgs.map((m) => {
+            const mine = m.user_id === userId;
+            const canDelete = mine || isOwner;
+            return (
+              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div className={`group max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                  mine ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}>
+                  {!mine && (
+                    <p className="text-[10px] font-semibold opacity-70">{profileById[m.user_id] ?? "Aluno"}</p>
+                  )}
+                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                  <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] opacity-70">
+                    <span>{format(new Date(m.created_at), "d MMM HH:mm", { locale: ptBR })}</span>
+                    {canDelete && (
+                      <button onClick={() => del.mutate(m.id)} className="opacity-0 transition group-hover:opacity-100">
+                        <Trash2 className="size-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <form
+        onSubmit={(e) => { e.preventDefault(); send.mutate(); }}
+        onFocus={askNotifications}
+        className="flex items-center gap-2 border-t border-border p-2"
+      >
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Mensagem para o grupo…"
+          maxLength={1000}
+        />
+        <Button type="submit" size="sm" disabled={!text.trim() || send.isPending}>
+          {send.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function GroupSettingsDialog({ group }: { group: Group }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [endsAt, setEndsAt] = useState<string>(group.ends_at ? group.ends_at.slice(0, 10) : "");
+  const [daily, setDaily] = useState<string>(group.daily_points_cap?.toString() ?? "");
+  const [weekly, setWeekly] = useState<string>(group.weekly_points_cap?.toString() ?? "");
+  const [monthly, setMonthly] = useState<string>(group.monthly_points_cap?.toString() ?? "");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const patch = {
+        ends_at: endsAt ? new Date(endsAt + "T23:59:59").toISOString() : null,
+        daily_points_cap: daily ? Math.max(0, parseInt(daily, 10)) : null,
+        weekly_points_cap: weekly ? Math.max(0, parseInt(weekly, 10)) : null,
+        monthly_points_cap: monthly ? Math.max(0, parseInt(monthly, 10)) : null,
+      };
+      const { error } = await (supabase as any).from("groups").update(patch).eq("id", group.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Configurações salvas");
+      qc.invalidateQueries({ queryKey: ["group", group.id] });
+      setOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao salvar"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm"><Settings className="size-3.5" /> Configurar</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Configurações do desafio</DialogTitle>
+          <DialogDescription>Prazo e limites de pontuação por período.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="ends">Prazo do desafio</Label>
+            <Input id="ends" type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para não ter prazo.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label htmlFor="daily">Limite/dia</Label>
+              <Input id="daily" type="number" min="0" value={daily} onChange={(e) => setDaily(e.target.value)} placeholder="—" />
+            </div>
+            <div>
+              <Label htmlFor="weekly">Limite/semana</Label>
+              <Input id="weekly" type="number" min="0" value={weekly} onChange={(e) => setWeekly(e.target.value)} placeholder="—" />
+            </div>
+            <div>
+              <Label htmlFor="monthly">Limite/mês</Label>
+              <Input id="monthly" type="number" min="0" value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="—" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ao atingir o limite, novos check-ins do período não geram mais pontos (mas continuam contando o streak).
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
