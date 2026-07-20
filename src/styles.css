@@ -150,13 +150,13 @@
       min-height: 40px;
     }
   }
-  .font-display { font-family: var(--font-display); letter-spacing: -0.035em; }
-  .font-mono { font-family: var(--font-mono); }
+  .font-display { font-family: var(--font-display); letter-spacing: 0.005em; text-transform: uppercase; line-height: 0.95; }
+  .font-mono { font-family: var(--font-mono); letter-spacing: 0.02em; }
   .text-eyebrow {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 0.66rem;
+    letter-spacing: 0.22em;
+    font-size: 0.68rem;
     font-weight: 700;
     color: var(--color-muted-foreground);
   }
