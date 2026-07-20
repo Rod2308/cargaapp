@@ -16,12 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trophy, Plus, LogIn, Flame, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/grupos/")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    codigo: typeof s.codigo === "string" ? s.codigo : undefined,
+  }),
   component: GruposIndex,
 });
+
 
 const EMOJIS = ["🏆", "🔥", "💪", "🏋️", "🥇", "⚡", "🚀", "🎯", "🏃", "🧗"];
 
