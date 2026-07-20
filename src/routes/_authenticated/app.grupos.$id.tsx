@@ -302,6 +302,19 @@ function GroupDetail() {
     onError: (e: any) => toast.error(e.message ?? "Falha ao arquivar"),
   });
 
+  const remove = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from("groups").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Desafio apagado");
+      qc.invalidateQueries({ queryKey: ["my-groups"] });
+      navigate({ to: "/app/grupos" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha ao apagar"),
+  });
+
   function share() {
     const text = `Bora treinar comigo no Carga? Entre no grupo "${group?.name}" com o código ${group?.invite_code} ou pelo link: ${inviteUrl}`;
     if (navigator.share) {
@@ -425,7 +438,10 @@ function GroupDetail() {
           <NotificationSettingsDialog />
           {isOwner && <GroupSettingsDialog group={group} />}
           {isOwner ? (
-            <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
+            <>
+              <ArchiveDialog onConfirm={() => archive.mutate()} pending={archive.isPending} />
+              <DeleteGroupDialog onConfirm={() => remove.mutate()} pending={remove.isPending} />
+            </>
           ) : (
             <LeaveDialog onConfirm={() => leave.mutate()} pending={leave.isPending} />
           )}
@@ -1020,6 +1036,40 @@ function ArchiveDialog({ onConfirm, pending }: { onConfirm: () => void; pending:
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
           <Button variant="destructive" disabled={pending} onClick={onConfirm}>
             {pending ? <Loader2 className="size-4 animate-spin" /> : "Arquivar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteGroupDialog({ onConfirm, pending }: { onConfirm: () => void; pending: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmText(""); }}>
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm"><Trash2 className="size-3.5" /> Apagar</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Apagar desafio permanentemente?</DialogTitle>
+          <DialogDescription>
+            Esta ação não pode ser desfeita. Todos os membros, pontos, pedidos e mensagens serão removidos.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          <Label htmlFor="confirm-delete" className="text-sm">Digite <span className="font-mono font-semibold">APAGAR</span> para confirmar</Label>
+          <Input id="confirm-delete" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="APAGAR" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button
+            variant="destructive"
+            disabled={pending || confirmText.trim().toUpperCase() !== "APAGAR"}
+            onClick={onConfirm}
+          >
+            {pending ? <Loader2 className="size-4 animate-spin" /> : "Apagar definitivamente"}
           </Button>
         </DialogFooter>
       </DialogContent>
