@@ -315,13 +315,36 @@ function GroupDetail() {
     onError: (e: any) => toast.error(e.message ?? "Falha ao apagar"),
   });
 
-  function share() {
-    const text = `Bora treinar comigo no Carga? Entre no grupo "${group?.name}" com o código ${group?.invite_code} ou pelo link: ${inviteUrl}`;
-    if (navigator.share) {
-      navigator.share({ title: `Grupo ${group?.name}`, text }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text);
+  async function share() {
+    if (!group) return;
+    const text = `Bora treinar comigo no Carga? Entre no grupo "${group.name}" com o código ${group.invite_code} ou pelo link: ${inviteUrl}`;
+    const payload = { title: `Grupo ${group.name}`, text, url: inviteUrl };
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function"
+          && (!navigator.canShare || navigator.canShare(payload))) {
+        await navigator.share(payload);
+        return;
+      }
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Convite copiado para a área de transferência");
+      return;
+    } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
       toast.success("Convite copiado");
+    } catch {
+      toast.error("Não foi possível compartilhar. Copie o código manualmente.");
     }
   }
 
