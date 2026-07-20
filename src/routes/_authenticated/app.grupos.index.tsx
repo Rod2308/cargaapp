@@ -91,7 +91,7 @@ function GruposIndex() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={() => qc.invalidateQueries({ queryKey: ["my-groups"] })} />
-        <JoinGroupDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={() => qc.invalidateQueries({ queryKey: ["my-groups"] })} />
+        <JoinGroupDialog open={joinOpen} onOpenChange={setJoinOpen} initialCode={prefillCode} onJoined={() => qc.invalidateQueries({ queryKey: ["my-groups"] })} />
       </div>
 
       {isLoading ? (
