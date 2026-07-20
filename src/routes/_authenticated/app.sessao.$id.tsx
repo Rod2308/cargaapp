@@ -128,6 +128,30 @@ function SessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const removeExerciseItem = useMutation({
+    mutationFn: async (item: { id: string; exercise_id: string }) => {
+      qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
+        prev.filter((s) => s.workout_exercise_id !== item.id),
+      );
+      qc.setQueryData(["session-items", id], (prev: any[] = []) =>
+        prev.filter((it) => it.id !== item.id),
+      );
+      await enqueueOp({
+        kind: "delete",
+        table: "session_sets",
+        match: { session_id: id, workout_exercise_id: item.id },
+      });
+      await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
+      toast.success("Exercício removido");
+    },
+    onError: (e: any) => toast.error(e.message),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["session-items", id] });
+      qc.invalidateQueries({ queryKey: ["session-sets", id] });
+    },
+  });
+
+
   const finish = useMutation({
     mutationFn: async ({ effort, discomfort }: { effort: number | null; discomfort: string }) => {
       const endedAt = new Date();
@@ -402,9 +426,32 @@ function SessionPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {done.length}/{it.target_sets}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {done.length}/{it.target_sets}
+                      </span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Remover exercício">
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover {it.exercises.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O exercício será removido deste treino{done.length > 0 ? ` junto com ${done.length} série(s) já registrada(s)` : ""}. Essa ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeExerciseItem.mutate({ id: it.id, exercise_id: it.exercise_id })}>
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>
@@ -419,6 +466,7 @@ function SessionPage() {
                   </p>
                 </div>
               </div>
+
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
