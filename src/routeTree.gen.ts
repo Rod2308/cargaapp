@@ -19,6 +19,7 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/ap
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authenticated/app.progresso'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppMensagensRouteImport } from './routes/_authenticated/app.mensagens'
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
@@ -85,6 +86,12 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppProgressoRoute =
+  AuthenticatedAppProgressoRouteImport.update({
+    id: '/progresso',
+    path: '/progresso',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppPerfilRoute = AuthenticatedAppPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/app/progresso': typeof AuthenticatedAppProgressoRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/app/progresso': typeof AuthenticatedAppProgressoRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
@@ -234,6 +243,7 @@ export interface FileRoutesById {
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/_authenticated/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
+  '/_authenticated/app/progresso': typeof AuthenticatedAppProgressoRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/_authenticated/app/grupos/$id': typeof AuthenticatedAppGruposIdRoute
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/app/mcp-teste'
     | '/app/mensagens'
     | '/app/perfil'
+    | '/app/progresso'
     | '/app/'
     | '/app/alunos/$id'
     | '/app/grupos/$id'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/app/mcp-teste'
     | '/app/mensagens'
     | '/app/perfil'
+    | '/app/progresso'
     | '/app'
     | '/app/alunos/$id'
     | '/app/grupos/$id'
@@ -311,6 +323,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/mcp-teste'
     | '/_authenticated/app/mensagens'
     | '/_authenticated/app/perfil'
+    | '/_authenticated/app/progresso'
     | '/_authenticated/app/'
     | '/_authenticated/app/alunos/$id'
     | '/_authenticated/app/grupos/$id'
@@ -405,6 +418,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/progresso': {
+      id: '/_authenticated/app/progresso'
+      path: '/progresso'
+      fullPath: '/app/progresso'
+      preLoaderRoute: typeof AuthenticatedAppProgressoRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/perfil': {
@@ -527,6 +547,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
   AuthenticatedAppMensagensRoute: typeof AuthenticatedAppMensagensRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
+  AuthenticatedAppProgressoRoute: typeof AuthenticatedAppProgressoRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
   AuthenticatedAppGruposIdRoute: typeof AuthenticatedAppGruposIdRoute
@@ -542,6 +563,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
   AuthenticatedAppMensagensRoute: AuthenticatedAppMensagensRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
+  AuthenticatedAppProgressoRoute: AuthenticatedAppProgressoRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
   AuthenticatedAppGruposIdRoute: AuthenticatedAppGruposIdRoute,
