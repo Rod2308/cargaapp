@@ -853,7 +853,7 @@ function GroupChat({
       <div ref={scrollRef} className="max-h-[420px] min-h-[240px] space-y-2 overflow-y-auto p-3">
         {msgs.length === 0 ? (
           <EmptyState compact icon={MessageCircle} title="Sem mensagens" message="Seja o primeiro a mandar um olá para o grupo." />
-        ) : ()
+        ) : (
           msgs.map((m, i) => {
             const mine = m.user_id === userId;
             const canDelete = mine || isOwner;
