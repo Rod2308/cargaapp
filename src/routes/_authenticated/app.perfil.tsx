@@ -560,7 +560,15 @@ function MyTrainerCard() {
   });
 
   if (isLoading) {
-    return <div className="card-soft mt-5 p-4 text-sm text-muted-foreground">Carregando...</div>;
+    return (
+      <div className="card-soft mt-5 flex items-center gap-3 p-4" aria-busy>
+        <Skeleton className="size-11 rounded-xl" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-3.5 w-2/3" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      </div>
+    );
   }
 
   const trainer = data?.trainer;
