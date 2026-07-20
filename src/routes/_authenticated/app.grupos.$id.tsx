@@ -45,6 +45,7 @@ type Group = {
   ends_at: string | null;
   daily_points_cap: number | null;
   weekly_points_cap: number | null;
+  join_mode: "open" | "approval";
   monthly_points_cap: number | null;
 };
 
