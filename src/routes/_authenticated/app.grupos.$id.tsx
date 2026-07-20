@@ -24,6 +24,7 @@ import {
   ArrowLeft, Copy, Flame, Trophy, Share2, LogOut, Archive, Loader2, Crown,
   Clock, Send, Settings, MessageCircle, BarChart3, Trash2, Check, X, UserPlus,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
 import { NotificationSettingsDialog } from "@/components/NotificationSettingsDialog";

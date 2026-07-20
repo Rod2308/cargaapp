@@ -352,7 +352,7 @@ function SessionPage() {
     setRest({ id: restIdRef.current, seconds, exerciseName });
   }
 
-  if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!session) return <PageSkeleton />;
 
   return (
     <div className="app-container pt-6">

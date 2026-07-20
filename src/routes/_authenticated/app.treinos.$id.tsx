@@ -217,7 +217,7 @@ function WorkoutEditor() {
     onSuccess: (s) => navigate({ to: "/app/sessao/$id", params: { id: s.id } }),
   });
 
-  if (!workout) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!workout) return <PageSkeleton />;
 
   return (
     <TooltipProvider delayDuration={200}>

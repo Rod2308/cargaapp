@@ -151,7 +151,7 @@ function EditSessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (!session) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!session) return <PageSkeleton />;
 
   // Agrupar séries por exercício
   const groups = new Map<string, SetRow[]>();
