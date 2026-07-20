@@ -484,6 +484,8 @@ function SessionPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {items.map((it: any, idx: number) => {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
+          const suggestion = suggestionsByItem.get(it.id);
+          const suggestedWeight = suggestion?.suggested_weight_kg ?? null;
           return (
             <div key={it.id} className="card-soft p-4">
               <div className="flex items-start gap-3">
@@ -532,6 +534,15 @@ function SessionPage() {
                 </div>
               </div>
 
+              {suggestion && (
+                <SuggestionHint
+                  suggestion={suggestion}
+                  currentWeight={it.target_weight_kg ?? null}
+                  currentRest={it.target_rest_seconds ?? 60}
+                  onApplyWeight={(w) => updateTargetWeight.mutate({ itemId: it.id, weight: w })}
+                  onApplyRest={(s) => updateRest.mutate({ itemId: it.id, seconds: s })}
+                />
+              )}
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
@@ -548,7 +559,12 @@ function SessionPage() {
               <SetLogger
                 key={done.length}
                 defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
-                defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
+                defaultWeight={
+                  done.at(-1)?.weight_kg ??
+                  it.target_weight_kg ??
+                  suggestedWeight ??
+                  ""
+                }
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
@@ -565,6 +581,7 @@ function SessionPage() {
             </div>
           );
         })}
+
 
         {extraGroups.map(([exerciseId, doneSets], idx) => {
           const ex = allExercises.find((e: any) => e.id === exerciseId);
