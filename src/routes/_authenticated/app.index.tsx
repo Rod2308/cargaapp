@@ -636,7 +636,7 @@ function Dashboard() {
       </section>
 
       {/* Calendário + Últimas sessões side-by-side em lg */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 
       {/* Calendário */}
       <section className="mt-0">
