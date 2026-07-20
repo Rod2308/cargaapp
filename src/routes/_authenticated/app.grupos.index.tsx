@@ -220,29 +220,41 @@ function JoinGroupDialog({
   open,
   onOpenChange,
   onJoined,
+  initialCode,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onJoined: () => void;
+  initialCode?: string;
 }) {
   const [code, setCode] = useState("");
 
+  useEffect(() => {
+    if (initialCode) {
+      setCode(initialCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6));
+    }
+  }, [initialCode]);
+
   const join = useMutation({
     mutationFn: async () => {
-      const { data, error } = await (supabase as any).rpc("join_group_by_code", {
+      const { data, error } = await (supabase as any).rpc("request_or_join_by_code", {
         _code: code.trim().toUpperCase(),
       });
       if (error) throw error;
-      return data;
+      return data as { status: string; name?: string };
     },
-    onSuccess: () => {
-      toast.success("Entrou no grupo!");
+    onSuccess: (res) => {
+      if (res?.status === "joined") toast.success(`Entrou em ${res.name ?? "grupo"}!`);
+      else if (res?.status === "pending") toast.success("Pedido enviado — aguardando aprovação do dono.");
+      else if (res?.status === "already_member") toast.info("Você já é membro deste grupo.");
+      else toast.success("OK");
       setCode("");
       onOpenChange(false);
       onJoined();
     },
     onError: (e: any) => toast.error(e.message ?? "Código inválido"),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
