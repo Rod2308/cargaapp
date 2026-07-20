@@ -724,9 +724,15 @@ function GroupChat({
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
+        // No filter: DELETE payloads only carry the PK unless REPLICA IDENTITY FULL,
+        // so we accept all deletes on the table and drop by id from our local list.
+        { event: "DELETE", schema: "public", table: "group_messages" },
         (payload) => {
-          const old = payload.old as { id: string };
+          const old = payload.old as { id?: string };
+          if (!old?.id) {
+            qc.invalidateQueries({ queryKey: ["group-chat", groupId] });
+            return;
+          }
           qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) => prev.filter((x) => x.id !== old.id));
         },
       )
