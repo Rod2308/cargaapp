@@ -187,9 +187,7 @@
 }
 
 @utility card-ink {
-  background:
-    radial-gradient(ellipse 80% 60% at 80% 0%, oklch(0.88 0.2 128 / 0.18), transparent 60%),
-    linear-gradient(155deg, oklch(0.2 0.01 260), oklch(0.08 0.01 260));
+  background: linear-gradient(160deg, oklch(0.22 0.008 260), oklch(0.13 0.005 260));
   color: var(--color-primary-foreground);
   border-radius: var(--radius-xl);
   border: 1px solid oklch(1 0 0 / 0.06);
@@ -201,8 +199,8 @@
     transform: translateY(-2px);
     box-shadow:
       0 1px 0 0 oklch(1 0 0 / 0.08) inset,
-      0 40px 100px -30px oklch(0 0 0 / 0.6),
-      0 12px 30px -12px oklch(0.88 0.2 128 / 0.25);
+      0 40px 100px -30px oklch(0 0 0 / 0.55),
+      0 12px 30px -12px oklch(0.95 0.24 122 / 0.2);
   }
 }
 
