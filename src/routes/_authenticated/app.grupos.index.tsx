@@ -231,9 +231,10 @@ function JoinGroupDialog({
 
   useEffect(() => {
     if (initialCode) {
-      setCode(initialCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6));
+      setCode(initialCode.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 10));
     }
   }, [initialCode]);
+
 
   const join = useMutation({
     mutationFn: async () => {
