@@ -424,12 +424,12 @@ function Dashboard() {
         </button>
       </header>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <CardioRecoveryAlert userId={user.id} />
       </div>
 
       {/* Frase do dia */}
-      <div className="card-lift mt-5 flex items-start gap-3 p-4 sm:p-5">
+      <div className="card-lift mt-4 flex items-start gap-3 p-4 sm:p-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
           <Quote className="size-4" strokeWidth={2.5} />
         </span>
@@ -473,11 +473,6 @@ function Dashboard() {
           }}
         />
       ) : null}
-
-
-
-
-
       {/* Ciclo menstrual (se ativado) */}
       <CycleCard profile={profile} />
 
@@ -492,7 +487,7 @@ function Dashboard() {
 
 
       {/* Bento */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {/* Start workout — hero tile */}
         {nextWorkout ? (
           <button
@@ -641,7 +636,7 @@ function Dashboard() {
       </section>
 
       {/* Calendário + Últimas sessões side-by-side em lg */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 
       {/* Calendário */}
       <section className="mt-0">
@@ -1020,7 +1015,7 @@ function SleepCard({
   const quick = [5, 6, 7, 8, 9];
 
   return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
       <span className={`absolute inset-y-0 left-0 w-1 ${status.color}`} aria-hidden />
       <div className="flex items-start gap-3 pl-2">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
@@ -1137,7 +1132,7 @@ function CycleCard({ profile }: { profile: any }) {
   });
   if (!info) {
     return (
-      <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+      <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
         <span className="absolute inset-y-0 left-0 w-1 bg-muted" aria-hidden />
         <div className="flex items-start gap-3 pl-2">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground">
@@ -1168,7 +1163,7 @@ function CycleCard({ profile }: { profile: any }) {
   };
 
   return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
       <span className={`absolute inset-y-0 left-0 w-1 ${bar[info.phase]}`} aria-hidden />
       <div className="flex items-start gap-3 pl-2">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full ${badge[info.phase]}`}>

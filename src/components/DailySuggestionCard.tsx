@@ -56,7 +56,7 @@ export function DailySuggestionCard({
             : "Full body";
 
   return (
-    <div className="card-lift relative mt-3 overflow-hidden p-4 sm:p-5">
+    <div className="card-lift relative mt-4 overflow-hidden p-4 sm:p-5">
       <span className={`absolute inset-y-0 left-0 w-1 ${s.bar}`} aria-hidden />
       <div className="flex items-start gap-3 pl-2">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full ${s.badge}`}>
