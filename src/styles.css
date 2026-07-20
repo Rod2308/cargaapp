@@ -10,9 +10,9 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Archivo Black", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -49,8 +49,8 @@
     0 8px 24px -12px oklch(0 0 0 / 0.35);
   --shadow-brand:
     0 1px 0 0 oklch(1 0 0 / 0.35) inset,
-    0 10px 40px -10px oklch(0.62 0.19 258 / 0.35),
-    0 4px 12px -4px oklch(0.62 0.19 258 / 0.25);
+    0 10px 40px -10px oklch(0.82 0.24 148 / 0.45),
+    0 4px 12px -4px oklch(0.82 0.24 148 / 0.3);
 }
 
 :root {
