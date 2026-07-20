@@ -95,9 +95,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  // Inline pre-hydration script prevents a flash of the wrong theme.
+  const themeInit = `(function(){try{var t=localStorage.getItem('carga-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d)r.classList.add('dark');r.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
   return (
     <html lang="pt-BR">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>
         {children}
         <Scripts />
