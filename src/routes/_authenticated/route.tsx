@@ -110,8 +110,9 @@ function Layout() {
     <div className="min-h-screen bg-background pb-28">
       <Outlet />
       <ThemeToggleButton
-        className="fixed right-3 top-3 z-40"
+        className="fixed right-3 z-40"
       />
+      <style>{`.fixed.right-3.z-40{top:calc(env(safe-area-inset-top, 0px) + 12px);}`}</style>
       <nav className="fixed inset-x-0 bottom-0 z-30 px-3 sm:px-6" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
         <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-lift backdrop-blur-md sm:max-w-lg">
           {tabs.map(({ to, label, icon: Icon }) => {
