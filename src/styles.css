@@ -205,20 +205,18 @@
 }
 
 @utility card-brand {
-  background:
-    radial-gradient(ellipse 80% 60% at 100% 0%, oklch(0.94 0.18 128 / 0.9), transparent 65%),
-    linear-gradient(140deg, var(--color-brand), oklch(0.82 0.2 130));
+  background: linear-gradient(140deg, var(--color-brand), oklch(0.9 0.22 118));
   color: var(--color-brand-foreground);
   border-radius: var(--radius-xl);
-  border: 1px solid oklch(0.94 0.18 128 / 0.6);
+  border: 1px solid oklch(0.9 0.22 118 / 0.6);
   box-shadow: var(--shadow-brand);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   &:hover {
     transform: translateY(-1px);
     box-shadow:
       0 1px 0 0 oklch(1 0 0 / 0.5) inset,
-      0 16px 50px -12px oklch(0.86 0.19 128 / 0.65),
-      0 6px 16px -4px oklch(0.86 0.19 128 / 0.4);
+      0 16px 50px -12px oklch(0.95 0.24 122 / 0.55),
+      0 6px 16px -4px oklch(0.95 0.24 122 / 0.35);
   }
 }
 
