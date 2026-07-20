@@ -370,7 +370,7 @@ function GroupDetail() {
             {myRank ? (
               <>
                 <p className="mt-0.5 text-lg font-bold">#{myRank.position} <span className="text-xs font-normal text-muted-foreground">de {ranking.length}</span></p>
-                <p className="text-[11px] text-muted-foreground">{myRank.points} pts na {period === "week" ? "semana" : period === "month" ? "mês" : "geral"}</p>
+                <p className="text-[11px] text-muted-foreground">{myRank.points} pts {period === "week" ? "na semana" : period === "month" ? "no mês" : "no total"}</p>
               </>
             ) : (
               <p className="mt-0.5 text-sm text-muted-foreground">—</p>
