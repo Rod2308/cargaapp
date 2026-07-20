@@ -84,6 +84,56 @@
   --input: oklch(0.94 0.006 95);
   --ring: oklch(0.95 0.24 122);
   --surface: oklch(1 0 0);
+  color-scheme: light;
+}
+
+/* ============ Dark mode ============
+   Warm, low-contrast dark palette tuned for long training sessions.
+   Uses near-black with a slight blue undertone (#0e1116) as background,
+   softened surface layers, and dims the neon-lime brand so it stops
+   burning at night while staying recognizable. */
+.dark {
+  --background: oklch(0.185 0.012 260);
+  --foreground: oklch(0.955 0.005 95);
+  --card: oklch(0.225 0.012 260);
+  --card-foreground: oklch(0.96 0.005 95);
+  --popover: oklch(0.225 0.012 260);
+  --popover-foreground: oklch(0.96 0.005 95);
+  --primary: oklch(0.965 0.005 95);
+  --primary-foreground: oklch(0.16 0.008 260);
+  --secondary: oklch(0.27 0.012 260);
+  --secondary-foreground: oklch(0.96 0.005 95);
+  --muted: oklch(0.26 0.012 260);
+  --muted-foreground: oklch(0.72 0.01 95);
+  --accent: oklch(0.68 0.16 258);
+  --accent-foreground: oklch(0.12 0.008 260);
+  --brand: oklch(0.88 0.2 122);
+  --brand-foreground: oklch(0.14 0.005 260);
+  --brand-glow: oklch(0.9 0.2 122);
+  --ink: oklch(0.12 0.005 260);
+  --destructive: oklch(0.62 0.2 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.72 0.15 155);
+  --success-foreground: oklch(0.14 0.005 260);
+  --border: oklch(0.32 0.012 260);
+  --input: oklch(0.3 0.012 260);
+  --ring: oklch(0.88 0.2 122);
+  --surface: oklch(0.225 0.012 260);
+  color-scheme: dark;
+}
+
+/* Smooth theme transition on the tokens that change most visibly. */
+html {
+  transition: background-color 220ms ease, color 220ms ease;
+}
+body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+/* Don't animate while the user is dragging or during motion-sensitive work. */
+@media (prefers-reduced-motion: reduce) {
+  html, body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
+    transition: none;
+  }
 }
 
 @layer base {
