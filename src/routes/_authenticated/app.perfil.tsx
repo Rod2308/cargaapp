@@ -15,8 +15,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
-import { useTheme, type Theme } from "@/hooks/useTheme";
-import { Moon, Sun, Monitor } from "lucide-react";
 
 
 function calcAge(birth?: string | null) {
@@ -82,46 +80,11 @@ function PerfilPage() {
 
       <DataManagement userId={user.id} displayName={profile.display_name ?? null} />
 
-      <ThemeSection />
-
       <InstallInstructions />
 
       <Button variant="outline" onClick={signOut} className="mt-6 w-full">
         <LogOut className="size-4" /> Sair da conta
       </Button>
-    </div>
-  );
-}
-
-function ThemeSection() {
-  const { theme, setTheme } = useTheme();
-  const opts: { value: Theme; label: string; icon: typeof Sun }[] = [
-    { value: "light", label: "Claro", icon: Sun },
-    { value: "dark", label: "Escuro", icon: Moon },
-    { value: "system", label: "Sistema", icon: Monitor },
-  ];
-  return (
-    <div className="card-soft mt-5 p-4">
-      <p className="text-eyebrow text-muted-foreground">Aparência</p>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {opts.map(({ value, label, icon: Icon }) => {
-          const active = theme === value;
-          return (
-            <button
-              key={value}
-              onClick={() => setTheme(value)}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
-                active
-                  ? "border-primary bg-primary text-primary-foreground shadow-soft"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
