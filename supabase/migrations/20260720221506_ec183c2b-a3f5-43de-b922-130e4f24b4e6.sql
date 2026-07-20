@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, DELETE ON public.group_messages TO authenticated; GRANT ALL ON public.group_messages TO service_role;
