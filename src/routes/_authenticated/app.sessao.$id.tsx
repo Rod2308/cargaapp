@@ -426,9 +426,32 @@ function SessionPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <h2 className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</h2>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {done.length}/{it.target_sets}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {done.length}/{it.target_sets}
+                      </span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Remover exercício">
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover {it.exercises.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O exercício será removido deste treino{done.length > 0 ? ` junto com ${done.length} série(s) já registrada(s)` : ""}. Essa ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeExerciseItem.mutate({ id: it.id, exercise_id: it.exercise_id })}>
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>
@@ -443,6 +466,7 @@ function SessionPage() {
                   </p>
                 </div>
               </div>
+
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
