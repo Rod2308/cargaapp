@@ -10,9 +10,9 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --font-sans: "Barlow", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Bebas Neue", "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Barlow Condensed", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Archivo", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -168,11 +168,10 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: 0.005em;
-    font-weight: 400;
-    line-height: 0.95;
-    text-transform: uppercase;
-    /* Break gracefully instead of overflowing on narrow screens */
+    letter-spacing: -0.01em;
+    font-weight: 700;
+    line-height: 1.15;
+    text-transform: none;
     overflow-wrap: break-word;
     word-break: break-word;
     hyphens: auto;
@@ -200,7 +199,7 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
       min-height: 40px;
     }
   }
-  .font-display { font-family: var(--font-display); letter-spacing: 0.005em; text-transform: uppercase; line-height: 0.95; }
+  .font-display { font-family: var(--font-display); letter-spacing: -0.01em; text-transform: none; line-height: 1.15; }
   .font-mono { font-family: var(--font-mono); letter-spacing: 0.02em; }
   .text-eyebrow {
     font-family: var(--font-sans);
