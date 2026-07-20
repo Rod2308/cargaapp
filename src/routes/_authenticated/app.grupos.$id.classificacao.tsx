@@ -6,6 +6,8 @@ import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trophy, Crown, Medal, Flame, Loader2 } from "lucide-react";
 import { startOfWeek, startOfMonth, differenceInCalendarDays } from "date-fns";
+import { EmptyState } from "@/components/EmptyState";
+import { ListSkeleton } from "@/components/LoadingState";
 
 export const Route = createFileRoute("/_authenticated/app/grupos/$id/classificacao")({
   component: ClassificacaoPage,
