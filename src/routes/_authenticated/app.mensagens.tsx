@@ -80,7 +80,7 @@ function MensagensPage() {
 
   // --- Renderização ---
   if (!isTrainer) {
-    if (loadingTrainer) return <div className="app-container pt-8 text-sm text-muted-foreground">Carregando...</div>;
+    if (loadingTrainer) return <div className="app-container pt-8"><ListSkeleton rows={3} /></div>;
     if (!myTrainer) return <EmptyState title="Nenhum professor vinculado" message="Vincule um professor no seu Perfil para poder conversar." />;
     return (
       <div className="app-container pt-8">
@@ -194,12 +194,12 @@ function MensagensPage() {
       )}
 
       <div className="mt-3 space-y-2">
-        {loadingStudents && <p className="text-sm text-muted-foreground">Carregando...</p>}
+        {loadingStudents && <ListSkeleton rows={3} />}
         {!loadingStudents && students.length === 0 && (
           <EmptyState title="Nenhum aluno vinculado" message="Vincule alunos pelo código de convite em Alunos." />
         )}
         {students.length > 0 && filtered.length === 0 && (
-          <p className="p-4 text-center text-sm text-muted-foreground">Nenhum aluno encontrado para "{studentSearch}".</p>
+          <EmptyState compact title="Nenhum aluno encontrado" message={`Não achamos ninguém para "${studentSearch}".`} />
         )}
         {filtered.map((s) => (
           <StudentRow
@@ -513,11 +513,21 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
         ref={listRef}
         className="card-soft flex-1 space-y-2 overflow-y-auto p-3"
       >
-        {isLoading && <p className="text-center text-sm text-muted-foreground">Carregando...</p>}
+        {isLoading && (
+          <div className="space-y-2">
+            <Skeleton className="ml-auto h-10 w-2/3 rounded-2xl" />
+            <Skeleton className="h-10 w-1/2 rounded-2xl" />
+            <Skeleton className="ml-auto h-10 w-3/5 rounded-2xl" />
+          </div>
+        )}
         {!isLoading && messages.length === 0 && (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            Nenhuma mensagem ainda. Diga oi para {partnerName ?? "seu contato"}!
-          </p>
+          <div className="mt-6">
+            <EmptyState
+              icon={MessageCircle}
+              title="Nenhuma mensagem ainda"
+              message={`Diga oi para ${partnerName ?? "seu contato"}!`}
+            />
+          </div>
         )}
         {messages.map((m) => {
           const mine = m.sender_id === me;
