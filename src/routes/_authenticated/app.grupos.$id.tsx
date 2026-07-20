@@ -701,6 +701,7 @@ function GroupSettingsDialog({ group }: { group: Group }) {
   const [daily, setDaily] = useState<string>(group.daily_points_cap?.toString() ?? "");
   const [weekly, setWeekly] = useState<string>(group.weekly_points_cap?.toString() ?? "");
   const [monthly, setMonthly] = useState<string>(group.monthly_points_cap?.toString() ?? "");
+  const [joinMode, setJoinMode] = useState<"open" | "approval">(group.join_mode ?? "open");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -713,6 +714,7 @@ function GroupSettingsDialog({ group }: { group: Group }) {
         daily_points_cap: daily ? Math.max(0, parseInt(daily, 10)) : null,
         weekly_points_cap: weekly ? Math.max(0, parseInt(weekly, 10)) : null,
         monthly_points_cap: monthly ? Math.max(0, parseInt(monthly, 10)) : null,
+        join_mode: joinMode,
       };
       const { error } = await (supabase as any).from("groups").update(patch).eq("id", group.id);
       if (error) throw error;
