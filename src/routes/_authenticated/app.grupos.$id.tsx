@@ -350,6 +350,11 @@ function GroupDetail() {
                   <p className="mt-0.5 text-sm font-bold">Aguardando início</p>
                   <p className="text-[11px] text-muted-foreground">começa {format(startsAt!, "d MMM", { locale: ptBR })}</p>
                 </>
+              ) : daysLeft === 0 ? (
+                <>
+                  <p className="mt-0.5 text-lg font-bold text-amber-600">Termina hoje!</p>
+                  <p className="text-[11px] text-muted-foreground">até {format(deadline, "d MMM yyyy HH:mm", { locale: ptBR })}</p>
+                </>
               ) : (
                 <>
                   <p className="mt-0.5 text-lg font-bold">{daysLeft} {daysLeft === 1 ? "dia" : "dias"}</p>
@@ -365,7 +370,7 @@ function GroupDetail() {
             {myRank ? (
               <>
                 <p className="mt-0.5 text-lg font-bold">#{myRank.position} <span className="text-xs font-normal text-muted-foreground">de {ranking.length}</span></p>
-                <p className="text-[11px] text-muted-foreground">{myRank.points} pts na {period === "week" ? "semana" : period === "month" ? "mês" : "geral"}</p>
+                <p className="text-[11px] text-muted-foreground">{myRank.points} pts {period === "week" ? "na semana" : period === "month" ? "no mês" : "no total"}</p>
               </>
             ) : (
               <p className="mt-0.5 text-sm text-muted-foreground">—</p>
@@ -719,9 +724,15 @@ function GroupChat({
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
+        // No filter: DELETE payloads only carry the PK unless REPLICA IDENTITY FULL,
+        // so we accept all deletes on the table and drop by id from our local list.
+        { event: "DELETE", schema: "public", table: "group_messages" },
         (payload) => {
-          const old = payload.old as { id: string };
+          const old = payload.old as { id?: string };
+          if (!old?.id) {
+            qc.invalidateQueries({ queryKey: ["group-chat", groupId] });
+            return;
+          }
           qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) => prev.filter((x) => x.id !== old.id));
         },
       )
@@ -750,6 +761,10 @@ function GroupChat({
     mutationFn: async (msgId: string) => {
       const { error } = await (supabase as any).from("group_messages").delete().eq("id", msgId);
       if (error) throw error;
+      return msgId;
+    },
+    onSuccess: (msgId) => {
+      qc.setQueryData(["group-chat", groupId], (prev: ChatMsg[] = []) => prev.filter((x) => x.id !== msgId));
     },
     onError: (e: any) => toast.error(e.message ?? "Falha ao remover"),
   });
