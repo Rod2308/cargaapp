@@ -487,7 +487,7 @@ function Dashboard() {
 
 
       {/* Bento */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-5">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {/* Start workout — hero tile */}
         {nextWorkout ? (
           <button
