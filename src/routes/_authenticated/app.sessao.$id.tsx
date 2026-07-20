@@ -25,11 +25,12 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote } from "lucide-react";
+import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, Minus as MinusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RestTimer } from "@/components/RestTimer";
 import { translateActivityType } from "@/lib/workout-file-parser";
+import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -72,6 +73,54 @@ function SessionPage() {
     },
   });
 
+  // Últimos sets por exercício (excluindo esta sessão) — base para as sugestões
+  const exerciseIds = useMemo(
+    () => Array.from(new Set((items as any[]).map((it) => it.exercise_id))),
+    [items],
+  );
+  const { data: prevSets = [] } = useQuery({
+    queryKey: ["prev-sets", session?.user_id, exerciseIds],
+    enabled: !!session?.user_id && exerciseIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("session_sets")
+        .select("weight_kg, reps, rpe, session_id, completed_at, exercise_id, sessions!inner(user_id)")
+        .eq("sessions.user_id", session!.user_id)
+        .neq("session_id", id)
+        .in("exercise_id", exerciseIds)
+        .order("completed_at", { ascending: false })
+        .limit(200);
+      return (data ?? []) as any[];
+    },
+  });
+
+  const suggestionsByItem = useMemo(() => {
+    const map = new Map<string, Suggestion>();
+    for (const it of items as any[]) {
+      const rows: ProgSetRow[] = (prevSets as any[])
+        .filter((r) => r.exercise_id === it.exercise_id)
+        .map((r) => ({
+          weight_kg: r.weight_kg,
+          reps: r.reps,
+          rpe: r.rpe,
+          session_id: r.session_id,
+          completed_at: r.completed_at,
+        }));
+      map.set(
+        it.id,
+        suggestAdjustment({
+          currentWeight: it.target_weight_kg ?? null,
+          currentRest: it.target_rest_seconds ?? 60,
+          repRange: it.target_reps,
+          rows,
+        }),
+      );
+    }
+    return map;
+  }, [items, prevSets]);
+
+
+
   const logSet = useMutation({
     mutationFn: async (row: any) => {
       const optimistic = {
@@ -113,6 +162,22 @@ function SessionPage() {
         patch: { target_rest_seconds: seconds },
       });
       toast.success(`Descanso ajustado para ${seconds}s`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateTargetWeight = useMutation({
+    mutationFn: async ({ itemId, weight }: { itemId: string; weight: number | null }) => {
+      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
+        prev.map((it) => (it.id === itemId ? { ...it, target_weight_kg: weight } : it)),
+      );
+      await enqueueOp({
+        kind: "update",
+        table: "workout_exercises",
+        match: { id: itemId },
+        patch: { target_weight_kg: weight },
+      });
+      toast.success(weight != null ? `Carga alvo ajustada para ${weight}kg` : "Carga alvo removida");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -419,6 +484,8 @@ function SessionPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {items.map((it: any, idx: number) => {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
+          const suggestion = suggestionsByItem.get(it.id);
+          const suggestedWeight = suggestion?.suggested_weight_kg ?? null;
           return (
             <div key={it.id} className="card-soft p-4">
               <div className="flex items-start gap-3">
@@ -467,6 +534,15 @@ function SessionPage() {
                 </div>
               </div>
 
+              {suggestion && (
+                <SuggestionHint
+                  suggestion={suggestion}
+                  currentWeight={it.target_weight_kg ?? null}
+                  currentRest={it.target_rest_seconds ?? 60}
+                  onApplyWeight={(w) => updateTargetWeight.mutate({ itemId: it.id, weight: w })}
+                  onApplyRest={(s) => updateRest.mutate({ itemId: it.id, seconds: s })}
+                />
+              )}
 
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
@@ -483,7 +559,12 @@ function SessionPage() {
               <SetLogger
                 key={done.length}
                 defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
-                defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
+                defaultWeight={
+                  done.at(-1)?.weight_kg ??
+                  it.target_weight_kg ??
+                  suggestedWeight ??
+                  ""
+                }
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
@@ -500,6 +581,7 @@ function SessionPage() {
             </div>
           );
         })}
+
 
         {extraGroups.map(([exerciseId, doneSets], idx) => {
           const ex = allExercises.find((e: any) => e.id === exerciseId);
@@ -947,3 +1029,80 @@ function RestEditor({ seconds, onSave }: { seconds: number; onSave: (s: number) 
     </Popover>
   );
 }
+
+function SuggestionHint({
+  suggestion,
+  currentWeight,
+  currentRest,
+  onApplyWeight,
+  onApplyRest,
+}: {
+  suggestion: Suggestion;
+  currentWeight: number | null;
+  currentRest: number;
+  onApplyWeight: (w: number | null) => void;
+  onApplyRest: (s: number) => void;
+}) {
+  const change = hasChange(suggestion, currentWeight, currentRest);
+  if (suggestion.sessions.length === 0) return null;
+
+  const loadIcon =
+    suggestion.loadDirection === "up" ? (
+      <TrendingUp className="size-3.5 text-emerald-500" />
+    ) : suggestion.loadDirection === "down" ? (
+      <TrendingDown className="size-3.5 text-amber-500" />
+    ) : (
+      <MinusIcon className="size-3.5 text-muted-foreground" />
+    );
+  const restIcon =
+    suggestion.restDirection === "up" ? (
+      <TrendingUp className="size-3.5 text-amber-500" />
+    ) : suggestion.restDirection === "down" ? (
+      <TrendingDown className="size-3.5 text-emerald-500" />
+    ) : (
+      <MinusIcon className="size-3.5 text-muted-foreground" />
+    );
+
+  const applyAll = () => {
+    if (change.loadChanged) onApplyWeight(suggestion.suggested_weight_kg ?? null);
+    if (change.restChanged && suggestion.suggested_rest_seconds != null) {
+      onApplyRest(suggestion.suggested_rest_seconds);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+      <div className="flex items-start gap-2">
+        <Sparkles className="size-4 shrink-0 text-brand" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Sugestão do treino anterior
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+            {suggestion.suggested_weight_kg != null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 font-medium">
+                {loadIcon} Carga {suggestion.suggested_weight_kg}kg
+              </span>
+            )}
+            {suggestion.suggested_rest_seconds != null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 font-medium">
+                {restIcon} Descanso {suggestion.suggested_rest_seconds}s
+              </span>
+            )}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            {suggestion.reason}
+          </p>
+          {change.any && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={applyAll}>
+                <Check className="size-3.5" /> Aplicar sugestão
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
