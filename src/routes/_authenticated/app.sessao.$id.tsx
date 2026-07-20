@@ -685,8 +685,9 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
           if (r > 0) onLog(r, hideWeight ? null : w);
         }}
       >
-        <Check className="size-4" /> {actionLabel}
+        <Plus className="size-4" /> {actionLabel}
       </Button>
+
     </div>
   );
 }
