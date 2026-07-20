@@ -118,6 +118,22 @@ function SessionPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateTargetWeight = useMutation({
+    mutationFn: async ({ itemId, weight }: { itemId: string; weight: number | null }) => {
+      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
+        prev.map((it) => (it.id === itemId ? { ...it, target_weight_kg: weight } : it)),
+      );
+      await enqueueOp({
+        kind: "update",
+        table: "workout_exercises",
+        match: { id: itemId },
+        patch: { target_weight_kg: weight },
+      });
+      toast.success(weight != null ? `Carga alvo ajustada para ${weight}kg` : "Carga alvo removida");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteSet = useMutation({
     mutationFn: async (setId: string) => {
       qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
