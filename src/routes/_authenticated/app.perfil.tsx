@@ -15,6 +15,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 function calcAge(birth?: string | null) {
