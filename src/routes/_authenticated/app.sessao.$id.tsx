@@ -636,7 +636,7 @@ function SessionPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <h2 className="font-semibold leading-tight">
-                      <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-foreground">
+                      <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">
                         {isSport ? "Esporte" : "Extra"}
                       </span>
                       {items.length + idx + 1}. {name}
