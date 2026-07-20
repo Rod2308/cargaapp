@@ -484,7 +484,7 @@ function SessionPage() {
                 key={done.length}
                 defaultReps={Number(String(it.target_reps).match(/\d+/)?.[0] ?? 10)}
                 defaultWeight={done.at(-1)?.weight_kg ?? it.target_weight_kg ?? ""}
-                actionLabel={done.length >= it.target_sets ? "Série extra" : "Série"}
+                actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
@@ -547,7 +547,7 @@ function SessionPage() {
                 defaultWeight={doneSets.at(-1)?.weight_kg ?? ""}
                 repsLabel={isSport ? "Minutos" : "Reps"}
                 hideWeight={isSport}
-                actionLabel={isSport ? "Registrar" : "Série"}
+                actionLabel={isSport ? "Registrar" : "Adicionar série"}
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
@@ -685,8 +685,9 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
           if (r > 0) onLog(r, hideWeight ? null : w);
         }}
       >
-        <Check className="size-4" /> {actionLabel}
+        <Plus className="size-4" /> {actionLabel}
       </Button>
+
     </div>
   );
 }
