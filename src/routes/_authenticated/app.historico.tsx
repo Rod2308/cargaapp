@@ -175,13 +175,13 @@ function HistoryPage() {
 
 
       {isLoading ? (
-        <p className="mt-8 text-sm text-muted-foreground">Carregando...</p>
+        <p className="mt-4 text-sm text-muted-foreground">Carregando...</p>
       ) : sessions.length === 0 ? (
-        <div className="card-lift mt-8 p-6 text-center text-sm text-muted-foreground">
+        <div className="card-lift mt-4 p-6 text-center text-sm text-muted-foreground">
           Nenhum treino registrado ainda.
         </div>
       ) : (
-        <div className="mt-6 space-y-8">
+        <div className="mt-4 space-y-5">
           {Object.entries(grouped).map(([month, list]) => (
             <section key={month}>
               <h2 className="mb-3 text-eyebrow text-muted-foreground first-letter:uppercase">{month}</h2>
