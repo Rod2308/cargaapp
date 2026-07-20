@@ -93,6 +93,39 @@ function PerfilPage() {
   );
 }
 
+function ThemeSection() {
+  const { theme, setTheme } = useTheme();
+  const opts: { value: Theme; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: "Claro", icon: Sun },
+    { value: "dark", label: "Escuro", icon: Moon },
+    { value: "system", label: "Sistema", icon: Monitor },
+  ];
+  return (
+    <div className="card-soft mt-5 p-4">
+      <p className="text-eyebrow text-muted-foreground">Aparência</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {opts.map(({ value, label, icon: Icon }) => {
+          const active = theme === value;
+          return (
+            <button
+              key={value}
+              onClick={() => setTheme(value)}
+              className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
+                active
+                  ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-4" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function StudentProfile({ profile, update }: { profile: any; update: any }) {
   return (
     <>
