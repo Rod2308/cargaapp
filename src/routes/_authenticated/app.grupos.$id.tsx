@@ -578,6 +578,93 @@ function MiniStat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function PendingRequestsPanel({ groupId }: { groupId: string }) {
+  const qc = useQueryClient();
+  const { data: requests = [] } = useQuery({
+    queryKey: ["group-requests", groupId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("group_join_requests")
+        .select("id, user_id, created_at, status")
+        .eq("group_id", groupId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as Array<{ id: string; user_id: string; created_at: string; status: string }>;
+    },
+  });
+
+  const ids = requests.map((r) => r.user_id);
+  const { data: profs = [] } = useQuery({
+    enabled: ids.length > 0,
+    queryKey: ["group-requests-profiles", groupId, ids.sort().join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, display_name").in("id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const nameById = Object.fromEntries((profs as any[]).map((p) => [p.id, p.display_name || "Aluno"]));
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`group-requests-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "group_join_requests", filter: `group_id=eq.${groupId}` },
+        () => qc.invalidateQueries({ queryKey: ["group-requests", groupId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [groupId, qc]);
+
+  const decide = useMutation({
+    mutationFn: async ({ id, approve }: { id: string; approve: boolean }) => {
+      const { error } = await (supabase as any).rpc("decide_join_request", { _id: id, _approve: approve });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.approve ? "Membro aprovado" : "Pedido recusado");
+      qc.invalidateQueries({ queryKey: ["group-requests", groupId] });
+      qc.invalidateQueries({ queryKey: ["group-members", groupId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Falha"),
+  });
+
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-500">
+        <UserPlus className="size-3.5" /> {requests.length} pedido{requests.length > 1 ? "s" : ""} de entrada
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {requests.map((r) => (
+          <li key={r.id} className="flex items-center gap-2 rounded-lg bg-background p-2">
+            <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
+              {(nameById[r.user_id] ?? "?").slice(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{nameById[r.user_id] ?? "Aluno"}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {format(new Date(r.created_at), "d MMM HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => decide.mutate({ id: r.id, approve: false })} disabled={decide.isPending}>
+              <X className="size-3.5" />
+            </Button>
+            <Button size="sm" onClick={() => decide.mutate({ id: r.id, approve: true })} disabled={decide.isPending}>
+              <Check className="size-3.5" />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+
 function GroupChat({
   groupId, userId, isOwner, profileById,
 }: {
