@@ -265,18 +265,19 @@ function JoinGroupDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Entrar em um grupo</DialogTitle>
-          <DialogDescription>Digite o código de 6 caracteres.</DialogDescription>
+          <DialogDescription>Cole o código do convite (ex.: CRG-AB23).</DialogDescription>
         </DialogHeader>
         <Input
           value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-          placeholder="ABC123"
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 10))}
+          placeholder="CRG-XXXX"
           className="text-center font-mono text-lg tracking-widest"
-          maxLength={6}
+          maxLength={10}
         />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={code.length !== 6 || join.isPending} onClick={() => join.mutate()}>
+          <Button disabled={code.trim().length < 4 || join.isPending} onClick={() => join.mutate()}>
+
             {join.isPending ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
           </Button>
         </DialogFooter>
