@@ -429,7 +429,7 @@ function Dashboard() {
       </div>
 
       {/* Frase do dia */}
-      <div className="card-lift mt-5 flex items-start gap-3 p-4 sm:p-5">
+      <div className="card-lift mt-4 flex items-start gap-3 p-4 sm:p-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
           <Quote className="size-4" strokeWidth={2.5} />
         </span>
