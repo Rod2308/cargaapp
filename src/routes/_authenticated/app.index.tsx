@@ -424,7 +424,7 @@ function Dashboard() {
         </button>
       </header>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <CardioRecoveryAlert userId={user.id} />
       </div>
 
