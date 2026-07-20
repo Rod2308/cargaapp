@@ -83,9 +83,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "preconnect", href: "https://lgxwvmhaaxiymhjqmglk.supabase.co", crossOrigin: "anonymous" },
       { rel: "dns-prefetch", href: "https://lgxwvmhaaxiymhjqmglk.supabase.co" },
-      // Non-blocking font load: fetch as "print" (ignored on screen), then swap to "all" once loaded.
       { rel: "preload", as: "style", href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap", media: "print", onLoad: "this.media='all'" as any },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" },
     ],
 
   }),
