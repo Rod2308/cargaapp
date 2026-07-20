@@ -658,14 +658,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_group_member: {
-        Args: { _group_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_group_owner: {
-        Args: { _group_id: string; _user_id: string }
-        Returns: boolean
-      }
       is_trainer_of: {
         Args: { _student: string; _trainer: string }
         Returns: boolean
