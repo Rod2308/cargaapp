@@ -506,22 +506,35 @@ function GroupDetail() {
 
         <TabsContent value="membros" className="mt-4">
           <ul className="space-y-2">
-            {members.map((m) => (
-              <li key={m.user_id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold uppercase">
-                  {(profileById[m.user_id] ?? "?").slice(0, 2)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-                    {profileById[m.user_id] ?? "Aluno"}
-                    {m.user_id === group.owner_id && <Crown className="size-3.5 text-amber-500" />}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Maior sequência: {m.longest_streak} dias · entrou em {format(new Date(m.joined_at), "d MMM yyyy", { locale: ptBR })}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {members.map((m) => {
+              const s = memberStats.get(m.user_id);
+              return (
+                <li key={m.user_id} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold uppercase">
+                      {(profileById[m.user_id] ?? "?").slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                        {profileById[m.user_id] ?? "Aluno"}
+                        {m.user_id === group.owner_id && <Crown className="size-3.5 text-amber-500" />}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Maior sequência: {m.longest_streak} dias · desde {format(new Date(m.joined_at), "d MMM yyyy", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+                  {s && (
+                    <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                      <MiniStat label="Check-ins" value={s.checkins} />
+                      <MiniStat label="Dias ativos" value={s.activeDays} />
+                      <MiniStat label="Média/dia" value={s.avg.toFixed(2)} />
+                      <MiniStat label="Pontos" value={s.points} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </TabsContent>
       </Tabs>
