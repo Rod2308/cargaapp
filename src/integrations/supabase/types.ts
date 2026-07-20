@@ -121,6 +121,38 @@ export type Database = {
           },
         ]
       }
+      group_messages: {
+        Row: {
+          content: string
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_points: {
         Row: {
           checkin_date: string
@@ -173,44 +205,56 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          daily_points_cap: number | null
           description: string | null
           emoji: string | null
+          ends_at: string | null
           id: string
           invite_code: string
+          monthly_points_cap: number | null
           name: string
           owner_id: string
           points_per_checkin: number
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number
+          weekly_points_cap: number | null
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
+          daily_points_cap?: number | null
           description?: string | null
           emoji?: string | null
+          ends_at?: string | null
           id?: string
           invite_code: string
+          monthly_points_cap?: number | null
           name: string
           owner_id: string
           points_per_checkin?: number
           streak_bonus_enabled?: boolean
           streak_bonus_every_days?: number
           streak_bonus_points?: number
+          weekly_points_cap?: number | null
         }
         Update: {
           archived_at?: string | null
           created_at?: string
+          daily_points_cap?: number | null
           description?: string | null
           emoji?: string | null
+          ends_at?: string | null
           id?: string
           invite_code?: string
+          monthly_points_cap?: number | null
           name?: string
           owner_id?: string
           points_per_checkin?: number
           streak_bonus_enabled?: boolean
           streak_bonus_every_days?: number
           streak_bonus_points?: number
+          weekly_points_cap?: number | null
         }
         Relationships: []
       }
@@ -632,16 +676,20 @@ export type Database = {
         Returns: {
           archived_at: string | null
           created_at: string
+          daily_points_cap: number | null
           description: string | null
           emoji: string | null
+          ends_at: string | null
           id: string
           invite_code: string
+          monthly_points_cap: number | null
           name: string
           owner_id: string
           points_per_checkin: number
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number
+          weekly_points_cap: number | null
         }
         SetofOptions: {
           from: "*"
@@ -667,16 +715,20 @@ export type Database = {
         Returns: {
           archived_at: string | null
           created_at: string
+          daily_points_cap: number | null
           description: string | null
           emoji: string | null
+          ends_at: string | null
           id: string
           invite_code: string
+          monthly_points_cap: number | null
           name: string
           owner_id: string
           points_per_checkin: number
           streak_bonus_enabled: boolean
           streak_bonus_every_days: number
           streak_bonus_points: number
+          weekly_points_cap: number | null
         }
         SetofOptions: {
           from: "*"
