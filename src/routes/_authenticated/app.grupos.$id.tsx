@@ -462,12 +462,14 @@ function GroupDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
+            onClick={async () => {
               if (!inviteUrl) return;
-              navigator.clipboard.writeText(inviteUrl);
-              toast.success("Link de convite copiado");
+              const ok = await copyToClipboard(inviteUrl);
+              if (ok) toast.success("Link de convite copiado");
+              else toast.error("Não foi possível copiar o link");
             }}
           >
+
             <Copy className="size-3.5" /> Copiar link
           </Button>
           <Button variant="outline" size="sm" onClick={share}>
