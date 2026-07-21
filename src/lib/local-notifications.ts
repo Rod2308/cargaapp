@@ -2,7 +2,6 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
 const REST_CHANNEL_ID = "rest-timer";
-const REST_NOTIFICATION_SOUND = "rest_timer.wav";
 
 export function isNativePlatform(): boolean {
   try {
@@ -71,7 +70,6 @@ export async function scheduleRestFinishedNotification(
             body: `${body} 💪`,
             schedule: { at: when, allowWhileIdle: true },
             smallIcon: "ic_stat_icon_config_sample",
-            sound: REST_NOTIFICATION_SOUND,
             channelId: REST_CHANNEL_ID,
             autoCancel: true,
           },
@@ -105,7 +103,6 @@ export async function ensureRestChannel(): Promise<void> {
       importance: 5,
       visibility: 1,
       vibration: true,
-      sound: REST_NOTIFICATION_SOUND,
     });
     channelEnsured = true;
   } catch {}
