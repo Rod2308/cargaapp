@@ -411,7 +411,13 @@ function SessionPage() {
     setRest({ id: restIdRef.current, seconds, exerciseName });
   }
 
-  const handleRestStateChange = useCallback((state: NonNullable<RestSnapshot>) => {
+  const handleRestStateChange = useCallback((state: {
+    remaining: number;
+    total: number;
+    paused: boolean;
+    done: boolean;
+    exerciseName?: string;
+  }) => {
     setRestSnapshot({
       ...state,
       updatedAt: Date.now(),
