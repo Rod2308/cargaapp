@@ -18,6 +18,12 @@ import {
   Vibrate,
   Bell,
 } from "lucide-react";
+import {
+  scheduleRestFinishedNotification,
+  cancelRestNotification,
+  requestNotificationPermission,
+  ensureRestChannel,
+} from "@/lib/local-notifications";
 
 type Prefs = {
   sound: boolean;
@@ -117,12 +123,43 @@ export function RestTimer({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedRef = useRef(false);
 
+  // Onboarding: na primeira vez que o timer aparece, pergunta se pode notificar.
+  useEffect(() => {
+    const KEY = "restTimer.notifPermAsked.v1";
+    try {
+      if (window.localStorage.getItem(KEY)) return;
+    } catch {}
+    (async () => {
+      await ensureRestChannel();
+      const result = await requestNotificationPermission();
+      try { window.localStorage.setItem(KEY, "1"); } catch {}
+      if (result === "granted") {
+        setPrefs((p) => {
+          const next = { ...p, notification: true };
+          savePrefs(next);
+          return next;
+        });
+      }
+    })();
+  }, []);
+
+
   useEffect(() => {
     setRemaining(seconds);
     setTotal(seconds);
     setPaused(false);
     setDone(false);
     firedRef.current = false;
+    // Agenda notificação local nativa para tocar mesmo com app minimizado / tela bloqueada.
+    if (prefs.notification) {
+      void ensureRestChannel().then(() =>
+        scheduleRestFinishedNotification(seconds, exerciseName),
+      );
+    }
+    return () => {
+      void cancelRestNotification();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds]);
 
   useEffect(() => {
@@ -164,14 +201,17 @@ export function RestTimer({
     [remaining, total],
   );
 
-  async function requestNotifPermission() {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      try {
-        await Notification.requestPermission();
-      } catch {}
+
+  // Se o usuário pausar, cancela a notificação agendada; ao retomar, reagenda.
+  useEffect(() => {
+    if (done) return;
+    if (paused) {
+      void cancelRestNotification();
+    } else if (prefs.notification && remaining > 0) {
+      void scheduleRestFinishedNotification(remaining, exerciseName);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused]);
 
   return (
     <div
@@ -283,13 +323,23 @@ export function RestTimer({
               <Switch
                 checked={prefs.notification}
                 onCheckedChange={async (v) => {
-                  if (v) await requestNotifPermission();
-                  const granted = typeof window !== "undefined"
-                    && "Notification" in window
-                    && Notification.permission === "granted";
-                  setPrefs((p) => ({ ...p, notification: v && granted }));
+                  if (!v) {
+                    setPrefs((p) => ({ ...p, notification: false }));
+                    void cancelRestNotification();
+                    return;
+                  }
+                  await ensureRestChannel();
+                  const result = await requestNotificationPermission();
+                  const granted = result === "granted";
+                  setPrefs((p) => ({ ...p, notification: granted }));
+                  if (!granted) return;
+                  // reagenda para o timer atual
+                  if (!done && remaining > 0) {
+                    void scheduleRestFinishedNotification(remaining, exerciseName);
+                  }
                 }}
               />
+              
             </label>
             <p className="text-[11px] leading-snug text-muted-foreground">
               A notificação aparece quando o app está em segundo plano ou a tela está bloqueada.
