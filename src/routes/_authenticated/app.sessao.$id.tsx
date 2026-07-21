@@ -3,6 +3,13 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOp } from "@/lib/offline-queue";
+import {
+  clearSessionSnapshot,
+  loadFinishDraft,
+  loadSessionSnapshot,
+  saveFinishDraft,
+  saveSessionSnapshot,
+} from "@/lib/session-persist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,31 +55,63 @@ function SessionPage() {
   const { data: session } = useQuery({
     queryKey: ["session", id],
     queryFn: async () => {
-      const { data } = await supabase.from("sessions").select("*, workouts(name, label)").eq("id", id).single();
+      const { data, error } = await supabase.from("sessions").select("*, workouts(name, label)").eq("id", id).single();
+      if (error) throw error;
       return data;
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
 
   const { data: items = [] } = useQuery({
     queryKey: ["session-plan", id],
     enabled: !!session?.workout_id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("workout_exercises")
         .select("*, exercises(*)")
         .eq("workout_id", session!.workout_id!)
         .order("order_idx");
+      if (error) throw error;
       return data ?? [];
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
 
   const { data: sets = [] } = useQuery({
     queryKey: ["session-sets", id],
     queryFn: async () => {
-      const { data } = await supabase.from("session_sets").select("*").eq("session_id", id).order("completed_at");
+      const { data, error } = await supabase.from("session_sets").select("*").eq("session_id", id).order("completed_at");
+      if (error) throw error;
       return data ?? [];
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
+
+  // Hidrata as queries do snapshot local ANTES de tentar a rede, para que o
+  // treino em andamento apareça mesmo offline / recém-recarregado.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    void loadSessionSnapshot(id).then((snap) => {
+      if (!snap) return;
+      if (snap.session && !qc.getQueryData(["session", id])) {
+        qc.setQueryData(["session", id], snap.session);
+      }
+      if (snap.items?.length && !qc.getQueryData(["session-plan", id])) {
+        qc.setQueryData(["session-plan", id], snap.items);
+      }
+      if (snap.sets?.length && !qc.getQueryData(["session-sets", id])) {
+        qc.setQueryData(["session-sets", id], snap.sets);
+      }
+    });
+  }, [id, qc]);
+
+  // Salva snapshot sempre que os dados do treino em andamento mudam.
+  useEffect(() => {
+    if (!session && items.length === 0 && sets.length === 0) return;
+    void saveSessionSnapshot(id, { session, items, sets });
+  }, [id, session, items, sets]);
 
   // Últimos sets por exercício (excluindo esta sessão) — base para as sugestões
   const exerciseIds = useMemo(
@@ -274,6 +313,7 @@ function SessionPage() {
       return { mins, notified: !!trimmed };
     },
     onSuccess: ({ mins, notified }) => {
+      void clearSessionSnapshot(id);
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -295,6 +335,7 @@ function SessionPage() {
       await enqueueOp({ kind: "delete", table: "sessions", match: { id } });
     },
     onSuccess: () => {
+      void clearSessionSnapshot(id);
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -395,6 +436,7 @@ function SessionPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <EffortPicker
+              sessionId={id}
               onConfirm={(effort, discomfort) => finish.mutate({ effort, discomfort })}
               pending={finish.isPending}
             />
@@ -726,9 +768,23 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
   );
 }
 
-function EffortPicker({ onConfirm, pending }: { onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
+function EffortPicker({ sessionId, onConfirm, pending }: { sessionId: string; onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
   const [effort, setEffort] = useState<number | null>(null);
   const [discomfort, setDiscomfort] = useState<string>("");
+  const draftLoadedRef = useRef(false);
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+    void loadFinishDraft(sessionId).then((d) => {
+      if (!d) return;
+      if (typeof d.effort === "number") setEffort(d.effort);
+      if (typeof d.discomfort === "string") setDiscomfort(d.discomfort);
+    });
+  }, [sessionId]);
+  useEffect(() => {
+    if (!draftLoadedRef.current) return;
+    void saveFinishDraft(sessionId, { effort, discomfort });
+  }, [sessionId, effort, discomfort]);
   const MAX = 500;
   return (
     <>
