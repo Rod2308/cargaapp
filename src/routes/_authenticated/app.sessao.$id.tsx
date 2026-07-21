@@ -36,7 +36,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, Minus as MinusIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RestTimer } from "@/components/RestTimer";
 import { translateActivityType } from "@/lib/workout-file-parser";
@@ -411,6 +411,13 @@ function SessionPage() {
     setRest({ id: restIdRef.current, seconds, exerciseName });
   }
 
+  const handleRestStateChange = useCallback((state: NonNullable<RestSnapshot>) => {
+    setRestSnapshot({
+      ...state,
+      updatedAt: Date.now(),
+    });
+  }, []);
+
   if (!session) return <PageSkeleton />;
 
   return (
@@ -541,12 +548,7 @@ function SessionPage() {
             setRest(null);
             setRestSnapshot(null);
           }}
-          onStateChange={(state) =>
-            setRestSnapshot({
-              ...state,
-              updatedAt: Date.now(),
-            })
-          }
+          onStateChange={handleRestStateChange}
         />
       )}
 
