@@ -22,9 +22,7 @@ import {
   scheduleRestFinishedNotification,
   cancelRestNotification,
   requestNotificationPermission,
-  checkNotificationPermission,
   ensureRestChannel,
-  isNativePlatform,
 } from "@/lib/local-notifications";
 
 type Prefs = {
