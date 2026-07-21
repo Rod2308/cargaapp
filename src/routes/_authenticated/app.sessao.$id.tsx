@@ -2,8 +2,7 @@ import { PageSkeleton } from "@/components/LoadingState";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { enqueueOp } from "@/lib/offline-queue";
-import { flush, getPendingCount } from "@/lib/offline-queue";
+import { enqueueOp, flush, getPendingCount } from "@/lib/offline-queue";
 import {
   clearSessionSnapshot,
   loadFinishDraft,

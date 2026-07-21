@@ -85,27 +85,6 @@ function vibrate() {
   } catch {}
 }
 
-function notify(exerciseName?: string) {
-  try {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission !== "granted") return;
-    // Só notifica se a aba está oculta — evita duplicação com o alerta visual
-    if (typeof document !== "undefined" && document.visibilityState === "visible") return;
-    const n = new Notification("Descanso concluído!", {
-      body: exerciseName
-        ? `Hora de iniciar a próxima série de ${exerciseName}.`
-        : "Hora de iniciar a próxima série.",
-      tag: "rest-timer",
-      icon: "/favicon.ico",
-      silent: false,
-    });
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
-  } catch {}
-}
-
 export function RestTimer({
   seconds,
   exerciseName,
@@ -185,6 +164,14 @@ export function RestTimer({
   useEffect(() => {
     onStateChange?.({ remaining, total, paused, done, exerciseName });
   }, [remaining, total, paused, done, exerciseName, onStateChange]);
+
+  useEffect(() => {
+    if (!prefs.notification || done || paused || remaining <= 0) return;
+    void ensureRestChannel().then(() =>
+      scheduleRestFinishedNotification(remaining, exerciseName),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.notification]);
 
   useEffect(() => {
     if (done || paused) return;
