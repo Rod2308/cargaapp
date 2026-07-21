@@ -1,6 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
+const REST_CHANNEL_ID = "rest-timer";
+const REST_NOTIFICATION_SOUND = "rest_timer.wav";
+
 export function isNativePlatform(): boolean {
   try {
     return Capacitor.isNativePlatform();
@@ -9,32 +12,18 @@ export function isNativePlatform(): boolean {
   }
 }
 
-/**
- * Solicita permissão para notificações locais.
- * - Em plataforma nativa (Android/iOS via Capacitor): usa LocalNotifications.
- * - No navegador: usa a Notification API do browser como fallback.
- */
+/** Solicita permissão para notificações locais nativas. */
 export async function requestNotificationPermission(): Promise<
   "granted" | "denied" | "unsupported"
 > {
   try {
     if (isNativePlatform()) {
+      await ensureRestChannel();
       const res = await LocalNotifications.requestPermissions();
       return res.display === "granted" ? "granted" : "denied";
     }
   } catch (err) {
     console.warn("[notifications] native permission error", err);
-  }
-
-  if (typeof window !== "undefined" && "Notification" in window) {
-    try {
-      if (Notification.permission === "granted") return "granted";
-      if (Notification.permission === "denied") return "denied";
-      const r = await Notification.requestPermission();
-      return r === "granted" ? "granted" : "denied";
-    } catch {
-      return "denied";
-    }
   }
   return "unsupported";
 }
@@ -50,9 +39,6 @@ export async function checkNotificationPermission(): Promise<
       return "default";
     }
   } catch {}
-  if (typeof window !== "undefined" && "Notification" in window) {
-    return Notification.permission as "granted" | "denied" | "default";
-  }
   return "unsupported";
 }
 
@@ -73,18 +59,21 @@ export async function scheduleRestFinishedNotification(
 
   if (isNativePlatform()) {
     try {
+      await ensureRestChannel();
       const perm = await LocalNotifications.checkPermissions();
       if (perm.display !== "granted") return;
+      await cancelRestNotification();
       await LocalNotifications.schedule({
         notifications: [
           {
             id: REST_NOTIF_ID,
-            title: "Descanso concluído!",
-            body,
+            title: "Descanso acabou!",
+            body: `${body} 💪`,
             schedule: { at: when, allowWhileIdle: true },
             smallIcon: "ic_stat_icon_config_sample",
-            sound: undefined,
-            channelId: "rest-timer",
+            sound: REST_NOTIFICATION_SOUND,
+            channelId: REST_CHANNEL_ID,
+            autoCancel: true,
           },
         ],
       });
@@ -93,8 +82,6 @@ export async function scheduleRestFinishedNotification(
     }
     return;
   }
-  // Web: não há agendamento confiável em background — o RestTimer dispara
-  // uma Notification imediatamente quando o timer termina como fallback.
 }
 
 export async function cancelRestNotification(): Promise<void> {
@@ -112,13 +99,13 @@ export async function ensureRestChannel(): Promise<void> {
   if (!isNativePlatform() || channelEnsured) return;
   try {
     await LocalNotifications.createChannel({
-      id: "rest-timer",
+      id: REST_CHANNEL_ID,
       name: "Descanso entre séries",
       description: "Avisa quando o tempo de descanso acaba",
       importance: 5,
       visibility: 1,
       vibration: true,
-      sound: undefined,
+      sound: REST_NOTIFICATION_SOUND,
     });
     channelEnsured = true;
   } catch {}
