@@ -22,6 +22,7 @@ let queue: QueueOp[] = [];
 let loaded = false;
 let flushing = false;
 let flushPromise: Promise<void> | null = null;
+let lastFlushHadPermanentFailure = false;
 const listeners = new Set<() => void>();
 
 async function load() {
@@ -41,7 +42,9 @@ async function persist() {
     /* storage full or unavailable */
   }
   listeners.forEach((l) => l());
-  if (queue.length === 0) void clearPendingSyncedSessionSnapshots();
+  if (queue.length === 0 && !lastFlushHadPermanentFailure) {
+    void clearPendingSyncedSessionSnapshots();
+  }
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -92,6 +95,7 @@ export async function flush() {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   if (queue.length === 0) return;
   flushing = true;
+  lastFlushHadPermanentFailure = false;
   flushPromise = (async () => {
     while (queue.length > 0) {
       const op = queue[0];
@@ -100,6 +104,7 @@ export async function flush() {
       } catch (err) {
         if (isNetworkError(err)) break; // keep queued, retry later
         // Permanent failure (RLS, constraint, etc.) — drop and move on.
+        lastFlushHadPermanentFailure = true;
         console.error("[sync] dropping op", op, err);
       }
       queue.shift();
@@ -136,7 +141,9 @@ export function initSyncQueue() {
   initialized = true;
   void load().then(() => {
     listeners.forEach((l) => l());
-    if (queue.length === 0) void clearPendingSyncedSessionSnapshots();
+    if (queue.length === 0 && !lastFlushHadPermanentFailure) {
+      void clearPendingSyncedSessionSnapshots();
+    }
     void flush();
   });
   window.addEventListener("online", () => void flush());
