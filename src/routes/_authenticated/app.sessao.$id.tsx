@@ -768,9 +768,23 @@ function ExerciseImage({ url, alt }: { url: string | null | undefined; alt: stri
   );
 }
 
-function EffortPicker({ onConfirm, pending }: { onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
+function EffortPicker({ sessionId, onConfirm, pending }: { sessionId: string; onConfirm: (effort: number | null, discomfort: string) => void; pending: boolean }) {
   const [effort, setEffort] = useState<number | null>(null);
   const [discomfort, setDiscomfort] = useState<string>("");
+  const draftLoadedRef = useRef(false);
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+    void loadFinishDraft(sessionId).then((d) => {
+      if (!d) return;
+      if (typeof d.effort === "number") setEffort(d.effort);
+      if (typeof d.discomfort === "string") setDiscomfort(d.discomfort);
+    });
+  }, [sessionId]);
+  useEffect(() => {
+    if (!draftLoadedRef.current) return;
+    void saveFinishDraft(sessionId, { effort, discomfort });
+  }, [sessionId, effort, discomfort]);
   const MAX = 500;
   return (
     <>
