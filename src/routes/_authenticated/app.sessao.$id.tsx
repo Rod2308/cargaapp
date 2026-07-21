@@ -313,6 +313,7 @@ function SessionPage() {
       return { mins, notified: !!trimmed };
     },
     onSuccess: ({ mins, notified }) => {
+      void clearSessionSnapshot(id);
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -334,6 +335,7 @@ function SessionPage() {
       await enqueueOp({ kind: "delete", table: "sessions", match: { id } });
     },
     onSuccess: () => {
+      void clearSessionSnapshot(id);
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
