@@ -2,11 +2,13 @@ import { PageSkeleton } from "@/components/LoadingState";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { enqueueOp } from "@/lib/offline-queue";
+import { enqueueOp, flush, getPendingCount } from "@/lib/offline-queue";
 import {
   clearSessionSnapshot,
   loadFinishDraft,
   loadSessionSnapshot,
+  markSessionSnapshotPendingClear,
+  type RestSnapshot,
   saveFinishDraft,
   saveSessionSnapshot,
 } from "@/lib/session-persist";
@@ -34,7 +36,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, Minus as MinusIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RestTimer } from "@/components/RestTimer";
 import { translateActivityType } from "@/lib/workout-file-parser";
@@ -51,6 +53,9 @@ function SessionPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const restIdRef = useRef(0);
+
+  const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
+  const [restSnapshot, setRestSnapshot] = useState<RestSnapshot>(null);
 
   const { data: session } = useQuery({
     queryKey: ["session", id],
@@ -104,14 +109,22 @@ function SessionPage() {
       if (snap.sets?.length && !qc.getQueryData(["session-sets", id])) {
         qc.setQueryData(["session-sets", id], snap.sets);
       }
+      if (snap.rest && !snap.rest.done && snap.rest.remaining > 0) {
+        const elapsed = snap.rest.paused ? 0 : Math.floor((Date.now() - snap.rest.updatedAt) / 1000);
+        const remaining = Math.max(0, snap.rest.remaining - elapsed);
+        if (remaining > 0) {
+          restIdRef.current += 1;
+          setRest({ id: restIdRef.current, seconds: remaining, exerciseName: snap.rest.exerciseName });
+        }
+      }
     });
   }, [id, qc]);
 
   // Salva snapshot sempre que os dados do treino em andamento mudam.
   useEffect(() => {
     if (!session && items.length === 0 && sets.length === 0) return;
-    void saveSessionSnapshot(id, { session, items, sets });
-  }, [id, session, items, sets]);
+    void saveSessionSnapshot(id, { session, items, sets, rest: restSnapshot });
+  }, [id, session, items, sets, restSnapshot]);
 
   // Últimos sets por exercício (excluindo esta sessão) — base para as sugestões
   const exerciseIds = useMemo(
@@ -276,6 +289,8 @@ function SessionPage() {
         match: { id },
         patch,
       });
+      await flush();
+      const synced = (await getPendingCount()) === 0;
 
       // Envia a queixa para o(s) treinador(es) vinculado(s)
       if (trimmed) {
@@ -310,10 +325,14 @@ function SessionPage() {
 
       const startedAt = session?.started_at ? new Date(session.started_at) : endedAt;
       const mins = Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
-      return { mins, notified: !!trimmed };
+      return { mins, notified: !!trimmed, synced };
     },
-    onSuccess: ({ mins, notified }) => {
-      void clearSessionSnapshot(id);
+    onSuccess: ({ mins, notified, synced }) => {
+      if (synced) {
+        void clearSessionSnapshot(id);
+      } else {
+        void markSessionSnapshotPendingClear(id);
+      }
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -385,14 +404,25 @@ function SessionPage() {
 
 
 
-  const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
-
   function startRest(sec: number | null | undefined, exerciseName?: string) {
     const s = Number(sec);
     const seconds = Number.isFinite(s) && s > 0 ? s : 60;
     restIdRef.current += 1;
     setRest({ id: restIdRef.current, seconds, exerciseName });
   }
+
+  const handleRestStateChange = useCallback((state: {
+    remaining: number;
+    total: number;
+    paused: boolean;
+    done: boolean;
+    exerciseName?: string;
+  }) => {
+    setRestSnapshot({
+      ...state,
+      updatedAt: Date.now(),
+    });
+  }, []);
 
   if (!session) return <PageSkeleton />;
 
@@ -520,7 +550,11 @@ function SessionPage() {
           key={rest.id}
           seconds={rest.seconds}
           exerciseName={rest.exerciseName}
-          onFinish={() => setRest(null)}
+          onFinish={() => {
+            setRest(null);
+            setRestSnapshot(null);
+          }}
+          onStateChange={handleRestStateChange}
         />
       )}
 

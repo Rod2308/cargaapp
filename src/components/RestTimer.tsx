@@ -85,35 +85,22 @@ function vibrate() {
   } catch {}
 }
 
-function notify(exerciseName?: string) {
-  try {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission !== "granted") return;
-    // Só notifica se a aba está oculta — evita duplicação com o alerta visual
-    if (typeof document !== "undefined" && document.visibilityState === "visible") return;
-    const n = new Notification("Descanso concluído!", {
-      body: exerciseName
-        ? `Hora de iniciar a próxima série de ${exerciseName}.`
-        : "Hora de iniciar a próxima série.",
-      tag: "rest-timer",
-      icon: "/favicon.ico",
-      silent: false,
-    });
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
-  } catch {}
-}
-
 export function RestTimer({
   seconds,
   exerciseName,
   onFinish,
+  onStateChange,
 }: {
   seconds: number;
   exerciseName?: string;
   onFinish: () => void;
+  onStateChange?: (state: {
+    remaining: number;
+    total: number;
+    paused: boolean;
+    done: boolean;
+    exerciseName?: string;
+  }) => void;
 }) {
   const [remaining, setRemaining] = useState(seconds);
   const [total, setTotal] = useState(seconds);
@@ -122,6 +109,18 @@ export function RestTimer({
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedRef = useRef(false);
+
+  const finishAndCancel = () => {
+    void cancelRestNotification();
+    onFinish();
+  };
+
+  const scheduleNativeAlert = (nextSeconds: number) => {
+    if (!prefs.notification || nextSeconds <= 0) return;
+    void ensureRestChannel().then(() =>
+      scheduleRestFinishedNotification(nextSeconds, exerciseName),
+    );
+  };
 
   // Onboarding: na primeira vez que o timer aparece, pergunta se pode notificar.
   useEffect(() => {
@@ -151,11 +150,7 @@ export function RestTimer({
     setDone(false);
     firedRef.current = false;
     // Agenda notificação local nativa para tocar mesmo com app minimizado / tela bloqueada.
-    if (prefs.notification) {
-      void ensureRestChannel().then(() =>
-        scheduleRestFinishedNotification(seconds, exerciseName),
-      );
-    }
+    scheduleNativeAlert(seconds);
     return () => {
       void cancelRestNotification();
     };
@@ -167,6 +162,18 @@ export function RestTimer({
   }, [prefs]);
 
   useEffect(() => {
+    onStateChange?.({ remaining, total, paused, done, exerciseName });
+  }, [remaining, total, paused, done, exerciseName, onStateChange]);
+
+  useEffect(() => {
+    if (!prefs.notification || done || paused || remaining <= 0) return;
+    void ensureRestChannel().then(() =>
+      scheduleRestFinishedNotification(remaining, exerciseName),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.notification]);
+
+  useEffect(() => {
     if (done || paused) return;
     intervalRef.current = setInterval(() => {
       setRemaining((r) => {
@@ -176,7 +183,6 @@ export function RestTimer({
             firedRef.current = true;
             if (prefs.sound) beep();
             if (prefs.vibration) vibrate();
-            if (prefs.notification) notify(exerciseName);
           }
           setDone(true);
           return 0;
@@ -192,9 +198,10 @@ export function RestTimer({
   // Auto-fechar após 20s no estado "concluído"
   useEffect(() => {
     if (!done) return;
-    const t = setTimeout(() => onFinish(), 20000);
+    const t = setTimeout(() => finishAndCancel(), 20000);
     return () => clearTimeout(t);
-  }, [done, onFinish]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
 
   const pct = useMemo(
     () => (total > 0 ? Math.min(100, Math.max(0, ((total - remaining) / total) * 100)) : 100),
@@ -208,7 +215,7 @@ export function RestTimer({
     if (paused) {
       void cancelRestNotification();
     } else if (prefs.notification && remaining > 0) {
-      void scheduleRestFinishedNotification(remaining, exerciseName);
+      scheduleNativeAlert(remaining);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused]);
@@ -252,8 +259,10 @@ export function RestTimer({
               size="sm"
               variant="outline"
               onClick={() => {
-                setRemaining((r) => Math.min(total + 60, r + 30));
+                const nextRemaining = Math.min(total + 60, remaining + 30);
+                setRemaining(nextRemaining);
                 setTotal((t) => t + 30);
+                if (!paused) scheduleNativeAlert(nextRemaining);
               }}
               aria-label="Prorrogar 30 segundos"
               title="+30s"
@@ -273,14 +282,14 @@ export function RestTimer({
         )}
 
         {done ? (
-          <Button size="sm" onClick={onFinish} aria-label="Fechar aviso">
+          <Button size="sm" onClick={finishAndCancel} aria-label="Fechar aviso">
             <SkipForward className="size-4" /> Ok
           </Button>
         ) : (
           <Button
             size="sm"
             variant="outline"
-            onClick={onFinish}
+            onClick={finishAndCancel}
             aria-label="Pular descanso"
             title="Pular"
           >

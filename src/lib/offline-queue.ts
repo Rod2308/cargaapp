@@ -4,6 +4,7 @@
 
 import { get, set } from "idb-keyval";
 import { supabase } from "@/integrations/supabase/client";
+import { clearPendingSyncedSessionSnapshots } from "@/lib/session-persist";
 
 const KEY = "carga.sync.queue.v1";
 
@@ -20,6 +21,8 @@ export type QueueOp = {
 let queue: QueueOp[] = [];
 let loaded = false;
 let flushing = false;
+let flushPromise: Promise<void> | null = null;
+let lastFlushHadPermanentFailure = false;
 const listeners = new Set<() => void>();
 
 async function load() {
@@ -39,6 +42,9 @@ async function persist() {
     /* storage full or unavailable */
   }
   listeners.forEach((l) => l());
+  if (queue.length === 0 && !lastFlushHadPermanentFailure) {
+    void clearPendingSyncedSessionSnapshots();
+  }
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -55,7 +61,9 @@ function isNetworkError(err: unknown): boolean {
 async function execute(op: QueueOp) {
   const table = supabase.from(op.table as any);
   if (op.kind === "insert") {
-    const { error } = await table.insert(op.row);
+    const { error } = op.row?.id
+      ? await table.upsert(op.row, { onConflict: "id", ignoreDuplicates: true })
+      : await table.insert(op.row);
     if (error) throw error;
     return;
   }
@@ -83,11 +91,12 @@ export async function enqueueOp(op: Omit<QueueOp, "id" | "createdAt">) {
 
 export async function flush() {
   await load();
-  if (flushing) return;
+  if (flushing) return flushPromise ?? undefined;
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   if (queue.length === 0) return;
   flushing = true;
-  try {
+  lastFlushHadPermanentFailure = false;
+  flushPromise = (async () => {
     while (queue.length > 0) {
       const op = queue[0];
       try {
@@ -95,13 +104,18 @@ export async function flush() {
       } catch (err) {
         if (isNetworkError(err)) break; // keep queued, retry later
         // Permanent failure (RLS, constraint, etc.) — drop and move on.
+        lastFlushHadPermanentFailure = true;
         console.error("[sync] dropping op", op, err);
       }
       queue.shift();
       await persist();
     }
+  })();
+  try {
+    await flushPromise;
   } finally {
     flushing = false;
+    flushPromise = null;
   }
 }
 
@@ -127,6 +141,9 @@ export function initSyncQueue() {
   initialized = true;
   void load().then(() => {
     listeners.forEach((l) => l());
+    if (queue.length === 0 && !lastFlushHadPermanentFailure) {
+      void clearPendingSyncedSessionSnapshots();
+    }
     void flush();
   });
   window.addEventListener("online", () => void flush());
