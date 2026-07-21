@@ -88,11 +88,15 @@ function vibrate() {
 export function RestTimer({
   seconds,
   exerciseName,
+  initialTotal,
+  initialPaused = false,
   onFinish,
   onStateChange,
 }: {
   seconds: number;
   exerciseName?: string;
+  initialTotal?: number;
+  initialPaused?: boolean;
   onFinish: () => void;
   onStateChange?: (state: {
     remaining: number;
@@ -103,8 +107,8 @@ export function RestTimer({
   }) => void;
 }) {
   const [remaining, setRemaining] = useState(seconds);
-  const [total, setTotal] = useState(seconds);
-  const [paused, setPaused] = useState(false);
+  const [total, setTotal] = useState(initialTotal && initialTotal >= seconds ? initialTotal : seconds);
+  const [paused, setPaused] = useState(initialPaused);
   const [done, setDone] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -144,18 +148,19 @@ export function RestTimer({
 
 
   useEffect(() => {
+    const nextTotal = initialTotal && initialTotal >= seconds ? initialTotal : seconds;
     setRemaining(seconds);
-    setTotal(seconds);
-    setPaused(false);
+    setTotal(nextTotal);
+    setPaused(initialPaused);
     setDone(false);
     firedRef.current = false;
     // Agenda notificação local nativa para tocar mesmo com app minimizado / tela bloqueada.
-    scheduleNativeAlert(seconds);
+    if (!initialPaused) scheduleNativeAlert(seconds);
     return () => {
       void cancelRestNotification();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seconds]);
+  }, [seconds, initialTotal, initialPaused]);
 
   useEffect(() => {
     savePrefs(prefs);
@@ -261,7 +266,7 @@ export function RestTimer({
               onClick={() => {
                 const nextRemaining = Math.min(total + 60, remaining + 30);
                 setRemaining(nextRemaining);
-                setTotal((t) => t + 30);
+                setTotal((t) => Math.max(t + 30, nextRemaining));
                 if (!paused) scheduleNativeAlert(nextRemaining);
               }}
               aria-label="Prorrogar 30 segundos"
