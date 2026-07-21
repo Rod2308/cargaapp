@@ -182,10 +182,6 @@ export function RestTimer({
     [remaining, total],
   );
 
-  async function requestNotifPermission() {
-    await ensureRestChannel();
-    await requestNotificationPermission();
-  }
 
   // Se o usuário pausar, cancela a notificação agendada; ao retomar, reagenda.
   useEffect(() => {
