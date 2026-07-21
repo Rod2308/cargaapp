@@ -123,6 +123,27 @@ export function RestTimer({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedRef = useRef(false);
 
+  // Onboarding: na primeira vez que o timer aparece, pergunta se pode notificar.
+  useEffect(() => {
+    const KEY = "restTimer.notifPermAsked.v1";
+    try {
+      if (window.localStorage.getItem(KEY)) return;
+    } catch {}
+    (async () => {
+      await ensureRestChannel();
+      const result = await requestNotificationPermission();
+      try { window.localStorage.setItem(KEY, "1"); } catch {}
+      if (result === "granted") {
+        setPrefs((p) => {
+          const next = { ...p, notification: true };
+          savePrefs(next);
+          return next;
+        });
+      }
+    })();
+  }, []);
+
+
   useEffect(() => {
     setRemaining(seconds);
     setTotal(seconds);
