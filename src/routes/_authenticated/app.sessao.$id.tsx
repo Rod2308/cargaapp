@@ -436,6 +436,7 @@ function SessionPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <EffortPicker
+              sessionId={id}
               onConfirm={(effort, discomfort) => finish.mutate({ effort, discomfort })}
               pending={finish.isPending}
             />
