@@ -308,13 +308,23 @@ export function RestTimer({
               <Switch
                 checked={prefs.notification}
                 onCheckedChange={async (v) => {
-                  if (v) await requestNotifPermission();
-                  const granted = typeof window !== "undefined"
-                    && "Notification" in window
-                    && Notification.permission === "granted";
-                  setPrefs((p) => ({ ...p, notification: v && granted }));
+                  if (!v) {
+                    setPrefs((p) => ({ ...p, notification: false }));
+                    void cancelRestNotification();
+                    return;
+                  }
+                  await ensureRestChannel();
+                  const result = await requestNotificationPermission();
+                  const granted = result === "granted";
+                  setPrefs((p) => ({ ...p, notification: granted }));
+                  if (!granted) return;
+                  // reagenda para o timer atual
+                  if (!done && remaining > 0) {
+                    void scheduleRestFinishedNotification(remaining, exerciseName);
+                  }
                 }}
               />
+              {isNativePlatform() ? null : null}
             </label>
             <p className="text-[11px] leading-snug text-muted-foreground">
               A notificação aparece quando o app está em segundo plano ou a tela está bloqueada.
