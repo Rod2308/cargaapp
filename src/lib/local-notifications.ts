@@ -70,7 +70,7 @@ export async function scheduleRestFinishedNotification(
             title: "Descanso acabou!",
             body: `${body} 💪`,
             schedule: { at: when, allowWhileIdle: true },
-            smallIcon: "ic_stat_icon_config_sample",
+            smallIcon: "ic_stat_rest_timer",
             sound: "default",
             channelId: REST_CHANNEL_ID,
             autoCancel: true,
