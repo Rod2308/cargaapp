@@ -55,31 +55,63 @@ function SessionPage() {
   const { data: session } = useQuery({
     queryKey: ["session", id],
     queryFn: async () => {
-      const { data } = await supabase.from("sessions").select("*, workouts(name, label)").eq("id", id).single();
+      const { data, error } = await supabase.from("sessions").select("*, workouts(name, label)").eq("id", id).single();
+      if (error) throw error;
       return data;
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
 
   const { data: items = [] } = useQuery({
     queryKey: ["session-plan", id],
     enabled: !!session?.workout_id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("workout_exercises")
         .select("*, exercises(*)")
         .eq("workout_id", session!.workout_id!)
         .order("order_idx");
+      if (error) throw error;
       return data ?? [];
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
 
   const { data: sets = [] } = useQuery({
     queryKey: ["session-sets", id],
     queryFn: async () => {
-      const { data } = await supabase.from("session_sets").select("*").eq("session_id", id).order("completed_at");
+      const { data, error } = await supabase.from("session_sets").select("*").eq("session_id", id).order("completed_at");
+      if (error) throw error;
       return data ?? [];
     },
+    retry: (count) => (typeof navigator !== "undefined" ? navigator.onLine : true) && count < 2,
   });
+
+  // Hidrata as queries do snapshot local ANTES de tentar a rede, para que o
+  // treino em andamento apareça mesmo offline / recém-recarregado.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    void loadSessionSnapshot(id).then((snap) => {
+      if (!snap) return;
+      if (snap.session && !qc.getQueryData(["session", id])) {
+        qc.setQueryData(["session", id], snap.session);
+      }
+      if (snap.items?.length && !qc.getQueryData(["session-plan", id])) {
+        qc.setQueryData(["session-plan", id], snap.items);
+      }
+      if (snap.sets?.length && !qc.getQueryData(["session-sets", id])) {
+        qc.setQueryData(["session-sets", id], snap.sets);
+      }
+    });
+  }, [id, qc]);
+
+  // Salva snapshot sempre que os dados do treino em andamento mudam.
+  useEffect(() => {
+    if (!session && items.length === 0 && sets.length === 0) return;
+    void saveSessionSnapshot(id, { session, items, sets });
+  }, [id, session, items, sets]);
 
   // Últimos sets por exercício (excluindo esta sessão) — base para as sugestões
   const exerciseIds = useMemo(
