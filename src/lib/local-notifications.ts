@@ -61,6 +61,7 @@ export async function scheduleRestFinishedNotification(
       await ensureRestChannel();
       const perm = await LocalNotifications.checkPermissions();
       if (perm.display !== "granted") return;
+      await ensureExactAlarmPermissionIfAvailable();
       await cancelRestNotification();
       await LocalNotifications.schedule({
         notifications: [
@@ -70,6 +71,7 @@ export async function scheduleRestFinishedNotification(
             body: `${body} 💪`,
             schedule: { at: when, allowWhileIdle: true },
             smallIcon: "ic_stat_icon_config_sample",
+            sound: "default",
             channelId: REST_CHANNEL_ID,
             autoCancel: true,
           },
@@ -79,6 +81,18 @@ export async function scheduleRestFinishedNotification(
       console.warn("[notifications] schedule error", err);
     }
     return;
+  }
+}
+
+async function ensureExactAlarmPermissionIfAvailable(): Promise<void> {
+  try {
+    const native = LocalNotifications as typeof LocalNotifications & {
+      checkExactNotificationSetting?: () => Promise<{ exact_alarm?: string }>;
+    };
+    await native.checkExactNotificationSetting?.();
+  } catch {
+    // Android pode negar alarmes exatos; neste caso o plugin ainda agenda a
+    // notificação local, apenas sem garantir precisão absoluta no modo Doze.
   }
 }
 

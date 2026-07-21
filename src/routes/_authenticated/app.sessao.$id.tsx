@@ -54,7 +54,13 @@ function SessionPage() {
   const navigate = useNavigate();
   const restIdRef = useRef(0);
 
-  const [rest, setRest] = useState<{ id: number; seconds: number; exerciseName?: string } | null>(null);
+  const [rest, setRest] = useState<{
+    id: number;
+    seconds: number;
+    exerciseName?: string;
+    initialTotal?: number;
+    initialPaused?: boolean;
+  } | null>(null);
   const [restSnapshot, setRestSnapshot] = useState<RestSnapshot>(null);
 
   const { data: session } = useQuery({
@@ -114,7 +120,13 @@ function SessionPage() {
         const remaining = Math.max(0, snap.rest.remaining - elapsed);
         if (remaining > 0) {
           restIdRef.current += 1;
-          setRest({ id: restIdRef.current, seconds: remaining, exerciseName: snap.rest.exerciseName });
+          setRest({
+            id: restIdRef.current,
+            seconds: remaining,
+            exerciseName: snap.rest.exerciseName,
+            initialTotal: snap.rest.total,
+            initialPaused: snap.rest.paused,
+          });
         }
       }
     });
@@ -550,6 +562,8 @@ function SessionPage() {
           key={rest.id}
           seconds={rest.seconds}
           exerciseName={rest.exerciseName}
+          initialTotal={rest.initialTotal}
+          initialPaused={rest.initialPaused}
           onFinish={() => {
             setRest(null);
             setRestSnapshot(null);
