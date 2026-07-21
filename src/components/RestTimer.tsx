@@ -18,6 +18,14 @@ import {
   Vibrate,
   Bell,
 } from "lucide-react";
+import {
+  scheduleRestFinishedNotification,
+  cancelRestNotification,
+  requestNotificationPermission,
+  checkNotificationPermission,
+  ensureRestChannel,
+  isNativePlatform,
+} from "@/lib/local-notifications";
 
 type Prefs = {
   sound: boolean;
@@ -123,6 +131,16 @@ export function RestTimer({
     setPaused(false);
     setDone(false);
     firedRef.current = false;
+    // Agenda notificação local nativa para tocar mesmo com app minimizado / tela bloqueada.
+    if (prefs.notification) {
+      void ensureRestChannel().then(() =>
+        scheduleRestFinishedNotification(seconds, exerciseName),
+      );
+    }
+    return () => {
+      void cancelRestNotification();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds]);
 
   useEffect(() => {
@@ -165,13 +183,20 @@ export function RestTimer({
   );
 
   async function requestNotifPermission() {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      try {
-        await Notification.requestPermission();
-      } catch {}
-    }
+    await ensureRestChannel();
+    await requestNotificationPermission();
   }
+
+  // Se o usuário pausar, cancela a notificação agendada; ao retomar, reagenda.
+  useEffect(() => {
+    if (done) return;
+    if (paused) {
+      void cancelRestNotification();
+    } else if (prefs.notification && remaining > 0) {
+      void scheduleRestFinishedNotification(remaining, exerciseName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused]);
 
   return (
     <div
