@@ -318,7 +318,7 @@ export function RestTimer({
                   }
                 }}
               />
-              {isNativePlatform() ? null : null}
+              
             </label>
             <p className="text-[11px] leading-snug text-muted-foreground">
               A notificação aparece quando o app está em segundo plano ou a tela está bloqueada.
