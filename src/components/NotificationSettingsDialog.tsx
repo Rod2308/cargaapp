@@ -115,7 +115,7 @@ export function NotificationSettingsDialog() {
             <Switch
               id="pref-web"
               checked={prefs.webPush && permission === "granted"}
-              disabled={permission === "unsupported" || permission === "denied"}
+              disabled={busy || permission === "unsupported"}
               onCheckedChange={handleWebPush}
             />
           </div>
