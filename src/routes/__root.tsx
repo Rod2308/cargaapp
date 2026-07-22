@@ -122,6 +122,38 @@ function RootComponent() {
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
+
+    // Native OAuth bridge: detect when Chrome Custom Tab returns with auth
+    const urlParams = new URLSearchParams(window.location.search);
+    const isNativeOAuthCallback = urlParams.get("native") === "1";
+    const isInWebView = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;
+    let nativeAuthUnsub: (() => void) | undefined;
+
+    if (isNativeOAuthCallback && !isInWebView) {
+      let nativeRedirected = false;
+      const redirectNativeSession = (session: { access_token: string; refresh_token: string }) => {
+        if (nativeRedirected) return;
+        nativeRedirected = true;
+        window.location.href = `com.carga.app://login-callback#access_token=${session.access_token}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+      };
+
+      const { data: nativeAuthListener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          if (event === "SIGNED_IN" && session) {
+            nativeAuthListener.subscription.unsubscribe();
+            redirectNativeSession(session);
+          }
+        }
+      );
+      nativeAuthUnsub = () => nativeAuthListener.subscription.unsubscribe();
+
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          redirectNativeSession(data.session);
+        }
+      });
+    }
+
     let removeUrlListener: (() => void) | undefined;
     const isNative =
       typeof window !== "undefined" &&
