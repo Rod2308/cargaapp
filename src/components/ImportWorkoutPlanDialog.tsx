@@ -188,7 +188,17 @@ Agachamento 4x10 60kg desc 120s
 Leg press 3x15
 Cadeira flexora 4x12`;
 
-export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
+export function ImportWorkoutPlanDialog({
+  userId,
+  createdByTrainerId,
+  onImported,
+  triggerLabel,
+}: {
+  userId: string;
+  createdByTrainerId?: string;
+  onImported?: (created: { id: string; name: string }[]) => void;
+  triggerLabel?: string;
+}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const online = useOnline();
@@ -337,6 +347,7 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
             label: b.label.slice(0, 3),
             name: b.name.slice(0, 80),
             order_idx: baseIdx + i,
+            ...(createdByTrainerId ? { created_by_trainer_id: createdByTrainerId } : {}),
           })
           .select()
           .single();
@@ -367,6 +378,10 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
       qc.invalidateQueries({ queryKey: ["workouts"] });
       setOpen(false);
       reset();
+      if (onImported) {
+        onImported(created);
+        return;
+      }
       if (created.length === 1) {
         navigate({ to: "/app/treinos/$id", params: { id: created[0].id } });
       } else {
@@ -395,7 +410,7 @@ export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
     >
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" disabled={!online} title={!online ? "Requer internet" : undefined}>
-          <Sparkles className="size-4" /> Importar
+          <Sparkles className="size-4" /> {triggerLabel ?? "Importar"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
