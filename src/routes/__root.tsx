@@ -122,7 +122,40 @@ function RootComponent() {
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
-    return () => data.subscription.unsubscribe();
+    let removeUrlListener: (() => void) | undefined;
+    const isNative =
+      typeof window !== "undefined" &&
+      (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;
+    if (isNative) {
+      import("@capacitor/app").then(({ App }) => {
+        App.addListener("appUrlOpen", async ({ url }) => {
+          if (!url.includes("login-callback") && !url.includes("access_token") && !url.includes("code=")) return;
+          try {
+            const parsed = new URL(url);
+            const code = parsed.searchParams.get("code");
+            if (code) {
+              await supabase.auth.exchangeCodeForSession(code);
+              return;
+            }
+            const hash = parsed.hash.startsWith("#") ? parsed.hash.slice(1) : parsed.hash;
+            const params = new URLSearchParams(hash);
+            const access_token = params.get("access_token");
+            const refresh_token = params.get("refresh_token");
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({ access_token, refresh_token });
+            }
+          } catch (e) {
+            console.error("OAuth callback error", e);
+          }
+        }).then((handle) => {
+          removeUrlListener = () => handle.remove();
+        });
+      });
+    }
+    return () => {
+      data.subscription.unsubscribe();
+      removeUrlListener?.();
+    };
   }, [router, queryClient]);
   return (
     <QueryClientProvider client={queryClient}>
