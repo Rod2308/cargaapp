@@ -378,6 +378,10 @@ export function ImportWorkoutPlanDialog({
       qc.invalidateQueries({ queryKey: ["workouts"] });
       setOpen(false);
       reset();
+      if (onImported) {
+        onImported(created);
+        return;
+      }
       if (created.length === 1) {
         navigate({ to: "/app/treinos/$id", params: { id: created[0].id } });
       } else {
