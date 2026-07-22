@@ -24,6 +24,15 @@ import {
   requestNotificationPermission,
   ensureRestChannel,
 } from "@/lib/local-notifications";
+import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
+
+function scheduleServerPush(seconds: number, exerciseName?: string) {
+  if (seconds <= 0) return;
+  void scheduleRestPush({ data: { seconds: Math.round(seconds), exerciseName } }).catch(() => {});
+}
+function cancelServerPush() {
+  void cancelRestPush().catch(() => {});
+}
 
 type Prefs = {
   sound: boolean;
