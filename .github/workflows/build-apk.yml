@@ -36,13 +36,12 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Fix dist layout for Capacitor
+      - name: Debug build output
         run: |
-          if [ -d "dist/client" ] && [ ! -f "dist/index.html" ]; then
-            echo "Vite 8 client dir detected, merging into dist/"
-            cp -r dist/client/. dist/
-          fi
-          ls dist/
+          echo "=== dist/ ===" && ls dist/ 2>/dev/null || echo "(no dist)"
+          echo "=== dist/client/ ===" && ls dist/client/ 2>/dev/null || echo "(no dist/client)"
+          echo "=== .output/ ===" && ls .output/ 2>/dev/null || echo "(no .output)"
+          echo "=== Find index.html ===" && find . -name "index.html" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null
 
       - name: Sync Capacitor Android
         run: npx cap sync android
