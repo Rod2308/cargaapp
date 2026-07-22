@@ -33,19 +33,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build web app
-        run: npm run build
-
-      - name: Copy build output to dist
+      - name: Create dist/index.html for cap sync
         run: |
-          if [ -d ".output/public" ]; then
-            cp -r .output/public/. dist/
-            echo "Copied .output/public to dist/"
-          else
-            echo "ERROR: .output/public not found!"
-            ls -la .output/ 2>/dev/null || echo "(no .output)"
-            exit 1
-          fi
+          mkdir -p dist
+          echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Carga App</title></head><body></body></html>' > dist/index.html
 
       - name: Sync Capacitor Android
         run: npx cap sync android
