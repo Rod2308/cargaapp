@@ -347,6 +347,7 @@ export function ImportWorkoutPlanDialog({
             label: b.label.slice(0, 3),
             name: b.name.slice(0, 80),
             order_idx: baseIdx + i,
+            ...(createdByTrainerId ? { created_by_trainer_id: createdByTrainerId } : {}),
           })
           .select()
           .single();
