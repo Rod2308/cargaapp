@@ -125,11 +125,14 @@ export function RestTimer({
 
   const finishAndCancel = () => {
     void cancelRestNotification();
+    cancelServerPush();
     onFinish();
   };
 
   const scheduleNativeAlert = (nextSeconds: number) => {
-    if (!prefs.notification || nextSeconds <= 0) return;
+    if (nextSeconds <= 0) return;
+    scheduleServerPush(nextSeconds, exerciseName);
+    if (!prefs.notification) return;
     void ensureRestChannel().then(() =>
       scheduleRestFinishedNotification(nextSeconds, exerciseName),
     );
