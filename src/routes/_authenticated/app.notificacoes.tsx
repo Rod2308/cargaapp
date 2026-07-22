@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Bell } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Bell, Smartphone, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import {
   unsubscribeFromWebPush,
   isPushSupported,
 } from "@/lib/web-push-client";
+import { needsIOSInstallForPush } from "@/lib/pwa-env";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/notificacoes")({
@@ -59,8 +60,17 @@ const GROUPS: { title: string; items: Item[] }[] = [
 function NotificationPreferencesPage() {
   const { prefs, update, permission, requestPermission } = useNotificationPrefs();
   const [busy, setBusy] = useState(false);
+  const [iosInstallNeeded, setIosInstallNeeded] = useState(false);
+
+  useEffect(() => {
+    setIosInstallNeeded(needsIOSInstallForPush());
+  }, []);
 
   const handleWebPush = async (checked: boolean) => {
+    if (iosInstallNeeded) {
+      toast.error("No iPhone, adicione o Carga à Tela de Início para receber notificações.");
+      return;
+    }
     if (!isPushSupported()) {
       toast.error("Este navegador não suporta notificações push");
       return;
@@ -110,19 +120,46 @@ function NotificationPreferencesPage() {
         </div>
       </div>
 
+      {iosInstallNeeded && (
+        <Link
+          to="/app/instalar"
+          className="card-soft mb-4 flex items-center gap-3 p-5 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition"
+        >
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600">
+            <Smartphone className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Instale o Carga no iPhone para receber alertas</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              No iOS, as notificações só funcionam quando o app está na Tela de Início. Ver passo a passo.
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+        </Link>
+      )}
+
       <section className="card-soft p-5 mb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <Label htmlFor="pref-web" className="text-base">Notificações do navegador</Label>
-            <p className="text-xs text-muted-foreground mt-1">{permissionLabel}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {iosInstallNeeded
+                ? "Adicione o Carga à Tela de Início para habilitar."
+                : permissionLabel}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
               Ative para receber alertas mesmo com o app fechado.
             </p>
+            {iosInstallNeeded && (
+              <Button asChild size="sm" variant="outline" className="mt-3">
+                <Link to="/app/instalar">Como instalar</Link>
+              </Button>
+            )}
           </div>
           <Switch
             id="pref-web"
             checked={prefs.webPush && permission === "granted"}
-            disabled={busy || permission === "unsupported"}
+            disabled={busy || permission === "unsupported" || iosInstallNeeded}
             onCheckedChange={handleWebPush}
           />
         </div>
