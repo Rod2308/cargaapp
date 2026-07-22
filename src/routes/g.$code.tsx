@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Trophy, Users } from "lucide-react";
+import { getPublicInvite, type PublicInvite } from "@/lib/invites.functions";
 
 const SITE_URL = "https://cargaapp.lovable.app";
 const DEFAULT_OG_IMAGE =
@@ -12,28 +13,10 @@ function sanitize(code: string) {
   return up.slice(0, 12);
 }
 
-type PublicInvite = {
-  name: string;
-  description: string | null;
-  emoji: string | null;
-  member_count: number;
-  is_archived: boolean;
-} | null;
-
 async function fetchPublicInvite(code: string): Promise<PublicInvite> {
   if (!code || code.length < 4) return null;
   try {
-    const { data, error } = await supabase.rpc("get_group_public_invite", { _code: code });
-    if (error) return null;
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row) return null;
-    return {
-      name: row.name,
-      description: row.description,
-      emoji: row.emoji,
-      member_count: Number(row.member_count ?? 0),
-      is_archived: !!row.is_archived,
-    };
+    return await getPublicInvite({ data: { code } });
   } catch {
     return null;
   }
