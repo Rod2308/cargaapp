@@ -92,7 +92,7 @@ function AlunoDetail() {
             )}
           </header>
 
-          <div className="mt-5">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <button
               onClick={() => setManualOpen(true)}
               className="card-soft flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/40"
@@ -105,7 +105,23 @@ function AlunoDetail() {
                 <p className="text-xs text-muted-foreground">Você monta exercício por exercício</p>
               </div>
             </button>
+            <div className="card-soft flex items-center gap-3 p-4">
+              <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+                <span className="text-lg">✨</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">Importar treino</p>
+                <p className="text-xs text-muted-foreground">Cole o plano ou envie um arquivo</p>
+              </div>
+              <ImportWorkoutPlanDialog
+                userId={id}
+                createdByTrainerId={user.id}
+                triggerLabel="Importar para o aluno"
+                onImported={() => qc.invalidateQueries({ queryKey: ["student", id] })}
+              />
+            </div>
           </div>
+
 
           <h2 className="mt-8 mb-3 font-display text-xl">Treinos do aluno</h2>
           <div className="grid gap-3">
