@@ -21,12 +21,13 @@ self.addEventListener("push", (event) => {
   }
 
   const title = payload.title || "Carga";
+  const url = (payload.data && payload.data.url) || payload.url || "/";
   const options = {
     body: payload.body || "",
     icon: payload.icon || "/icon-192.png",
     badge: payload.badge || "/icon-192.png",
     tag: payload.tag,
-    data: { url: payload.url || "/" },
+    data: { ...(payload.data || {}), url },
     requireInteraction: payload.requireInteraction === true,
     silent: false,
   };

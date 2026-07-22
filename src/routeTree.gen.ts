@@ -31,6 +31,7 @@ import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedAppGruposIndexRouteImport } from './routes/_authenticated/app.grupos.index'
 import { Route as AuthenticatedAppAlunosIndexRouteImport } from './routes/_authenticated/app.alunos.index'
 import { Route as ApiPublicHooksDispatchRestPushesRouteImport } from './routes/api/public/hooks/dispatch-rest-pushes'
+import { Route as ApiPublicHooksDispatchPushOutboxRouteImport } from './routes/api/public/hooks/dispatch-push-outbox'
 import { Route as AuthenticatedAppTreinosIdRouteImport } from './routes/_authenticated/app.treinos.$id'
 import { Route as AuthenticatedAppSessaoIdRouteImport } from './routes/_authenticated/app.sessao.$id'
 import { Route as AuthenticatedAppGruposIdRouteImport } from './routes/_authenticated/app.grupos.$id'
@@ -158,6 +159,12 @@ const ApiPublicHooksDispatchRestPushesRoute =
     path: '/api/public/hooks/dispatch-rest-pushes',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDispatchPushOutboxRoute =
+  ApiPublicHooksDispatchPushOutboxRouteImport.update({
+    id: '/api/public/hooks/dispatch-push-outbox',
+    path: '/api/public/hooks/dispatch-push-outbox',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAppTreinosIdRoute =
   AuthenticatedAppTreinosIdRouteImport.update({
     id: '/treinos/$id',
@@ -217,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
+  '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
@@ -245,6 +253,7 @@ export interface FileRoutesByTo {
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
   '/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
+  '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/app/alunos': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos': typeof AuthenticatedAppGruposIndexRoute
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
   '/_authenticated/app/sessao/$id': typeof AuthenticatedAppSessaoIdRouteWithChildren
   '/_authenticated/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
+  '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/_authenticated/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/_authenticated/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/app/grupos/$id'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
+    | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/app/alunos/'
     | '/app/grupos/'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/app/grupos/$id'
     | '/app/sessao/$id'
     | '/app/treinos/$id'
+    | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/app/alunos'
     | '/app/grupos'
@@ -365,6 +377,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/grupos/$id'
     | '/_authenticated/app/sessao/$id'
     | '/_authenticated/app/treinos/$id'
+    | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/_authenticated/app/alunos/'
     | '/_authenticated/app/grupos/'
@@ -385,6 +398,7 @@ export interface RootRouteChildren {
   GCodeRoute: typeof GCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
 }
 
@@ -544,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDispatchRestPushesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/dispatch-push-outbox': {
+      id: '/api/public/hooks/dispatch-push-outbox'
+      path: '/api/public/hooks/dispatch-push-outbox'
+      fullPath: '/api/public/hooks/dispatch-push-outbox'
+      preLoaderRoute: typeof ApiPublicHooksDispatchPushOutboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/app/treinos/$id': {
       id: '/_authenticated/app/treinos/$id'
       path: '/treinos/$id'
@@ -677,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   GCodeRoute: GCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
 }
 export const routeTree = rootRouteImport
