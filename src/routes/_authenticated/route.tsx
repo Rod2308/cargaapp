@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
+import { ensureWebPushSubscribed } from "@/lib/web-push-client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
