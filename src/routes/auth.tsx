@@ -297,18 +297,19 @@ function AuthPage() {
       typeof window !== "undefined" &&
       (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;
     if (isNative) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: "com.carga.app://login-callback" },
+      // Open Chrome Custom Tab for OAuth (WebViews are blocked by Google)
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({
+        url: "https://cargaapp.lovable.app/auth?native=1",
       });
-      if (error) {
-        setBusy(false);
-        toast.error("Erro ao entrar com Google");
-      }
+      setBusy(false);
       return;
     }
+    const nativeParam = new URLSearchParams(window.location.search).get("native");
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}${redirectTo}`,
+      redirect_uri: nativeParam === "1"
+        ? `${window.location.origin}/?native=1`
+        : `${window.location.origin}${redirectTo}`,
     });
     if (result.error) {
       setBusy(false);
