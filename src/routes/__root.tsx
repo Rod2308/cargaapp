@@ -186,6 +186,7 @@ function RootComponent() {
     }
     return () => {
       data.subscription.unsubscribe();
+      nativeAuthUnsub?.();
       removeUrlListener?.();
     };
   }, [router, queryClient]);
