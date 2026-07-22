@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
+import { ensureWebPushSubscribed } from "@/lib/web-push-client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -28,6 +29,11 @@ function Layout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    // Revalida a assinatura Web Push ao abrir o app (recria se sumiu do backend).
+    ensureWebPushSubscribed();
+  }, []);
 
   useEffect(() => {
     let active = true;
