@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type NotificationPrefs = {
+  // Grupos / desafios
   rankChange: boolean;
   deadline: boolean;
   otherCheckins: boolean;
+  groupMessages: boolean;
+  groupEvents: boolean; // início/fim de desafio
+  // Mensagens diretas
+  directMessages: boolean;
+  // Treino
+  workoutReminder: boolean;
+  restTimer: boolean;
+  // Canal
   webPush: boolean;
 };
 
@@ -11,6 +20,11 @@ const DEFAULTS: NotificationPrefs = {
   rankChange: true,
   deadline: true,
   otherCheckins: true,
+  groupMessages: true,
+  groupEvents: true,
+  directMessages: true,
+  workoutReminder: true,
+  restTimer: true,
   webPush: false,
 };
 

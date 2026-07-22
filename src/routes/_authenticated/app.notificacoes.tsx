@@ -1,0 +1,159 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { ArrowLeft, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useNotificationPrefs, type NotificationPrefs } from "@/hooks/useNotificationPrefs";
+import {
+  subscribeToWebPush,
+  unsubscribeFromWebPush,
+  isPushSupported,
+} from "@/lib/web-push-client";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/app/notificacoes")({
+  head: () => ({
+    meta: [
+      { title: "Notificações — Carga" },
+      { name: "description", content: "Ative ou desative categorias de notificação do Carga." },
+      { property: "og:title", content: "Preferências de notificação — Carga" },
+      { property: "og:description", content: "Escolha quais alertas quer receber." },
+    ],
+  }),
+  component: NotificationPreferencesPage,
+});
+
+type Item = {
+  key: keyof Omit<NotificationPrefs, "webPush">;
+  label: string;
+  description: string;
+};
+
+const GROUPS: { title: string; items: Item[] }[] = [
+  {
+    title: "Mensagens",
+    items: [
+      { key: "directMessages", label: "Mensagens diretas", description: "Quando alguém te envia uma mensagem." },
+      { key: "groupMessages", label: "Mensagens de grupo", description: "Novas mensagens nos seus grupos." },
+    ],
+  },
+  {
+    title: "Desafios e grupos",
+    items: [
+      { key: "groupEvents", label: "Início e fim de desafio", description: "Avisa quando um desafio começa ou está para terminar." },
+      { key: "deadline", label: "Prazo se aproximando", description: "Alerta quando faltam ≤ 3 dias." },
+      { key: "rankChange", label: "Mudança de posição", description: "Aviso quando você sobe ou cai no ranking." },
+      { key: "otherCheckins", label: "Check-ins de outros membros", description: "Notifica quando alguém do grupo pontua." },
+    ],
+  },
+  {
+    title: "Treino",
+    items: [
+      { key: "workoutReminder", label: "Lembrete diário de treino", description: "Aviso à noite se ainda não treinou hoje." },
+      { key: "restTimer", label: "Fim do descanso entre séries", description: "Notifica quando o timer chegar ao fim." },
+    ],
+  },
+];
+
+function NotificationPreferencesPage() {
+  const { prefs, update, permission, requestPermission } = useNotificationPrefs();
+  const [busy, setBusy] = useState(false);
+
+  const handleWebPush = async (checked: boolean) => {
+    if (!isPushSupported()) {
+      toast.error("Este navegador não suporta notificações push");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (checked) {
+        let perm = permission;
+        if (perm !== "granted") perm = await requestPermission();
+        if (perm !== "granted") {
+          toast.error(perm === "denied" ? "Permissão bloqueada nas configurações do navegador." : "Permissão negada");
+          return;
+        }
+        await subscribeToWebPush();
+        update({ webPush: true });
+        toast.success("Notificações ativadas neste dispositivo");
+      } else {
+        await unsubscribeFromWebPush();
+        update({ webPush: false });
+        toast.success("Notificações desativadas neste dispositivo");
+      }
+    } catch (err) {
+      console.error("[push] toggle error", err);
+      toast.error(err instanceof Error ? err.message : "Falha ao alterar notificações");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const permissionLabel =
+    permission === "unsupported" ? "Não suportado neste navegador."
+    : permission === "denied" ? "Bloqueado — ajuste nas configurações do navegador."
+    : permission === "granted" ? "Permissão concedida."
+    : "Precisa autorizar o navegador.";
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mb-6 flex items-center gap-3">
+        <Button asChild variant="ghost" size="icon">
+          <Link to="/app/perfil"><ArrowLeft className="h-5 w-5" /></Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <Bell className="h-5 w-5" /> Notificações
+          </h1>
+          <p className="text-sm text-muted-foreground">Ative ou desative por categoria.</p>
+        </div>
+      </div>
+
+      <section className="card-soft p-5 mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="pref-web" className="text-base">Notificações do navegador</Label>
+            <p className="text-xs text-muted-foreground mt-1">{permissionLabel}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ative para receber alertas mesmo com o app fechado.
+            </p>
+          </div>
+          <Switch
+            id="pref-web"
+            checked={prefs.webPush && permission === "granted"}
+            disabled={busy || permission === "unsupported"}
+            onCheckedChange={handleWebPush}
+          />
+        </div>
+      </section>
+
+      {GROUPS.map((group) => (
+        <section key={group.title} className="card-soft p-5 mb-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+            {group.title}
+          </h2>
+          <div className="space-y-4">
+            {group.items.map((item) => (
+              <div key={item.key} className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Label htmlFor={`pref-${item.key}`} className="text-base">{item.label}</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+                </div>
+                <Switch
+                  id={`pref-${item.key}`}
+                  checked={prefs[item.key]}
+                  onCheckedChange={(v) => update({ [item.key]: v } as Partial<NotificationPrefs>)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <p className="text-xs text-muted-foreground px-1">
+        As preferências ficam salvas neste dispositivo. Mensagens e eventos podem chegar por push do navegador se você tiver ativado acima.
+      </p>
+    </div>
+  );
+}
