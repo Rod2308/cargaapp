@@ -88,14 +88,29 @@ export async function unsubscribeFromWebPush(): Promise<void> {
 /**
  * Garante que a assinatura Web Push está ativa e registrada no backend.
  * Chamado ao abrir o app: se o navegador tem permissão e o usuário optou
- * por push, recria a assinatura caso o servidor de push tenha invalidado
- * (404/410) ou o navegador tenha rotacionado a chave.
+ * por push, revalida a assinatura. Caso o servidor de push tenha invalidado
+ * (404/410) — o que faz o dispatcher apagá-la — recria uma nova.
  */
 export async function ensureWebPushSubscribed(): Promise<void> {
   if (!isPushSupported()) return;
   if (Notification.permission !== "granted") return;
   try {
-    await subscribeToWebPush();
+    const reg = await ensureRegistration();
+    const existing = await reg.pushManager.getSubscription();
+    // Se já existe, apenas re-salva no backend (upsert) para garantir persistência.
+    // Se não existe (ou foi limpa), cria uma nova.
+    if (existing) {
+      await savePushSubscription({
+        data: {
+          endpoint: existing.endpoint,
+          p256dh: arrayBufferToBase64(existing.getKey("p256dh")),
+          auth: arrayBufferToBase64(existing.getKey("auth")),
+          userAgent: navigator.userAgent.slice(0, 500),
+        },
+      });
+    } else {
+      await subscribeToWebPush();
+    }
   } catch (err) {
     console.warn("[push] ensure subscribe failed", err);
   }
