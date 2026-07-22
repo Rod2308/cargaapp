@@ -25,6 +25,7 @@ import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
 import { Route as AuthenticatedAppMensagensRouteImport } from './routes/_authenticated/app.mensagens'
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
+import { Route as AuthenticatedAppInstalarRouteImport } from './routes/_authenticated/app.instalar'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -124,6 +125,12 @@ const AuthenticatedAppMcpTesteRoute =
   AuthenticatedAppMcpTesteRouteImport.update({
     id: '/mcp-teste',
     path: '/mcp-teste',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppInstalarRoute =
+  AuthenticatedAppInstalarRouteImport.update({
+    id: '/instalar',
+    path: '/instalar',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 const AuthenticatedAppHistoricoRoute =
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
@@ -260,6 +268,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
@@ -294,6 +303,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/_authenticated/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
   '/_authenticated/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/app/historico'
+    | '/app/instalar'
     | '/app/mcp-teste'
     | '/app/mensagens'
     | '/app/notificacoes'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/app/historico'
+    | '/app/instalar'
     | '/app/mcp-teste'
     | '/app/mensagens'
     | '/app/notificacoes'
@@ -392,6 +404,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/app/historico'
+    | '/_authenticated/app/instalar'
     | '/_authenticated/app/mcp-teste'
     | '/_authenticated/app/mensagens'
     | '/_authenticated/app/notificacoes'
@@ -543,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppMcpTesteRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/instalar': {
+      id: '/_authenticated/app/instalar'
+      path: '/instalar'
+      fullPath: '/app/instalar'
+      preLoaderRoute: typeof AuthenticatedAppInstalarRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/historico': {
       id: '/_authenticated/app/historico'
       path: '/historico'
@@ -682,6 +702,7 @@ const AuthenticatedAppSessaoIdRouteWithChildren =
 
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
+  AuthenticatedAppInstalarRoute: typeof AuthenticatedAppInstalarRoute
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
   AuthenticatedAppMensagensRoute: typeof AuthenticatedAppMensagensRoute
   AuthenticatedAppNotificacoesRoute: typeof AuthenticatedAppNotificacoesRoute
@@ -699,6 +720,7 @@ interface AuthenticatedAppRouteChildren {
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
+  AuthenticatedAppInstalarRoute: AuthenticatedAppInstalarRoute,
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
   AuthenticatedAppMensagensRoute: AuthenticatedAppMensagensRoute,
   AuthenticatedAppNotificacoesRoute: AuthenticatedAppNotificacoesRoute,
