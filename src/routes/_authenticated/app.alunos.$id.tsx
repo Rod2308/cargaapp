@@ -12,6 +12,7 @@ import { ArrowLeft, Plus, ChevronRight, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListSkeleton } from "@/components/LoadingState";
+import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/$id")({
   beforeLoad: ({ context }) => {
