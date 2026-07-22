@@ -232,7 +232,8 @@ export function RestTimer({
     if (done) return;
     if (paused) {
       void cancelRestNotification();
-    } else if (prefs.notification && remaining > 0) {
+      cancelServerPush();
+    } else if (remaining > 0) {
       scheduleNativeAlert(remaining);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
