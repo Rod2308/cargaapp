@@ -293,6 +293,19 @@ function AuthPage() {
 
   async function google() {
     setBusy(true);
+    const isNative =
+      typeof window !== "undefined" && (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;
+    if (isNative) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: "com.carga.app://login-callback" },
+      });
+      if (error) {
+        setBusy(false);
+        toast.error("Erro ao entrar com Google");
+      }
+      return;
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: `${window.location.origin}${redirectTo}`,
     });
