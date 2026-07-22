@@ -6,6 +6,8 @@ const config: CapacitorConfig = {
   webDir: "dist",
   server: {
     androidScheme: "https",
+    url: "https://cargaapp.lovable.app",
+    cleartext: false,
   },
   plugins: {
     LocalNotifications: {
