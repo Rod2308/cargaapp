@@ -31,6 +31,11 @@ function Layout() {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
+    // Revalida a assinatura Web Push ao abrir o app (recria se sumiu do backend).
+    ensureWebPushSubscribed();
+  }, []);
+
+  useEffect(() => {
     let active = true;
     // initial unread count
     supabase
