@@ -36,6 +36,14 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      - name: Fix dist layout for Capacitor
+        run: |
+          if [ -d "dist/client" ] && [ ! -f "dist/index.html" ]; then
+            echo "Vite 8 client dir detected, merging into dist/"
+            cp -r dist/client/. dist/
+          fi
+          ls dist/
+
       - name: Sync Capacitor Android
         run: npx cap sync android
 
