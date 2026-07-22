@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -6,32 +7,56 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
+import { subscribeToWebPush, unsubscribeFromWebPush, isPushSupported } from "@/lib/web-push-client";
 import { toast } from "sonner";
 
 export function NotificationSettingsDialog() {
   const { prefs, update, permission, requestPermission } = useNotificationPrefs();
+  const [busy, setBusy] = useState(false);
+
+  const enablePush = async () => {
+    if (!isPushSupported()) {
+      toast.error("Este navegador não suporta notificações push");
+      return;
+    }
+    setBusy(true);
+    try {
+      let perm = permission;
+      if (perm !== "granted") perm = await requestPermission();
+      if (perm !== "granted") {
+        toast.error(perm === "denied" ? "Permissão bloqueada nas configurações do navegador." : "Permissão negada");
+        return;
+      }
+      await subscribeToWebPush();
+      update({ webPush: true });
+      toast.success("Notificações ativadas neste dispositivo");
+    } catch (err) {
+      console.error("[push] subscribe error", err);
+      toast.error(err instanceof Error ? err.message : "Falha ao ativar notificações");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disablePush = async () => {
+    setBusy(true);
+    try {
+      await unsubscribeFromWebPush();
+      update({ webPush: false });
+      toast.success("Notificações desativadas neste dispositivo");
+    } catch (err) {
+      console.error("[push] unsubscribe error", err);
+      toast.error("Não foi possível desativar completamente. Tente de novo.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleWebPush = async (checked: boolean) => {
-    if (!checked) {
-      update({ webPush: false });
-      return;
-    }
-    if (permission === "unsupported") {
-      toast.error("Este navegador não suporta notificações");
-      return;
-    }
-    if (permission === "denied") {
-      toast.error("Permissão bloqueada. Ative nas configurações do navegador.");
-      return;
-    }
-    if (permission === "granted") {
-      update({ webPush: true });
-      return;
-    }
-    const result = await requestPermission();
-    if (result === "granted") toast.success("Notificações ativadas");
-    else if (result === "denied") toast.error("Permissão negada");
+    if (checked) await enablePush();
+    else await disablePush();
   };
+
 
   return (
     <Dialog>
@@ -90,7 +115,7 @@ export function NotificationSettingsDialog() {
             <Switch
               id="pref-web"
               checked={prefs.webPush && permission === "granted"}
-              disabled={permission === "unsupported" || permission === "denied"}
+              disabled={busy || permission === "unsupported"}
               onCheckedChange={handleWebPush}
             />
           </div>
