@@ -30,6 +30,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
 import { Route as AuthenticatedAppGruposIndexRouteImport } from './routes/_authenticated/app.grupos.index'
 import { Route as AuthenticatedAppAlunosIndexRouteImport } from './routes/_authenticated/app.alunos.index'
+import { Route as ApiPublicHooksEnqueueRemindersRouteImport } from './routes/api/public/hooks/enqueue-reminders'
 import { Route as ApiPublicHooksDispatchRestPushesRouteImport } from './routes/api/public/hooks/dispatch-rest-pushes'
 import { Route as ApiPublicHooksDispatchPushOutboxRouteImport } from './routes/api/public/hooks/dispatch-push-outbox'
 import { Route as AuthenticatedAppTreinosIdRouteImport } from './routes/_authenticated/app.treinos.$id'
@@ -153,6 +154,12 @@ const AuthenticatedAppAlunosIndexRoute =
     path: '/alunos/',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const ApiPublicHooksEnqueueRemindersRoute =
+  ApiPublicHooksEnqueueRemindersRouteImport.update({
+    id: '/api/public/hooks/enqueue-reminders',
+    path: '/api/public/hooks/enqueue-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDispatchRestPushesRoute =
   ApiPublicHooksDispatchRestPushesRouteImport.update({
     id: '/api/public/hooks/dispatch-rest-pushes',
@@ -226,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
+  '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
   '/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -255,6 +263,7 @@ export interface FileRoutesByTo {
   '/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
+  '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
   '/app/alunos': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos': typeof AuthenticatedAppTreinosIndexRoute
@@ -287,6 +296,7 @@ export interface FileRoutesById {
   '/_authenticated/app/treinos/$id': typeof AuthenticatedAppTreinosIdRoute
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
+  '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
   '/_authenticated/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/_authenticated/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/_authenticated/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/app/treinos/$id'
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
+    | '/api/public/hooks/enqueue-reminders'
     | '/app/alunos/'
     | '/app/grupos/'
     | '/app/treinos/'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/app/treinos/$id'
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
+    | '/api/public/hooks/enqueue-reminders'
     | '/app/alunos'
     | '/app/grupos'
     | '/app/treinos'
@@ -379,6 +391,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/treinos/$id'
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
+    | '/api/public/hooks/enqueue-reminders'
     | '/_authenticated/app/alunos/'
     | '/_authenticated/app/grupos/'
     | '/_authenticated/app/treinos/'
@@ -400,6 +413,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
+  ApiPublicHooksEnqueueRemindersRoute: typeof ApiPublicHooksEnqueueRemindersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -551,6 +565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAlunosIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/public/hooks/enqueue-reminders': {
+      id: '/api/public/hooks/enqueue-reminders'
+      path: '/api/public/hooks/enqueue-reminders'
+      fullPath: '/api/public/hooks/enqueue-reminders'
+      preLoaderRoute: typeof ApiPublicHooksEnqueueRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/dispatch-rest-pushes': {
       id: '/api/public/hooks/dispatch-rest-pushes'
       path: '/api/public/hooks/dispatch-rest-pushes'
@@ -700,6 +721,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
+  ApiPublicHooksEnqueueRemindersRoute: ApiPublicHooksEnqueueRemindersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
