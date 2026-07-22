@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink } from "lucide-react";
+import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
@@ -87,6 +88,20 @@ function PerfilPage() {
       ) : (
         <StudentProfile profile={profile} update={update} />
       )}
+
+      <Link
+        to="/app/notificacoes"
+        className="card-soft mt-4 flex items-center gap-3 p-4 hover:bg-accent/40 transition"
+      >
+        <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          <Bell className="size-5" />
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold">Notificações</p>
+          <p className="text-xs text-muted-foreground">Ative ou desative por categoria</p>
+        </div>
+        <ChevronRight className="size-5 text-muted-foreground" />
+      </Link>
 
       <DataManagement userId={user.id} displayName={profile.display_name ?? null} />
 
