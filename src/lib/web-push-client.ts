@@ -84,3 +84,19 @@ export async function unsubscribeFromWebPush(): Promise<void> {
     await deletePushSubscription({ data: { endpoint } });
   } catch {}
 }
+
+/**
+ * Garante que a assinatura Web Push está ativa e registrada no backend.
+ * Chamado ao abrir o app: se o navegador tem permissão e o usuário optou
+ * por push, recria a assinatura caso o servidor de push tenha invalidado
+ * (404/410) ou o navegador tenha rotacionado a chave.
+ */
+export async function ensureWebPushSubscribed(): Promise<void> {
+  if (!isPushSupported()) return;
+  if (Notification.permission !== "granted") return;
+  try {
+    await subscribeToWebPush();
+  } catch (err) {
+    console.warn("[push] ensure subscribe failed", err);
+  }
+}
