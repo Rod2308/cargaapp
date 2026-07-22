@@ -410,7 +410,7 @@ export function ImportWorkoutPlanDialog({
     >
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" disabled={!online} title={!online ? "Requer internet" : undefined}>
-          <Sparkles className="size-4" /> Importar
+          <Sparkles className="size-4" /> {triggerLabel ?? "Importar"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
