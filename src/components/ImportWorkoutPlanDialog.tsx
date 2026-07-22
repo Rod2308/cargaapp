@@ -188,7 +188,17 @@ Agachamento 4x10 60kg desc 120s
 Leg press 3x15
 Cadeira flexora 4x12`;
 
-export function ImportWorkoutPlanDialog({ userId }: { userId: string }) {
+export function ImportWorkoutPlanDialog({
+  userId,
+  createdByTrainerId,
+  onImported,
+  triggerLabel,
+}: {
+  userId: string;
+  createdByTrainerId?: string;
+  onImported?: (created: { id: string; name: string }[]) => void;
+  triggerLabel?: string;
+}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const online = useOnline();
