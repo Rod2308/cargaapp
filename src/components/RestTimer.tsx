@@ -24,6 +24,15 @@ import {
   requestNotificationPermission,
   ensureRestChannel,
 } from "@/lib/local-notifications";
+import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
+
+function scheduleServerPush(seconds: number, exerciseName?: string) {
+  if (seconds <= 0) return;
+  void scheduleRestPush({ data: { seconds: Math.round(seconds), exerciseName } }).catch(() => {});
+}
+function cancelServerPush() {
+  void cancelRestPush().catch(() => {});
+}
 
 type Prefs = {
   sound: boolean;
@@ -116,11 +125,14 @@ export function RestTimer({
 
   const finishAndCancel = () => {
     void cancelRestNotification();
+    cancelServerPush();
     onFinish();
   };
 
   const scheduleNativeAlert = (nextSeconds: number) => {
-    if (!prefs.notification || nextSeconds <= 0) return;
+    if (nextSeconds <= 0) return;
+    scheduleServerPush(nextSeconds, exerciseName);
+    if (!prefs.notification) return;
     void ensureRestChannel().then(() =>
       scheduleRestFinishedNotification(nextSeconds, exerciseName),
     );
@@ -158,6 +170,7 @@ export function RestTimer({
     if (!initialPaused) scheduleNativeAlert(seconds);
     return () => {
       void cancelRestNotification();
+      cancelServerPush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, initialTotal, initialPaused]);
@@ -219,7 +232,8 @@ export function RestTimer({
     if (done) return;
     if (paused) {
       void cancelRestNotification();
-    } else if (prefs.notification && remaining > 0) {
+      cancelServerPush();
+    } else if (remaining > 0) {
       scheduleNativeAlert(remaining);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
