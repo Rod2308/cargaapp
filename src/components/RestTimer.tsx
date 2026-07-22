@@ -170,6 +170,7 @@ export function RestTimer({
     if (!initialPaused) scheduleNativeAlert(seconds);
     return () => {
       void cancelRestNotification();
+      cancelServerPush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, initialTotal, initialPaused]);
