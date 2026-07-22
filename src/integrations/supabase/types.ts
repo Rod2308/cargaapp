@@ -452,6 +452,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rest_push_schedules: {
+        Row: {
+          body: string
+          created_at: string
+          fire_at: string
+          id: string
+          sent_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          fire_at: string
+          id?: string
+          sent_at?: string | null
+          title?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          fire_at?: string
+          id?: string
+          sent_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       session_sets: {
         Row: {
           completed_at: string
