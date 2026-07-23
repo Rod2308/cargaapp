@@ -10,11 +10,13 @@ const KEY = "carga.sync.queue.v1";
 
 export type QueueOp = {
   id: string;
-  kind: "insert" | "update" | "delete";
+  kind: "insert" | "upsert" | "update" | "delete";
   table: string;
   row?: any;
   match?: Record<string, any>;
   patch?: any;
+  onConflict?: string;
+  ignoreDuplicates?: boolean;
   createdAt: number;
 };
 
