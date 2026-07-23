@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Upload, Loader2, Database } from "lucide-react";
+import { Download, Upload, Loader2, Database, CloudDownload } from "lucide-react";
+import { prefetchOfflineEssentials } from "@/lib/offline-prefetch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -502,7 +503,30 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
   const [fmt, setFmt] = useState<Fmt>("json");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [caching, setCaching] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("offline-cache-at") : null,
+  );
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function doCacheOffline() {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Você precisa estar online para baixar seus dados.");
+      return;
+    }
+    setCaching(true);
+    try {
+      await prefetchOfflineEssentials(qc, userId);
+      const now = new Date().toISOString();
+      localStorage.setItem("offline-cache-at", now);
+      setCachedAt(now);
+      toast.success("Treinos e exercícios prontos para uso offline!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao preparar dados offline");
+    } finally {
+      setCaching(false);
+    }
+  }
 
   const baseName = (displayName || "usuario").replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 30);
 
@@ -570,6 +594,28 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
       <p className="text-xs text-muted-foreground">
         Faça backup dos seus treinos ou importe dados de outro dispositivo. Duplicatas (mesma data/hora de início) são ignoradas automaticamente.
       </p>
+
+      <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+        <p className="text-sm font-semibold">Baixar para uso offline</p>
+        <p className="text-[11px] text-muted-foreground">
+          Salva seus treinos, exercícios, perfil e histórico neste dispositivo para abrir sem internet.
+        </p>
+        <Button
+          onClick={doCacheOffline}
+          disabled={caching}
+          variant="secondary"
+          className="w-full"
+        >
+          {caching ? <Loader2 className="size-4 animate-spin" /> : <CloudDownload className="size-4" />}
+          {caching ? "Baixando dados..." : "Baixar meus dados para offline"}
+        </Button>
+        {cachedAt && (
+          <p className="text-[11px] text-muted-foreground">
+            Última sincronização: {format(new Date(cachedAt), "dd/MM/yyyy 'às' HH:mm")}
+          </p>
+        )}
+      </div>
+
 
       <div className="space-y-2">
         <p className="text-sm font-semibold">Exportar dados de treino</p>
