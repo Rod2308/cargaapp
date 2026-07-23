@@ -135,20 +135,50 @@ export function StravaConnect() {
       )}
 
       {!isLoading && data?.connected && (
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" className="flex-1" onClick={() => sync.mutate()} disabled={sync.isPending}>
-            {sync.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            Sincronizar últimas 30
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-destructive hover:text-destructive"
-            onClick={() => disconnect.mutate()}
-            disabled={disconnect.isPending}
-          >
-            {disconnect.isPending ? <Loader2 className="size-4 animate-spin" /> : <LinkOff className="size-4" />}
-            Desconectar
-          </Button>
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => syncOne.mutate("latest")}
+              disabled={syncOne.isPending}
+            >
+              {syncOne.isPending && syncOne.variables === "latest" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Última atividade
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => syncOne.mutate("today")}
+              disabled={syncOne.isPending}
+            >
+              {syncOne.isPending && syncOne.variables === "today" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Atividades de hoje
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" className="flex-1" onClick={() => sync.mutate()} disabled={sync.isPending}>
+              {sync.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              Sincronizar últimas 30
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => disconnect.mutate()}
+              disabled={disconnect.isPending}
+            >
+              {disconnect.isPending ? <Loader2 className="size-4 animate-spin" /> : <LinkOff className="size-4" />}
+              Desconectar
+            </Button>
+          </div>
         </div>
       )}
 
