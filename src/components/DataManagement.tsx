@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Upload, Loader2, Database } from "lucide-react";
+import { Download, Upload, Loader2, Database, CloudDownload } from "lucide-react";
+import { prefetchOfflineEssentials } from "@/lib/offline-prefetch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
