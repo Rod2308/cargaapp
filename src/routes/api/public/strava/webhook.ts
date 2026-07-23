@@ -18,7 +18,8 @@ export const Route = createFileRoute("/api/public/strava/webhook")({
         return new Response("forbidden", { status: 403 });
       },
       POST: async ({ request }) => {
-        // Always respond 200 quickly; Strava retries on non-2xx.
+        // Strava exige resposta em < 2s. Lemos o payload e processamos
+        // em background com waitUntil para não estourar o timeout.
         let payload: {
           object_type?: string;
           object_id?: number;
@@ -36,22 +37,36 @@ export const Route = createFileRoute("/api/public/strava/webhook")({
           return new Response("ignored", { status: 200 });
         }
 
-        try {
-          const { findUserIdByAthleteId, upsertActivityForUser, deleteActivityForUser } = await import(
-            "@/lib/strava.server"
-          );
-          const userId = await findUserIdByAthleteId(payload.owner_id);
-          if (!userId) return new Response("no user", { status: 200 });
+        const objectId = payload.object_id;
+        const ownerId = payload.owner_id;
+        const aspect = payload.aspect_type;
 
-          if (payload.aspect_type === "delete") {
-            await deleteActivityForUser(userId, payload.object_id);
-          } else {
-            // create or update -> upsert
-            await upsertActivityForUser(userId, payload.object_id);
+        const work = (async () => {
+          try {
+            const { findUserIdByAthleteId, upsertActivityForUser, deleteActivityForUser } = await import(
+              "@/lib/strava.server"
+            );
+            const userId = await findUserIdByAthleteId(ownerId);
+            if (!userId) return;
+            if (aspect === "delete") {
+              await deleteActivityForUser(userId, objectId);
+            } else {
+              await upsertActivityForUser(userId, objectId);
+            }
+          } catch (e) {
+            console.error("[strava/webhook]", e);
           }
-        } catch (e) {
-          console.error("[strava/webhook]", e);
+        })();
+
+        // Tenta usar ctx.waitUntil (Cloudflare Workers) para manter o handler
+        // vivo depois do 200. Se não estiver disponível, o promise ainda roda.
+        try {
+          const ctx = (globalThis as { __CF_CONTEXT__?: { waitUntil?: (p: Promise<unknown>) => void } }).__CF_CONTEXT__;
+          ctx?.waitUntil?.(work);
+        } catch {
+          // ignore
         }
+
         return new Response("ok", { status: 200 });
       },
     },
