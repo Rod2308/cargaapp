@@ -3,13 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap } from "lucide-react";
+import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap, Download } from "lucide-react";
 import {
   getStravaStatus,
   getStravaAuthorizeUrl,
   disconnectStrava,
   backfillStrava,
   ensureStravaWebhook,
+  syncStravaLatest,
 } from "@/lib/strava.functions";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,6 +22,7 @@ export function StravaConnect() {
   const disconnectFn = useServerFn(disconnectStrava);
   const backfillFn = useServerFn(backfillStrava);
   const ensureHookFn = useServerFn(ensureStravaWebhook);
+  const syncLatestFn = useServerFn(syncStravaLatest);
 
   const { data, isLoading } = useQuery({
     queryKey: ["strava-status"],
@@ -87,6 +89,22 @@ export function StravaConnect() {
     onError: (e: Error) => toast.error(e.message ?? "Falha ao sincronizar"),
   });
 
+  const syncOne = useMutation({
+    mutationFn: (scope: "latest" | "today") => syncLatestFn({ data: { scope } }),
+    onSuccess: (r, scope) => {
+      if (r.total === 0) {
+        toast.info(scope === "latest" ? "Nenhuma atividade encontrada" : "Nenhuma atividade hoje");
+      } else {
+        toast.success(`Sincronização: ${r.inserted} novo(s), ${r.updated} atualizado(s)`);
+      }
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["strava-status"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Falha ao sincronizar"),
+  });
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
@@ -117,20 +135,50 @@ export function StravaConnect() {
       )}
 
       {!isLoading && data?.connected && (
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" className="flex-1" onClick={() => sync.mutate()} disabled={sync.isPending}>
-            {sync.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            Sincronizar últimas 30
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-destructive hover:text-destructive"
-            onClick={() => disconnect.mutate()}
-            disabled={disconnect.isPending}
-          >
-            {disconnect.isPending ? <Loader2 className="size-4 animate-spin" /> : <LinkOff className="size-4" />}
-            Desconectar
-          </Button>
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => syncOne.mutate("latest")}
+              disabled={syncOne.isPending}
+            >
+              {syncOne.isPending && syncOne.variables === "latest" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Última atividade
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => syncOne.mutate("today")}
+              disabled={syncOne.isPending}
+            >
+              {syncOne.isPending && syncOne.variables === "today" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Atividades de hoje
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" className="flex-1" onClick={() => sync.mutate()} disabled={sync.isPending}>
+              {sync.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              Sincronizar últimas 30
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => disconnect.mutate()}
+              disabled={disconnect.isPending}
+            >
+              {disconnect.isPending ? <Loader2 className="size-4 animate-spin" /> : <LinkOff className="size-4" />}
+              Desconectar
+            </Button>
+          </div>
         </div>
       )}
 

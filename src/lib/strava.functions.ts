@@ -98,6 +98,54 @@ export const backfillStrava = createServerFn({ method: "POST" })
     return { inserted, updated, skipped, total: list.length };
   });
 
+// ------ Sync latest activity or today's activities ------
+export const syncStravaLatest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ scope: z.enum(["latest", "today"]).default("latest") }).parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    const { getValidAccessTokenForUser, listRecentActivities, listActivitiesSince, upsertActivityForUser } =
+      await import("@/lib/strava.server");
+    const token = await getValidAccessTokenForUser(context.userId);
+    if (!token) throw new Error("Strava não está conectado");
+
+    let list: Array<{ id: number }> = [];
+    if (data.scope === "latest") {
+      list = await listRecentActivities(token, 1);
+    } else {
+      // "today" no fuso America/Sao_Paulo
+      const now = new Date();
+      const saoPauloOffsetMs = -3 * 60 * 60 * 1000;
+      const local = new Date(now.getTime() + saoPauloOffsetMs);
+      const startLocal = new Date(local.getFullYear(), local.getMonth(), local.getDate());
+      const startUtcSec = Math.floor((startLocal.getTime() - saoPauloOffsetMs) / 1000);
+      list = await listActivitiesSince(token, startUtcSec, 2);
+    }
+
+    let inserted = 0;
+    let updated = 0;
+    let skipped = 0;
+    for (const a of list) {
+      try {
+        const r = await upsertActivityForUser(context.userId, a.id);
+        if (r === "inserted") inserted++;
+        else if (r === "updated") updated++;
+        else skipped++;
+      } catch {
+        skipped++;
+      }
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("strava_connections")
+      .update({ last_sync_at: new Date().toISOString() })
+      .eq("user_id", context.userId);
+
+    return { inserted, updated, skipped, total: list.length };
+  });
+
 // ------ Ensure a global webhook subscription exists (one per app) ------
 export const ensureStravaWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
