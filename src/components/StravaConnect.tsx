@@ -22,6 +22,7 @@ export function StravaConnect() {
   const disconnectFn = useServerFn(disconnectStrava);
   const backfillFn = useServerFn(backfillStrava);
   const ensureHookFn = useServerFn(ensureStravaWebhook);
+  const syncLatestFn = useServerFn(syncStravaLatest);
 
   const { data, isLoading } = useQuery({
     queryKey: ["strava-status"],
