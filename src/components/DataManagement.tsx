@@ -595,6 +595,28 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
         Faça backup dos seus treinos ou importe dados de outro dispositivo. Duplicatas (mesma data/hora de início) são ignoradas automaticamente.
       </p>
 
+      <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+        <p className="text-sm font-semibold">Baixar para uso offline</p>
+        <p className="text-[11px] text-muted-foreground">
+          Salva seus treinos, exercícios, perfil e histórico neste dispositivo para abrir sem internet.
+        </p>
+        <Button
+          onClick={doCacheOffline}
+          disabled={caching}
+          variant="secondary"
+          className="w-full"
+        >
+          {caching ? <Loader2 className="size-4 animate-spin" /> : <CloudDownload className="size-4" />}
+          {caching ? "Baixando dados..." : "Baixar meus dados para offline"}
+        </Button>
+        {cachedAt && (
+          <p className="text-[11px] text-muted-foreground">
+            Última sincronização: {format(new Date(cachedAt), "dd/MM/yyyy 'às' HH:mm")}
+          </p>
+        )}
+      </div>
+
+
       <div className="space-y-2">
         <p className="text-sm font-semibold">Exportar dados de treino</p>
         <div className="flex flex-col gap-2 sm:flex-row">
