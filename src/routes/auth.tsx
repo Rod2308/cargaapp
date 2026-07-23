@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dumbbell, Loader2, Check, Circle } from "lucide-react";
+import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 
