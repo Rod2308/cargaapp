@@ -271,6 +271,7 @@ function AuthPage() {
       }
       return toast.error(translateAuthError(error));
     }
+    applyRememberMe(remember);
     window.location.href = redirectTo;
   }
 
