@@ -69,6 +69,14 @@ async function execute(op: QueueOp) {
     if (error) throw error;
     return;
   }
+  if (op.kind === "upsert") {
+    const { error } = await table.upsert(op.row, {
+      onConflict: op.onConflict,
+      ignoreDuplicates: op.ignoreDuplicates ?? false,
+    });
+    if (error) throw error;
+    return;
+  }
   if (op.kind === "update") {
     let q: any = table.update(op.patch);
     for (const [k, v] of Object.entries(op.match ?? {})) q = q.eq(k, v);
