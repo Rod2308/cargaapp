@@ -3,13 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap } from "lucide-react";
+import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap, Download } from "lucide-react";
 import {
   getStravaStatus,
   getStravaAuthorizeUrl,
   disconnectStrava,
   backfillStrava,
   ensureStravaWebhook,
+  syncStravaLatest,
 } from "@/lib/strava.functions";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
