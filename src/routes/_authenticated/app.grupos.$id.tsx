@@ -823,10 +823,13 @@ function GroupChat({
     mutationFn: async () => {
       const content = text.trim();
       if (!content) return;
-      const { error } = await (supabase as any).from("group_messages").insert({
-        group_id: groupId, user_id: userId, content,
+      const { writeInsert } = await import("@/lib/offline-writes");
+      await writeInsert("group_messages", {
+        group_id: groupId,
+        user_id: userId,
+        content,
+        created_at: new Date().toISOString(),
       });
-      if (error) throw error;
     },
     onSuccess: () => setText(""),
     onError: (e: any) => toast.error(e.message ?? "Falha ao enviar"),
@@ -834,8 +837,8 @@ function GroupChat({
 
   const del = useMutation({
     mutationFn: async (msgId: string) => {
-      const { error } = await (supabase as any).from("group_messages").delete().eq("id", msgId);
-      if (error) throw error;
+      const { writeDelete } = await import("@/lib/offline-writes");
+      await writeDelete("group_messages", { id: msgId });
       return msgId;
     },
     onSuccess: (msgId) => {
