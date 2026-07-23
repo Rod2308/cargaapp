@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dumbbell, Loader2, Check, Circle } from "lucide-react";
+import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 
@@ -197,6 +197,8 @@ function AuthPage() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -394,7 +396,24 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <div className="relative">
+                  <Input
+                    type={showSignInPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPassword((v) => !v)}
+                    aria-label={showSignInPassword ? "Ocultar senha" : "Mostrar senha"}
+                    title={showSignInPassword ? "Ocultar senha" : "Mostrar senha"}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSignInPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
@@ -437,7 +456,27 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Crie uma senha" />
+                <div className="relative">
+                  <Input
+                    type={showSignUpPassword ? "text" : "password"}
+                    required
+                    maxLength={72}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                    placeholder="Crie uma senha"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpPassword((v) => !v)}
+                    aria-label={showSignUpPassword ? "Ocultar senha" : "Mostrar senha"}
+                    title={showSignUpPassword ? "Ocultar senha" : "Mostrar senha"}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSignUpPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
                 <PasswordChecklist password={password} />
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
