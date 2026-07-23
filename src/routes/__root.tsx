@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { registerSW } from "@/lib/register-sw";
 import { initSyncQueue } from "@/lib/offline-queue";
 import { setupQueryPersister } from "@/lib/query-persister";
+import { prefetchOfflineEssentials } from "@/lib/offline-prefetch";
 import { SyncStatus } from "@/components/SyncStatus";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
@@ -119,11 +120,24 @@ function RootComponent() {
     registerSW();
     initSyncQueue();
     setupQueryPersister(queryClient);
-    const { data } = supabase.auth.onAuthStateChange((event) => {
+    // Pré-carrega dados essenciais para uso offline (best-effort)
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) void prefetchOfflineEssentials(queryClient, data.user.id);
+    });
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      if (event !== "SIGNED_OUT") {
+        queryClient.invalidateQueries();
+        if (session?.user) void prefetchOfflineEssentials(queryClient, session.user.id);
+      }
     });
+    const handleOnline = () => {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) void prefetchOfflineEssentials(queryClient, data.user.id);
+      });
+    };
+    window.addEventListener("online", handleOnline);
 
     // Native OAuth bridge: detect when Chrome Custom Tab returns with auth
     const urlParams = new URLSearchParams(window.location.search);
@@ -190,6 +204,7 @@ function RootComponent() {
       data.subscription.unsubscribe();
       nativeAuthUnsub?.();
       removeUrlListener?.();
+      window.removeEventListener("online", handleOnline);
     };
   }, [router, queryClient]);
   return (
