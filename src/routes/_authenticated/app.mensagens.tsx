@@ -106,6 +106,9 @@ function MensagensPage() {
       const orFilter = ids
         .map((sid) => `and(sender_id.eq.${user.id},receiver_id.eq.${sid}),and(sender_id.eq.${sid},receiver_id.eq.${user.id})`)
         .join(",");
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        throw new Error("Sem conexão para excluir conversas. Tente novamente quando voltar a internet.");
+      }
       const { error } = await supabase.from("messages").delete().or(orFilter);
       if (error) throw error;
     },
