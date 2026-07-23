@@ -396,7 +396,24 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <div className="relative">
+                  <Input
+                    type={showSignInPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPassword((v) => !v)}
+                    aria-label={showSignInPassword ? "Ocultar senha" : "Mostrar senha"}
+                    title={showSignInPassword ? "Ocultar senha" : "Mostrar senha"}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSignInPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
