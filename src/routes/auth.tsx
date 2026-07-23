@@ -199,6 +199,23 @@ function AuthPage() {
   const [resending, setResending] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+
+  async function sendReset(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = emailSchema.safeParse(forgotEmail || email);
+    if (!parsed.success) return toast.error(parsed.error.issues[0]?.message ?? "Email inválido.");
+    setForgotBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotBusy(false);
+    if (error) return toast.error(translateAuthError(error));
+    toast.success(`Enviamos um link de redefinição para ${parsed.data}. Verifique sua caixa de entrada e o spam.`, { duration: 8000 });
+    setForgotOpen(false);
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -418,7 +435,49 @@ function AuthPage() {
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
               </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setForgotEmail(email); setForgotOpen((v) => !v); }}
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+              {forgotOpen && (
+                <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Informe seu email e enviaremos um link para redefinir sua senha.
+                  </p>
+                  <Input
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={sendReset}
+                      disabled={forgotBusy}
+                      className="flex-1"
+                    >
+                      {forgotBusy ? <Loader2 className="size-4 animate-spin" /> : "Enviar link"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setForgotOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </form>
+
           </TabsContent>
           <TabsContent value="signup">
             <form onSubmit={signUp} className="space-y-4 pt-4">
