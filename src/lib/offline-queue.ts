@@ -82,9 +82,34 @@ async function execute(op: QueueOp) {
   }
 }
 
+// Tabelas com coluna UNIQUE `client_mutation_id` — inserts recebem o id
+// automaticamente para permitir retry seguro (idempotência).
+const IDEMPOTENT_TABLES = new Set([
+  "sessions",
+  "session_sets",
+  "workouts",
+  "workout_exercises",
+  "messages",
+  "group_messages",
+  "daily_checkins",
+  "sleep_logs",
+]);
+
 export async function enqueueOp(op: Omit<QueueOp, "id" | "createdAt">) {
   await load();
-  queue.push({ ...op, id: crypto.randomUUID(), createdAt: Date.now() });
+  const id = crypto.randomUUID();
+  let row = op.row;
+  if (
+    op.kind === "insert" &&
+    row &&
+    typeof row === "object" &&
+    !Array.isArray(row) &&
+    IDEMPOTENT_TABLES.has(op.table) &&
+    row.client_mutation_id == null
+  ) {
+    row = { ...row, client_mutation_id: id };
+  }
+  queue.push({ ...op, row, id, createdAt: Date.now() });
   await persist();
   void flush();
 }
