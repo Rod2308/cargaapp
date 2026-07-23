@@ -82,6 +82,75 @@ export async function prefetchOfflineEssentials(qc: QueryClient, userId: string)
         }),
       ),
     );
+
+    // Histórico COMPLETO de sessões — mesma shape usada por app.historico.tsx
+    await qc.prefetchQuery({
+      queryKey: ["history-sessions", userId],
+      queryFn: async () => {
+        const { data } = await supabase
+          .from("sessions")
+          .select(
+            "id, started_at, ended_at, perceived_effort, notes, title, workout_id, source, activity_type, distance_m, avg_hr, max_hr, calories, workouts(name, label), session_sets(id, reps, weight_kg, exercises(name, muscle_group))",
+          )
+          .eq("user_id", userId)
+          .order("started_at", { ascending: false });
+        return data ?? [];
+      },
+    });
+
+    // Detalhes de cada sessão para abrir offline sem ter visitado antes
+    const history = qc.getQueryData<Array<{ id: string; workout_id: string | null }>>([
+      "history-sessions",
+      userId,
+    ]) ?? [];
+
+    // Limita concorrência para não estourar a rede em históricos grandes
+    const CONCURRENCY = 6;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < history.length) {
+        const s = history[cursor++];
+        if (!s) continue;
+        await Promise.allSettled([
+          qc.prefetchQuery({
+            queryKey: ["session", s.id],
+            queryFn: async () => {
+              const { data } = await supabase
+                .from("sessions")
+                .select("*, workouts(name, label)")
+                .eq("id", s.id)
+                .single();
+              return data;
+            },
+          }),
+          qc.prefetchQuery({
+            queryKey: ["session-sets", s.id],
+            queryFn: async () => {
+              const { data } = await supabase
+                .from("session_sets")
+                .select("*")
+                .eq("session_id", s.id)
+                .order("completed_at");
+              return data ?? [];
+            },
+          }),
+          s.workout_id
+            ? qc.prefetchQuery({
+                queryKey: ["session-plan", s.id],
+                queryFn: async () => {
+                  const { data } = await supabase
+                    .from("workout_exercises")
+                    .select("*, exercises(*)")
+                    .eq("workout_id", s.workout_id!)
+                    .order("order_idx");
+                  return data ?? [];
+                },
+              })
+            : Promise.resolve(),
+        ]);
+      }
+    }
+    await Promise.allSettled(Array.from({ length: CONCURRENCY }, worker));
   } catch {
     // silencioso — prefetch é best-effort
   }
