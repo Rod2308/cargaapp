@@ -1,6 +1,10 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { initRememberMe } from "@/lib/remember-me";
+
+// Hidrata token temporário (sessionStorage → localStorage) antes do Supabase client inicializar.
+initRememberMe();
 
 export const getRouter = () => {
   const queryClient = new QueryClient({

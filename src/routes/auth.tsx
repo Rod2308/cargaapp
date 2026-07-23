@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
+import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
 
 
 
@@ -202,6 +203,7 @@ function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
+  const [remember, setRemember] = useState(() => getRememberMePreference());
 
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
@@ -269,6 +271,7 @@ function AuthPage() {
       }
       return toast.error(translateAuthError(error));
     }
+    applyRememberMe(remember);
     window.location.href = redirectTo;
   }
 
@@ -432,6 +435,15 @@ function AuthPage() {
                   </button>
                 </div>
               </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="size-4 rounded border-border accent-primary"
+                />
+                Lembrar-me neste dispositivo
+              </label>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
               </Button>
