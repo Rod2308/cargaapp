@@ -89,6 +89,22 @@ export function StravaConnect() {
     onError: (e: Error) => toast.error(e.message ?? "Falha ao sincronizar"),
   });
 
+  const syncOne = useMutation({
+    mutationFn: (scope: "latest" | "today") => syncLatestFn({ data: { scope } }),
+    onSuccess: (r, scope) => {
+      if (r.total === 0) {
+        toast.info(scope === "latest" ? "Nenhuma atividade encontrada" : "Nenhuma atividade hoje");
+      } else {
+        toast.success(`Sincronização: ${r.inserted} novo(s), ${r.updated} atualizado(s)`);
+      }
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["strava-status"] });
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Falha ao sincronizar"),
+  });
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
