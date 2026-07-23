@@ -199,9 +199,9 @@ function WorkoutEditor() {
 
   const applyAll = useMutation({
     mutationFn: async () => {
+      const { writeUpdate } = await import("@/lib/offline-writes");
       for (const { itemId, patch } of pendingSuggestions) {
-        const { error } = await supabase.from("workout_exercises").update(patch).eq("id", itemId);
-        if (error) throw error;
+        await writeUpdate("workout_exercises", { id: itemId }, patch);
       }
       return pendingSuggestions.length;
     },
@@ -215,9 +215,16 @@ function WorkoutEditor() {
 
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await supabase.from("workout_exercises").delete().eq("id", itemId);
-      if (error) throw error;
+      const { writeDelete } = await import("@/lib/offline-writes");
+      await writeDelete("workout_exercises", { id: itemId });
     },
+    onMutate: async (itemId: string) => {
+      await qc.cancelQueries({ queryKey: ["workout-exercises", id] });
+      const prev = qc.getQueryData<any[]>(["workout-exercises", id]);
+      qc.setQueryData<any[]>(["workout-exercises", id], (old = []) => old.filter((it) => it.id !== itemId));
+      return { prev };
+    },
+    onError: (_e, _id, ctx: any) => { if (ctx?.prev) qc.setQueryData(["workout-exercises", id], ctx.prev); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
   });
 
