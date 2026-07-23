@@ -456,7 +456,27 @@ function AuthPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Senha</Label>
-                <Input type="password" required maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Crie uma senha" />
+                <div className="relative">
+                  <Input
+                    type={showSignUpPassword ? "text" : "password"}
+                    required
+                    maxLength={72}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                    placeholder="Crie uma senha"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpPassword((v) => !v)}
+                    aria-label={showSignUpPassword ? "Ocultar senha" : "Mostrar senha"}
+                    title={showSignUpPassword ? "Ocultar senha" : "Mostrar senha"}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSignUpPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
                 <PasswordChecklist password={password} />
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full">
