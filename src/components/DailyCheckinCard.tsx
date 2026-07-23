@@ -48,17 +48,19 @@ export function DailyCheckinCard({
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message ?? "Dados inválidos");
       }
-      const { error } = await supabase
-        .from("daily_checkins")
-        .upsert(
-          { user_id: userId, log_date: todayStr, ...parsed.data },
-          { onConflict: "user_id,log_date" },
-        );
-      if (error) throw error;
+      const { writeUpsert } = await import("@/lib/offline-writes");
+      await writeUpsert(
+        "daily_checkins",
+        { user_id: userId, log_date: todayStr, ...parsed.data },
+        { onConflict: "user_id,log_date" },
+      );
+      return parsed.data;
     },
-    onSuccess: () => {
-      toast.success(initial ? "Check-in atualizado" : "Check-in salvo!");
+    onSuccess: (payload) => {
+      // Atualiza cache local para refletir imediatamente (mesmo offline).
+      qc.setQueryData(["daily-checkin", userId, todayStr], payload);
       qc.invalidateQueries({ queryKey: ["daily-checkin"] });
+      toast.success(initial ? "Check-in atualizado" : "Check-in salvo!");
       onSaved?.();
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),

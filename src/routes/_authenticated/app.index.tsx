@@ -323,20 +323,32 @@ function Dashboard() {
 
   const logSleep = useMutation({
     mutationFn: async ({ hours, quality }: { hours: number; quality?: number | null }) => {
-      const { error } = await supabase
-        .from("sleep_logs")
-        .upsert(
-          { user_id: user.id, log_date: todayStr, hours, quality: quality ?? null },
-          { onConflict: "user_id,log_date" },
-        );
-      if (error) throw error;
+      const { writeUpsert } = await import("@/lib/offline-writes");
+      await writeUpsert(
+        "sleep_logs",
+        { user_id: user.id, log_date: todayStr, hours, quality: quality ?? null },
+        { onConflict: "user_id,log_date" },
+      );
+      return { hours, quality: quality ?? null };
+    },
+    onMutate: async ({ hours, quality }) => {
+      await qc.cancelQueries({ queryKey: ["sleep-logs", user.id] });
+      const prev = qc.getQueryData<any[]>(["sleep-logs", user.id]);
+      qc.setQueryData<any[]>(["sleep-logs", user.id], (old = []) => {
+        const filtered = old.filter((s: any) => s.log_date !== todayStr);
+        return [{ log_date: todayStr, hours, quality: quality ?? null }, ...filtered];
+      });
+      return { prev };
+    },
+    onError: (e: any, _v, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(["sleep-logs", user.id], ctx.prev);
+      toast.error(e.message);
     },
     onSuccess: () => {
       toast.success("Sono registrado!");
       qc.invalidateQueries({ queryKey: ["sleep-logs"] });
       qc.invalidateQueries({ queryKey: ["recovery"] });
     },
-    onError: (e: any) => toast.error(e.message),
   });
 
 

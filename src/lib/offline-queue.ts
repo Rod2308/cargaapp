@@ -10,11 +10,13 @@ const KEY = "carga.sync.queue.v1";
 
 export type QueueOp = {
   id: string;
-  kind: "insert" | "update" | "delete";
+  kind: "insert" | "upsert" | "update" | "delete";
   table: string;
   row?: any;
   match?: Record<string, any>;
   patch?: any;
+  onConflict?: string;
+  ignoreDuplicates?: boolean;
   createdAt: number;
 };
 
@@ -64,6 +66,14 @@ async function execute(op: QueueOp) {
     const { error } = op.row?.id
       ? await table.upsert(op.row, { onConflict: "id", ignoreDuplicates: true })
       : await table.insert(op.row);
+    if (error) throw error;
+    return;
+  }
+  if (op.kind === "upsert") {
+    const { error } = await table.upsert(op.row, {
+      onConflict: op.onConflict,
+      ignoreDuplicates: op.ignoreDuplicates ?? false,
+    });
     if (error) throw error;
     return;
   }

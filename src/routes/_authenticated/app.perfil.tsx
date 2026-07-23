@@ -49,15 +49,24 @@ function PerfilPage() {
 
   const update = useMutation({
     mutationFn: async (patch: any) => {
-      const { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
-      if (error) throw error;
+      const { writeUpdate } = await import("@/lib/offline-writes");
+      await writeUpdate("profiles", { id: user.id }, patch);
+    },
+    onMutate: async (patch: any) => {
+      await qc.cancelQueries({ queryKey: ["profile", user.id] });
+      const prev = qc.getQueryData<any>(["profile", user.id]);
+      qc.setQueryData<any>(["profile", user.id], (old: any) => ({ ...(old ?? {}), ...patch }));
+      return { prev };
+    },
+    onError: (e: any, _patch, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(["profile", user.id], ctx.prev);
+      toast.error(e.message);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["recovery"] });
       toast.success("Perfil atualizado");
     },
-    onError: (e: any) => toast.error(e.message),
   });
 
   async function signOut() {

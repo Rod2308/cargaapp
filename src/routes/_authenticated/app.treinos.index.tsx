@@ -36,15 +36,16 @@ function TreinosList() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase
-        .from("workouts")
-        .insert({ user_id: user.id, label, name, order_idx: workouts.length })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const { writeInsert } = await import("@/lib/offline-writes");
+      return await writeInsert("workouts", {
+        user_id: user.id,
+        label,
+        name,
+        order_idx: workouts.length,
+      });
     },
-    onSuccess: (w) => {
+    onSuccess: (w: any) => {
+      qc.setQueryData<any[]>(["workouts", user.id], (old = []) => [...old, w]);
       qc.invalidateQueries({ queryKey: ["workouts"] });
       setOpen(false);
       setName("");
@@ -55,8 +56,17 @@ function TreinosList() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("workouts").delete().eq("id", id);
-      if (error) throw error;
+      const { writeDelete } = await import("@/lib/offline-writes");
+      await writeDelete("workouts", { id });
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["workouts", user.id] });
+      const prev = qc.getQueryData<any[]>(["workouts", user.id]);
+      qc.setQueryData<any[]>(["workouts", user.id], (old = []) => old.filter((w) => w.id !== id));
+      return { prev };
+    },
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(["workouts", user.id], ctx.prev);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workouts"] }),
   });

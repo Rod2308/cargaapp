@@ -106,6 +106,9 @@ function MensagensPage() {
       const orFilter = ids
         .map((sid) => `and(sender_id.eq.${user.id},receiver_id.eq.${sid}),and(sender_id.eq.${sid},receiver_id.eq.${user.id})`)
         .join(",");
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        throw new Error("Sem conexão para excluir conversas. Tente novamente quando voltar a internet.");
+      }
       const { error } = await supabase.from("messages").delete().or(orFilter);
       if (error) throw error;
     },
@@ -427,6 +430,7 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
   useEffect(() => {
     const unread = messages.filter((m) => m.receiver_id === me && !m.read_at).map((m) => m.id);
     if (unread.length === 0) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return; // pula quando offline
     supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread).then(() => {
       qc.invalidateQueries({ queryKey: ["msg-preview"] });
     });
@@ -439,13 +443,15 @@ function Chat({ me, partner, subtitle, onBack }: { me: string; partner: ChatPart
 
   const send = useMutation({
     mutationFn: async (content: string) => {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert({ sender_id: me, receiver_id: partnerId, content })
-        .select("id, sender_id, receiver_id, content, created_at, read_at")
-        .single();
-      if (error) throw error;
-      return data as Message;
+      const { writeInsert } = await import("@/lib/offline-writes");
+      const row = await writeInsert("messages", {
+        sender_id: me,
+        receiver_id: partnerId,
+        content,
+        created_at: new Date().toISOString(),
+        read_at: null,
+      });
+      return row as unknown as Message;
     },
     onSuccess: (m) => {
       qc.setQueryData<Message[]>(queryKey, (old = []) => (old.some((x) => x.id === m.id) ? old : [...old, m]));
