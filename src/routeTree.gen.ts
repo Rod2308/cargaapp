@@ -33,6 +33,8 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
 import { Route as AuthenticatedAppGruposIndexRouteImport } from './routes/_authenticated/app.grupos.index'
 import { Route as AuthenticatedAppAlunosIndexRouteImport } from './routes/_authenticated/app.alunos.index'
+import { Route as ApiPublicStravaWebhookRouteImport } from './routes/api/public/strava/webhook'
+import { Route as ApiPublicStravaCallbackRouteImport } from './routes/api/public/strava/callback'
 import { Route as ApiPublicHooksEnqueueRemindersRouteImport } from './routes/api/public/hooks/enqueue-reminders'
 import { Route as ApiPublicHooksDispatchRestPushesRouteImport } from './routes/api/public/hooks/dispatch-rest-pushes'
 import { Route as ApiPublicHooksDispatchPushOutboxRouteImport } from './routes/api/public/hooks/dispatch-push-outbox'
@@ -174,6 +176,16 @@ const AuthenticatedAppAlunosIndexRoute =
     path: '/alunos/',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const ApiPublicStravaWebhookRoute = ApiPublicStravaWebhookRouteImport.update({
+  id: '/api/public/strava/webhook',
+  path: '/api/public/strava/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStravaCallbackRoute = ApiPublicStravaCallbackRouteImport.update({
+  id: '/api/public/strava/callback',
+  path: '/api/public/strava/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksEnqueueRemindersRoute =
   ApiPublicHooksEnqueueRemindersRouteImport.update({
     id: '/api/public/hooks/enqueue-reminders',
@@ -257,6 +269,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
+  '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -290,6 +304,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
+  '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/app/alunos': typeof AuthenticatedAppAlunosIndexRoute
   '/app/grupos': typeof AuthenticatedAppGruposIndexRoute
   '/app/treinos': typeof AuthenticatedAppTreinosIndexRoute
@@ -326,6 +342,8 @@ export interface FileRoutesById {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
+  '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/_authenticated/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
   '/_authenticated/app/grupos/': typeof AuthenticatedAppGruposIndexRoute
   '/_authenticated/app/treinos/': typeof AuthenticatedAppTreinosIndexRoute
@@ -362,6 +380,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/strava/callback'
+    | '/api/public/strava/webhook'
     | '/app/alunos/'
     | '/app/grupos/'
     | '/app/treinos/'
@@ -395,6 +415,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/strava/callback'
+    | '/api/public/strava/webhook'
     | '/app/alunos'
     | '/app/grupos'
     | '/app/treinos'
@@ -430,6 +452,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/strava/callback'
+    | '/api/public/strava/webhook'
     | '/_authenticated/app/alunos/'
     | '/_authenticated/app/grupos/'
     | '/_authenticated/app/treinos/'
@@ -453,6 +477,8 @@ export interface RootRouteChildren {
   ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
   ApiPublicHooksEnqueueRemindersRoute: typeof ApiPublicHooksEnqueueRemindersRoute
+  ApiPublicStravaCallbackRoute: typeof ApiPublicStravaCallbackRoute
+  ApiPublicStravaWebhookRoute: typeof ApiPublicStravaWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -625,6 +651,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAlunosIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/api/public/strava/webhook': {
+      id: '/api/public/strava/webhook'
+      path: '/api/public/strava/webhook'
+      fullPath: '/api/public/strava/webhook'
+      preLoaderRoute: typeof ApiPublicStravaWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/strava/callback': {
+      id: '/api/public/strava/callback'
+      path: '/api/public/strava/callback'
+      fullPath: '/api/public/strava/callback'
+      preLoaderRoute: typeof ApiPublicStravaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/enqueue-reminders': {
       id: '/api/public/hooks/enqueue-reminders'
       path: '/api/public/hooks/enqueue-reminders'
@@ -787,6 +827,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
   ApiPublicHooksEnqueueRemindersRoute: ApiPublicHooksEnqueueRemindersRoute,
+  ApiPublicStravaCallbackRoute: ApiPublicStravaCallbackRoute,
+  ApiPublicStravaWebhookRoute: ApiPublicStravaWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

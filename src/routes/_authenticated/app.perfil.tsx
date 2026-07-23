@@ -16,6 +16,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
+import { StravaConnect } from "@/components/StravaConnect";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
@@ -113,6 +114,9 @@ function PerfilPage() {
       </Link>
 
       <DataManagement userId={user.id} displayName={profile.display_name ?? null} />
+
+      <StravaConnect />
+
 
       <InstallInstructions />
 
