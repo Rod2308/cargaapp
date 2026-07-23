@@ -503,7 +503,30 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
   const [fmt, setFmt] = useState<Fmt>("json");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [caching, setCaching] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("offline-cache-at") : null,
+  );
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function doCacheOffline() {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Você precisa estar online para baixar seus dados.");
+      return;
+    }
+    setCaching(true);
+    try {
+      await prefetchOfflineEssentials(qc, userId);
+      const now = new Date().toISOString();
+      localStorage.setItem("offline-cache-at", now);
+      setCachedAt(now);
+      toast.success("Treinos e exercícios prontos para uso offline!");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao preparar dados offline");
+    } finally {
+      setCaching(false);
+    }
+  }
 
   const baseName = (displayName || "usuario").replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 30);
 
