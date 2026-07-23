@@ -204,6 +204,7 @@ function RootComponent() {
       data.subscription.unsubscribe();
       nativeAuthUnsub?.();
       removeUrlListener?.();
+      window.removeEventListener("online", handleOnline);
     };
   }, [router, queryClient]);
   return (
