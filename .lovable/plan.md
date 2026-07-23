@@ -1,77 +1,79 @@
-## Objetivo
+# Modo Offline Completo — Fila de Sincronização
 
-Card "Sugestão de hoje" no dashboard que decide o treino do dia a partir de uma função pura em TypeScript — combinando histórico de treinos formais, atividades extras (esportes/cardio), check-in diário e regras de recuperação. Zero IA, zero chamada externa.
+Transformar o Carga num app que continua funcionando 100% quando a internet cai: você navega, cria treinos, marca séries, manda mensagem — e tudo sincroniza sozinho quando a conexão volta.
 
-## O que o usuário vê
+## O que você vai ganhar
 
-Na tela inicial (`/app`), logo acima de "Meus treinos":
+- **Abrir o app offline**: telas, últimos treinos e histórico ficam em cache local.
+- **Criar/editar offline**: novos treinos, séries, sessões, check-ins diários e mensagens entram numa fila.
+- **Sincronização automática**: quando volta a internet, a fila envia tudo em ordem e você vê um badge "Sincronizando… X pendentes".
+- **Indicador visual**: cada item criado offline mostra um ícone "⏳ pendente" até sincronizar.
+- **Resolução de conflitos**: se o mesmo registro foi alterado no servidor, você é avisado e decide (manter o seu / usar o do servidor).
 
-1. **Se ainda não fez check-in hoje**: card compacto pedindo os 4 números (sono h, qualidade 1-5, dor 1-5, energia 1-5), com botão "Salvar check-in".
-2. **Depois do check-in**: card com
-   - **Título**: "Sugestão de hoje"
-   - **Grupo/tipo em destaque**: ex. "Peito + Tríceps · Força"
-   - **Badge de intensidade**: Leve (verde) / Moderada (âmbar) / Alta (vermelho) / Descanso (cinza)
-   - **Frase explicativa** com dados reais: "Você jogou futebol ontem, pernas ainda cansadas — hoje foco em parte superior."
-   - **Score de recuperação** 0-10 e detalhes expansíveis ("Como calculei")
-   - **Botão "Iniciar este treino"** que abre o treino do plano cujo `label`/exercícios mais casam com o grupo sugerido, ou o modal de "esporte/atividade avulsa" quando a sugestão é descanso ativo/cardio leve.
+## O que fica offline (leitura)
 
-Se o usuário for novo (menos de 3 sessões registradas), o card mostra sugestão padrão (full body moderado) com aviso "vai ficar mais preciso conforme você registrar treinos".
+Cache local no IndexedDB, atualizado a cada abertura online:
+- Seus treinos e exercícios (todos)
+- Últimas 30 sessões + séries
+- Perfil, preferências, grupos que você participa
+- Últimas 100 mensagens de cada conversa/grupo
 
-## Arquivos
+## O que fica na fila (escrita)
 
-**Migration** (nova tabela)
-- `daily_checkins` — `user_id`, `log_date` (unique com user), `sleep_hours numeric`, `sleep_quality int 1-5`, `soreness int 1-5`, `energy int 1-5`, `created_at`. RLS: dono lê/escreve. GRANT `authenticated` + `service_role`.
+Operações que geram um item na fila offline:
+- Iniciar/finalizar sessão de treino
+- Adicionar/editar/remover série
+- Criar/editar/excluir treino e exercício do treino
+- Check-in diário, sono, desconforto
+- Enviar mensagem (DM ou grupo)
+- Editar perfil
 
-**Novo** `src/lib/daily-suggestion.ts` — função pura, testável, sem side-effects:
-- `MUSCLE_RECOVERY_DAYS` (peito 2, costas 2, pernas 3, ombro 2, bíceps 1, tríceps 1, glúteo 2, abdômen 1)
-- `ACTIVITY_IMPACT_MAP`: mapa `activity_name → { grupo: "alto"|"medio"|"baixo" }[]` para futebol, vôlei, corrida, caminhada, natação, ciclismo (usa o mesmo nome que já está em `exercises` grupo "Esportes").
-- `combineTimeline(sessoes, atividadesExtras)` → linha do tempo unificada de 7 dias com `{ date, impactoPorGrupo, cardioMinutes }`.
-- `diasDesdeUltimoEsforco(timeline, grupo)` → considera impacto médio/alto como reset.
-- `cargaCardioSemana(timeline)` → soma minutos de cardio médio/alto; flag `alta` se ≥ 3 sessões intensas.
-- `scoreRecuperacao(checkin)` → 0-10 com pesos (sono h ×3 normalizado até 8h, qualidade ×3, dor invertida ×2, energia ×2).
-- `sugerirTreinoDoDia({ sessoes, atividadesExtras, checkin, hoje })` → aplica regras (a-f do brief) e retorna `{ tipo, grupos, intensidade, motivo, score, gruposLiberados, cardioCarga, sugerirWorkoutId? }`.
+Operações que **exigem internet** (mostram aviso claro):
+- Login/cadastro
+- Entrar em grupo por código, aceitar convite
+- Importar arquivo `.fit`/plano (parse é local, mas salvar precisa de rede)
+- Push notifications (chegam só online)
+- Ranking em tempo real do grupo
 
-**Novo** `src/components/DailyCheckinCard.tsx` — form controlado (4 campos) + mutation upsert. Zod: `sleep_hours` 0-24, restantes 1-5.
-
-**Novo** `src/components/DailySuggestionCard.tsx` — recebe o resultado da função, renderiza estado vazio (sem check-in), estado usuário novo, ou sugestão completa. Botão "Iniciar" chama a mesma `startSession` mutation já existente no dashboard, escolhendo o workout do plano cujos exercícios mais cobrem os grupos sugeridos.
-
-**Editado** `src/routes/_authenticated/app.index.tsx`:
-- Novas queries: `daily-checkin` (dia atual), `all-sessions-7d` (com `session_sets → exercises.muscle_group`), `extra-activities-7d` (sessões `workout_id is null` com `exercise.muscle_group='Esportes'`).
-- Renderiza `<DailyCheckinCard>` OU `<DailySuggestionCard>` logo após o card de recuperação.
-
-## Fluxo de dados
+## Como funciona por dentro (técnico)
 
 ```text
-sessions (formais, com session_sets → exercises.muscle_group)
-sessions (extras, workout_id null, session_sets → exercises "Esportes")
-daily_checkins (hoje)
-                    │
-                    ▼
-          sugerirTreinoDoDia() ← função pura
-                    │
-                    ▼
-         DailySuggestionCard renderiza
-                    │
-                    ▼
-    onClick → startSession(workoutSugerido) já existente
+┌─────────────┐   escrita    ┌──────────────┐
+│  Componente │ ───────────► │  offline-db  │  IndexedDB local
+└─────────────┘              │  (Dexie)     │  ├─ cache_*   (leitura)
+       ▲                     │              │  └─ mutations (fila)
+       │ lê                  └──────┬───────┘
+       │                            │ quando online
+       │                            ▼
+       │                     ┌──────────────┐
+       └──── sync ◄───────── │ sync-engine  │ ──► Supabase
+                             └──────────────┘
 ```
 
-## Regras de decisão (ordem)
+**Componentes novos:**
+1. `src/lib/offline-db.ts` — Dexie (wrapper amigável do IndexedDB) com tabelas `mutations`, `cache_workouts`, `cache_sessions`, `cache_messages`, etc.
+2. `src/lib/sync-engine.ts` — worker que processa a fila em ordem FIFO, com retry exponencial e detecção de conflito por `updated_at`.
+3. `src/hooks/useOfflineMutation.ts` — substituto do `useMutation` que grava na fila se offline, direto se online.
+4. `src/hooks/useOfflineQuery.ts` — wrapper do `useQuery` que devolve dado do cache quando offline.
+5. `src/components/SyncBadge.tsx` — mostra "N pendentes • sincronizando…" no header.
+6. `src/components/PendingBadge.tsx` — ícone ⏳ em cada item ainda não sincronizado.
 
-1. score ≤ 4 OU dor ≥ 4 OU ≥ 6 dias de esforço na semana → **descanso ativo, leve**
-2. score 4–6 → **funcional leve** num grupo liberado e não impactado por extra recente
-3. score > 6 → **força** no grupo liberado com mais dias parado; alta se score ≥ 8, senão moderada
-4. Se pernas foram exigidas por extra intenso nas últimas 48h → nunca sugerir pernas (força upper body)
-5. Nenhum grupo liberado + score bom → **cardio leve** (respeitando `cargaCardioSemana`) ou mobilidade
+**Backend:**
+- Adicionar coluna `client_mutation_id uuid` nas tabelas de escrita (sessions, session_sets, workouts, workout_exercises, messages, group_messages, daily_checkins, sleep_logs) com `UNIQUE` — garante idempotência (se o retry duplicar, o servidor ignora).
+- Migration única com `ADD COLUMN IF NOT EXISTS` + índice único.
 
-## Segurança e validação
+**Escopo dos dados em cache:** só do usuário logado. Ao trocar de conta, o cache é limpo.
 
-- Zod nos inputs do check-in (client e server via `upsert`).
-- RLS + GRANT explícitos na nova tabela.
-- Nenhum dado do check-in em URLs ou logs.
+## Fora de escopo (fica pra depois se quiser)
 
-## Fora de escopo desta entrega
+- Sincronização entre múltiplos dispositivos do mesmo usuário em tempo real offline.
+- Cache offline de imagens grandes de exercícios (só metadados).
+- Ranking e chat de grupo em modo offline colaborativo.
 
-- Histórico de check-ins e gráficos (só o dia atual + upsert por data).
-- Editar o mapa de impacto pela UI (fica hard-coded em `daily-suggestion.ts`).
-- Ajuste automático da intensidade dentro do workout do plano — o botão "Iniciar" apenas leva ao workout mais adequado; ajuste fino continua no editor de treino existente.
+## Entrega em 3 passos
+
+1. **Infra base**: Dexie + offline-db + sync-engine + SyncBadge + migration `client_mutation_id`.
+2. **Migração das escritas críticas**: sessão de treino, séries, check-in, perfil (o fluxo que você mais usa).
+3. **Migração das demais**: workouts, mensagens, sleep_logs + PendingBadge nos itens.
+
+Posso começar pelo passo 1 agora. Confirma?

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       daily_checkins: {
         Row: {
+          client_mutation_id: string | null
           created_at: string
           energy: number
           id: string
@@ -27,6 +28,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           created_at?: string
           energy: number
           id?: string
@@ -38,6 +40,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           created_at?: string
           energy?: number
           id?: string
@@ -161,6 +164,7 @@ export type Database = {
       }
       group_messages: {
         Row: {
+          client_mutation_id: string | null
           content: string
           created_at: string
           group_id: string
@@ -168,6 +172,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           content: string
           created_at?: string
           group_id: string
@@ -175,6 +180,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           content?: string
           created_at?: string
           group_id?: string
@@ -304,6 +310,7 @@ export type Database = {
       }
       messages: {
         Row: {
+          client_mutation_id: string | null
           content: string
           created_at: string
           id: string
@@ -312,6 +319,7 @@ export type Database = {
           sender_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           content: string
           created_at?: string
           id?: string
@@ -320,6 +328,7 @@ export type Database = {
           sender_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -520,6 +529,7 @@ export type Database = {
       }
       session_sets: {
         Row: {
+          client_mutation_id: string | null
           completed_at: string
           exercise_id: string
           id: string
@@ -531,6 +541,7 @@ export type Database = {
           workout_exercise_id: string | null
         }
         Insert: {
+          client_mutation_id?: string | null
           completed_at?: string
           exercise_id: string
           id?: string
@@ -542,6 +553,7 @@ export type Database = {
           workout_exercise_id?: string | null
         }
         Update: {
+          client_mutation_id?: string | null
           completed_at?: string
           exercise_id?: string
           id?: string
@@ -581,6 +593,7 @@ export type Database = {
           activity_type: string | null
           avg_hr: number | null
           calories: number | null
+          client_mutation_id: string | null
           distance_m: number | null
           elevation_gain_m: number | null
           elevation_loss_m: number | null
@@ -601,6 +614,7 @@ export type Database = {
           activity_type?: string | null
           avg_hr?: number | null
           calories?: number | null
+          client_mutation_id?: string | null
           distance_m?: number | null
           elevation_gain_m?: number | null
           elevation_loss_m?: number | null
@@ -621,6 +635,7 @@ export type Database = {
           activity_type?: string | null
           avg_hr?: number | null
           calories?: number | null
+          client_mutation_id?: string | null
           distance_m?: number | null
           elevation_gain_m?: number | null
           elevation_loss_m?: number | null
@@ -649,6 +664,7 @@ export type Database = {
       }
       sleep_logs: {
         Row: {
+          client_mutation_id: string | null
           created_at: string
           hours: number
           id: string
@@ -659,6 +675,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           created_at?: string
           hours: number
           id?: string
@@ -669,6 +686,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           created_at?: string
           hours?: number
           id?: string
@@ -724,6 +742,7 @@ export type Database = {
       }
       workout_exercises: {
         Row: {
+          client_mutation_id: string | null
           exercise_id: string
           id: string
           notes: string | null
@@ -735,6 +754,7 @@ export type Database = {
           workout_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           exercise_id: string
           id?: string
           notes?: string | null
@@ -746,6 +766,7 @@ export type Database = {
           workout_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           exercise_id?: string
           id?: string
           notes?: string | null
@@ -775,6 +796,7 @@ export type Database = {
       }
       workouts: {
         Row: {
+          client_mutation_id: string | null
           created_at: string
           created_by_trainer_id: string | null
           id: string
@@ -786,6 +808,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_mutation_id?: string | null
           created_at?: string
           created_by_trainer_id?: string | null
           id?: string
@@ -797,6 +820,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_mutation_id?: string | null
           created_at?: string
           created_by_trainer_id?: string | null
           id?: string
