@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
+import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
 
 
 
