@@ -212,7 +212,7 @@ export async function upsertActivityForUser(userId: string, activityId: number |
   const row = activityToSessionRow(userId, activity);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // Try update first (dedup by user_id + strava_activity_id).
+  // 1) Dedup by user_id + strava_activity_id (canonical case).
   const { data: existing } = await supabaseAdmin
     .from("sessions")
     .select("id")
@@ -224,7 +224,35 @@ export async function upsertActivityForUser(userId: string, activityId: number |
     await supabaseAdmin.from("sessions").update(row).eq("id", existing.id);
     return "updated";
   }
-  await supabaseAdmin.from("sessions").insert(row);
+
+  // 2) Dedup por horário de início próximo (±90s) para não duplicar
+  //    sessões já importadas manualmente (ex.: .fit) ou registradas no app.
+  //    Anexa o strava_activity_id na sessão existente em vez de inserir uma nova.
+  const startedMs = new Date(row.started_at).getTime();
+  const windowSec = 90;
+  const lo = new Date(startedMs - windowSec * 1000).toISOString();
+  const hi = new Date(startedMs + windowSec * 1000).toISOString();
+  const { data: nearby } = await supabaseAdmin
+    .from("sessions")
+    .select("id, strava_activity_id")
+    .eq("user_id", userId)
+    .is("strava_activity_id", null)
+    .gte("started_at", lo)
+    .lte("started_at", hi)
+    .limit(1);
+  const match = nearby?.[0];
+  if (match) {
+    await supabaseAdmin.from("sessions").update(row).eq("id", match.id);
+    return "updated";
+  }
+
+  // 3) Insere; se corrida com outra sincronização violar a unique
+  //    (user_id, strava_activity_id), tratamos como já existente.
+  const { error: insertErr } = await supabaseAdmin.from("sessions").insert(row);
+  if (insertErr) {
+    if ((insertErr as { code?: string }).code === "23505") return "skipped";
+    throw insertErr;
+  }
   return "inserted";
 }
 
