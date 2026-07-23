@@ -11,9 +11,12 @@ export const getRouter = () => {
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,
-        gcTime: 5 * 60 * 1000,
+        // gcTime alto é obrigatório para o persister conseguir guardar as
+        // queries em IndexedDB (queries expiradas antes disso não persistem).
+        gcTime: 1000 * 60 * 60 * 24 * 30, // 30 dias
         refetchOnWindowFocus: false,
         retry: 1,
+        refetchOnReconnect: "always",
       },
     },
   });

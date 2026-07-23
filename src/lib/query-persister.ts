@@ -23,7 +23,8 @@ export function setupQueryPersister(queryClient: QueryClient) {
   });
 
   persistQueryClient({
-    queryClient,
+    // Peer duplicado do @tanstack/query-core entre pacotes; cast seguro.
+    queryClient: queryClient as unknown as Parameters<typeof persistQueryClient>[0]["queryClient"],
     persister,
     maxAge: 1000 * 60 * 60 * 24 * 30, // 30 dias
     buster: BUSTER,

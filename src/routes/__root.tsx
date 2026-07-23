@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { registerSW } from "@/lib/register-sw";
 import { initSyncQueue } from "@/lib/offline-queue";
+import { setupQueryPersister } from "@/lib/query-persister";
 import { SyncStatus } from "@/components/SyncStatus";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
@@ -117,6 +118,7 @@ function RootComponent() {
   useEffect(() => {
     registerSW();
     initSyncQueue();
+    setupQueryPersister(queryClient);
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
