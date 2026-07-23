@@ -161,6 +161,28 @@ export async function listRecentActivities(accessToken: string, perPage = 30): P
   return (await res.json()) as StravaActivityDetail[];
 }
 
+// Lista atividades criadas depois de um timestamp unix (segundos).
+// Percorre até `maxPages` páginas de 50 para pegar deltas de sync.
+export async function listActivitiesSince(
+  accessToken: string,
+  afterUnix: number,
+  maxPages = 4,
+): Promise<StravaActivityDetail[]> {
+  const out: StravaActivityDetail[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await fetch(
+      `${STRAVA_API}/athlete/activities?after=${afterUnix}&per_page=50&page=${page}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (res.status === 429) break; // rate-limited: para e tenta na próxima janela
+    if (!res.ok) throw new Error(`Strava list-since failed [${res.status}]: ${await res.text()}`);
+    const batch = (await res.json()) as StravaActivityDetail[];
+    out.push(...batch);
+    if (batch.length < 50) break;
+  }
+  return out;
+}
+
 function activityToSessionRow(userId: string, a: StravaActivityDetail) {
   const started = a.start_date ? new Date(a.start_date) : new Date();
   const duration = (a.elapsed_time ?? a.moving_time ?? 0) * 1000;
