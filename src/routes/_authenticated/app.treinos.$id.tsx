@@ -81,15 +81,23 @@ function WorkoutEditor() {
 
   const updateWorkout = useMutation({
     mutationFn: async (patch: any) => {
-      const { error } = await supabase.from("workouts").update(patch).eq("id", id);
-      if (error) throw error;
+      const { writeUpdate } = await import("@/lib/offline-writes");
+      await writeUpdate("workouts", { id }, patch);
     },
+    onMutate: async (patch: any) => {
+      await qc.cancelQueries({ queryKey: ["workout", id] });
+      const prev = qc.getQueryData<any>(["workout", id]);
+      qc.setQueryData<any>(["workout", id], (old: any) => ({ ...(old ?? {}), ...patch }));
+      return { prev };
+    },
+    onError: (_e, _p, ctx: any) => { if (ctx?.prev) qc.setQueryData(["workout", id], ctx.prev); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout", id] }),
   });
 
   const addExercise = useMutation({
     mutationFn: async ({ exerciseId, orderIdx }: { exerciseId: string; orderIdx: number }) => {
-      const { error } = await supabase.from("workout_exercises").insert({
+      const { writeInsert } = await import("@/lib/offline-writes");
+      return await writeInsert("workout_exercises", {
         workout_id: id,
         exercise_id: exerciseId,
         order_idx: orderIdx,
@@ -97,7 +105,6 @@ function WorkoutEditor() {
         target_reps: "10",
         target_rest_seconds: 90,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
@@ -110,9 +117,18 @@ function WorkoutEditor() {
 
   const updateItem = useMutation({
     mutationFn: async ({ itemId, patch }: { itemId: string; patch: any }) => {
-      const { error } = await supabase.from("workout_exercises").update(patch).eq("id", itemId);
-      if (error) throw error;
+      const { writeUpdate } = await import("@/lib/offline-writes");
+      await writeUpdate("workout_exercises", { id: itemId }, patch);
     },
+    onMutate: async ({ itemId, patch }) => {
+      await qc.cancelQueries({ queryKey: ["workout-exercises", id] });
+      const prev = qc.getQueryData<any[]>(["workout-exercises", id]);
+      qc.setQueryData<any[]>(["workout-exercises", id], (old = []) =>
+        old.map((it) => (it.id === itemId ? { ...it, ...patch } : it)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx: any) => { if (ctx?.prev) qc.setQueryData(["workout-exercises", id], ctx.prev); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
   });
 
