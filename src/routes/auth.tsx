@@ -435,6 +435,15 @@ function AuthPage() {
                   </button>
                 </div>
               </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="size-4 rounded border-border accent-primary"
+                />
+                Lembrar-me neste dispositivo
+              </label>
               <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Entrar"}
               </Button>
