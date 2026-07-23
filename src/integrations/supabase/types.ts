@@ -606,6 +606,7 @@ export type Database = {
           route_geojson: Json | null
           source: string
           started_at: string
+          strava_activity_id: number | null
           title: string | null
           user_id: string
           workout_id: string | null
@@ -627,6 +628,7 @@ export type Database = {
           route_geojson?: Json | null
           source?: string
           started_at?: string
+          strava_activity_id?: number | null
           title?: string | null
           user_id: string
           workout_id?: string | null
@@ -648,6 +650,7 @@ export type Database = {
           route_geojson?: Json | null
           source?: string
           started_at?: string
+          strava_activity_id?: number | null
           title?: string | null
           user_id?: string
           workout_id?: string | null
@@ -693,6 +696,42 @@ export type Database = {
           log_date?: string
           notes?: string | null
           quality?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strava_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          last_sync_at: string | null
+          refresh_token: string
+          scope: string | null
+          strava_athlete_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          last_sync_at?: string | null
+          refresh_token: string
+          scope?: string | null
+          strava_athlete_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          last_sync_at?: string | null
+          refresh_token?: string
+          scope?: string | null
+          strava_athlete_id?: number
           updated_at?: string
           user_id?: string
         }
