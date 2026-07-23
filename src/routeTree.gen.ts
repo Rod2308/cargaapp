@@ -35,6 +35,7 @@ import { Route as AuthenticatedAppGruposIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedAppAlunosIndexRouteImport } from './routes/_authenticated/app.alunos.index'
 import { Route as ApiPublicStravaWebhookRouteImport } from './routes/api/public/strava/webhook'
 import { Route as ApiPublicStravaCallbackRouteImport } from './routes/api/public/strava/callback'
+import { Route as ApiPublicHooksStravaSyncRouteImport } from './routes/api/public/hooks/strava-sync'
 import { Route as ApiPublicHooksEnqueueRemindersRouteImport } from './routes/api/public/hooks/enqueue-reminders'
 import { Route as ApiPublicHooksDispatchRestPushesRouteImport } from './routes/api/public/hooks/dispatch-rest-pushes'
 import { Route as ApiPublicHooksDispatchPushOutboxRouteImport } from './routes/api/public/hooks/dispatch-push-outbox'
@@ -186,6 +187,12 @@ const ApiPublicStravaCallbackRoute = ApiPublicStravaCallbackRouteImport.update({
   path: '/api/public/strava/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksStravaSyncRoute =
+  ApiPublicHooksStravaSyncRouteImport.update({
+    id: '/api/public/hooks/strava-sync',
+    path: '/api/public/hooks/strava-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksEnqueueRemindersRoute =
   ApiPublicHooksEnqueueRemindersRouteImport.update({
     id: '/api/public/hooks/enqueue-reminders',
@@ -269,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/hooks/strava-sync': typeof ApiPublicHooksStravaSyncRoute
   '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
   '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
@@ -304,6 +312,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/hooks/strava-sync': typeof ApiPublicHooksStravaSyncRoute
   '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
   '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/app/alunos': typeof AuthenticatedAppAlunosIndexRoute
@@ -342,6 +351,7 @@ export interface FileRoutesById {
   '/api/public/hooks/dispatch-push-outbox': typeof ApiPublicHooksDispatchPushOutboxRoute
   '/api/public/hooks/dispatch-rest-pushes': typeof ApiPublicHooksDispatchRestPushesRoute
   '/api/public/hooks/enqueue-reminders': typeof ApiPublicHooksEnqueueRemindersRoute
+  '/api/public/hooks/strava-sync': typeof ApiPublicHooksStravaSyncRoute
   '/api/public/strava/callback': typeof ApiPublicStravaCallbackRoute
   '/api/public/strava/webhook': typeof ApiPublicStravaWebhookRoute
   '/_authenticated/app/alunos/': typeof AuthenticatedAppAlunosIndexRoute
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/hooks/strava-sync'
     | '/api/public/strava/callback'
     | '/api/public/strava/webhook'
     | '/app/alunos/'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/hooks/strava-sync'
     | '/api/public/strava/callback'
     | '/api/public/strava/webhook'
     | '/app/alunos'
@@ -452,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-push-outbox'
     | '/api/public/hooks/dispatch-rest-pushes'
     | '/api/public/hooks/enqueue-reminders'
+    | '/api/public/hooks/strava-sync'
     | '/api/public/strava/callback'
     | '/api/public/strava/webhook'
     | '/_authenticated/app/alunos/'
@@ -477,6 +490,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
   ApiPublicHooksEnqueueRemindersRoute: typeof ApiPublicHooksEnqueueRemindersRoute
+  ApiPublicHooksStravaSyncRoute: typeof ApiPublicHooksStravaSyncRoute
   ApiPublicStravaCallbackRoute: typeof ApiPublicStravaCallbackRoute
   ApiPublicStravaWebhookRoute: typeof ApiPublicStravaWebhookRoute
 }
@@ -665,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStravaCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/strava-sync': {
+      id: '/api/public/hooks/strava-sync'
+      path: '/api/public/hooks/strava-sync'
+      fullPath: '/api/public/hooks/strava-sync'
+      preLoaderRoute: typeof ApiPublicHooksStravaSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/enqueue-reminders': {
       id: '/api/public/hooks/enqueue-reminders'
       path: '/api/public/hooks/enqueue-reminders'
@@ -827,6 +848,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
   ApiPublicHooksEnqueueRemindersRoute: ApiPublicHooksEnqueueRemindersRoute,
+  ApiPublicHooksStravaSyncRoute: ApiPublicHooksStravaSyncRoute,
   ApiPublicStravaCallbackRoute: ApiPublicStravaCallbackRoute,
   ApiPublicStravaWebhookRoute: ApiPublicStravaWebhookRoute,
 }

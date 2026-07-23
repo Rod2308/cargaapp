@@ -1,0 +1,92 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+// Sincronização periódica das atividades do Strava para todos os usuários conectados.
+// Chamado por pg_cron a cada 30 minutos. Idempotente: usa last_sync_at como cursor delta.
+
+export const Route = createFileRoute("/api/public/hooks/strava-sync")({
+  server: {
+    handlers: {
+      POST: async () => {
+        const started = Date.now();
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const {
+            getValidAccessTokenForUser,
+            listActivitiesSince,
+            upsertActivityForUser,
+          } = await import("@/lib/strava.server");
+
+          const { data: conns, error } = await supabaseAdmin
+            .from("strava_connections")
+            .select("user_id, last_sync_at");
+          if (error) throw error;
+
+          let usersProcessed = 0;
+          let inserted = 0;
+          let updated = 0;
+          let skipped = 0;
+          const errors: Array<{ user_id: string; message: string }> = [];
+
+          // Janela de fallback: se nunca sincronizou, olha 24h para trás
+          // (o backfill de 30/90 dias é acionado no callback/UI).
+          const nowSec = Math.floor(Date.now() / 1000);
+
+          for (const c of conns ?? []) {
+            const userId = c.user_id as string;
+            const lastSyncSec = c.last_sync_at
+              ? Math.floor(new Date(c.last_sync_at as string).getTime() / 1000)
+              : nowSec - 24 * 3600;
+            // Volta 5 min do cursor para tolerar atrasos de gravação no Strava.
+            const afterUnix = Math.max(0, lastSyncSec - 5 * 60);
+
+            try {
+              const token = await getValidAccessTokenForUser(userId);
+              if (!token) {
+                skipped++;
+                continue;
+              }
+              const list = await listActivitiesSince(token, afterUnix);
+              for (const a of list) {
+                try {
+                  const r = await upsertActivityForUser(userId, a.id);
+                  if (r === "inserted") inserted++;
+                  else if (r === "updated") updated++;
+                  else skipped++;
+                } catch {
+                  skipped++;
+                }
+              }
+              await supabaseAdmin
+                .from("strava_connections")
+                .update({ last_sync_at: new Date().toISOString() })
+                .eq("user_id", userId);
+              usersProcessed++;
+            } catch (e) {
+              const message = e instanceof Error ? e.message : String(e);
+              errors.push({ user_id: userId, message });
+              console.error("[strava-sync] user failed", userId, message);
+            }
+          }
+
+          const elapsedMs = Date.now() - started;
+          console.log(
+            `[strava-sync] users=${usersProcessed} ins=${inserted} upd=${updated} skip=${skipped} err=${errors.length} ${elapsedMs}ms`,
+          );
+          return Response.json({
+            ok: true,
+            usersProcessed,
+            inserted,
+            updated,
+            skipped,
+            errors,
+            elapsedMs,
+          });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          console.error("[strava-sync] fatal", message);
+          return Response.json({ ok: false, error: message }, { status: 500 });
+        }
+      },
+    },
+  },
+});
