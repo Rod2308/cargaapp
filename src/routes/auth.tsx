@@ -203,6 +203,7 @@ function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
+  const [remember, setRemember] = useState(() => getRememberMePreference());
 
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
