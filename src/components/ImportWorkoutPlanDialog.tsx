@@ -64,6 +64,36 @@ function parseMuscleGroupHeader(raw: string): string | null {
   return MUSCLE_ALIASES[key] ?? null;
 }
 
+// Heuristic: given free text (block name or exercise name), guess a muscle group.
+const NAME_GROUP_HINTS: Array<[RegExp, string]> = [
+  [/\b(supino|crucifix|crossover|peck|voador|flex[aã]o)\b/i, "Peito"],
+  [/\b(puxada|remada|barra fixa|pulldown|pull ?over|levantamento terra|deadlift)\b/i, "Costas"],
+  [/\b(face ?pull)\b/i, "Ombros"],
+  [/\b(desenvolvim|arnold|eleva[cç][aã]o (lateral|frontal)|militar|shoulder|shrug|encolhimento)\b/i, "Ombros"],
+  [/\b(tr[ií]ceps|frances|coice|kickback|testa)\b/i, "Tríceps"],
+  [/\b(b[ií]ceps|rosca|scott|martelo|curl)\b/i, "Bíceps"],
+  [/\b(agachamento|leg press|cadeira extensora|hack|afundo|avan[cç]o|passada|squat|b[uú]lgaro)\b/i, "Pernas"],
+  [/\b(cadeira flexora|mesa flexora|st[ií]ff|posterior|isqui|good ?morning)\b/i, "Pernas"],
+  [/\b(gl[uú]teo|hip ?thrust|eleva[cç][aã]o p[eé]lvica|abdu[cç][aã]o)\b/i, "Glúteos"],
+  [/\b(panturrilha|gemelar|gastroc|calf)\b/i, "Panturrilha"],
+  [/\b(abdominal|abd[oô]men|prancha|plank|crunch|obl[ií]quo|core)\b/i, "Abdômen"],
+  [/\b(antebra[cç]o|forearm|wrist|punho)\b/i, "Antebraço"],
+  [/\b(corrida|caminhada|bike|bicicleta|esteira|el[ií]ptico|nata[cç][aã]o|rem[oó] ergometro|cardio|aer[oó]bico|hiit|jump)\b/i, "Cardio"],
+];
+
+function inferGroupFromText(text: string | undefined | null): string | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  // Explicit alias mentions (e.g. "Peito e tríceps" → Peito wins by first match order)
+  for (const key of Object.keys(MUSCLE_ALIASES)) {
+    // word-boundary match on the alias
+    const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (re.test(lower)) return MUSCLE_ALIASES[key];
+  }
+  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return g;
+  return null;
+}
+
 function parseLine(raw: string): ParsedExercise | null {
   let line = raw.trim();
   if (!line) return null;
