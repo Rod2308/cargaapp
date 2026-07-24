@@ -327,27 +327,76 @@ export function ImportWorkoutPlanDialog({
     },
   });
 
+  // --- Fuzzy catalog matching ------------------------------------------------
+  const stripAccents = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const STOPWORDS = new Set([
+    "com", "de", "da", "do", "das", "dos", "e", "em", "na", "no", "para", "a", "o",
+    "ou", "um", "uma", "the",
+  ]);
+  const tokenize = (s: string) =>
+    stripAccents(s)
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t && !STOPWORDS.has(t));
+
+  const catalogIndex = useMemo(() => {
+    return (catalog as any[]).map((e) => ({
+      id: e.id as string,
+      name: String(e.name),
+      muscle_group: String(e.muscle_group ?? ""),
+      key: stripAccents(String(e.name)),
+      tokens: new Set(tokenize(String(e.name))),
+    }));
+  }, [catalog]);
+
   const catalogByName = useMemo(() => {
     const m = new Map<string, { id: string; name: string; muscle_group: string }>();
-    (catalog as any[]).forEach((e) => m.set(String(e.name).toLowerCase(), e));
+    (catalog as any[]).forEach((e) => m.set(stripAccents(String(e.name)), e));
     return m;
   }, [catalog]);
 
+  const matchExercise = (
+    parsedName: string,
+    contextGroup?: string | null,
+  ): { id: string; name: string; muscle_group: string } | null => {
+    const key = stripAccents(parsedName);
+    const exact = catalogByName.get(key);
+    if (exact) return exact;
+
+    const tokens = tokenize(parsedName);
+    if (!tokens.length) return null;
+
+    let best: { entry: (typeof catalogIndex)[number]; score: number } | null = null;
+    for (const c of catalogIndex) {
+      let hits = 0;
+      for (const t of tokens) if (c.tokens.has(t)) hits++;
+      if (hits === 0) continue;
+      // require ALL parsed tokens to appear in the catalog name (subset match)
+      if (hits !== tokens.length) continue;
+      // score: fewer extra tokens in catalog = better; same muscle group bonus
+      const extra = c.tokens.size - hits;
+      let score = 100 - extra * 5;
+      if (contextGroup && c.muscle_group === contextGroup) score += 10;
+      if (!best || score > best.score) best = { entry: c, score };
+    }
+    return best ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group } : null;
+  };
+
   const dryRun = useMemo(() => {
-    const seenGlobal = new Set<string>();
     return blocks.map((b) => {
       const seenLocal = new Set<string>();
       const rows = b.exercises.map((p) => {
-        const key = p.name.toLowerCase();
-        const match = catalogByName.get(key);
+        const key = stripAccents(p.name);
+        const ctxGroup = p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null;
+        const match = matchExercise(p.name, ctxGroup);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
-        if (!match) seenGlobal.add(key);
         return {
           parsed: p,
+          match,
           status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-          matchGroup:
-            match?.muscle_group ?? p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null,
+          matchGroup: match?.muscle_group ?? ctxGroup,
         };
       });
       const conflict = (userWorkouts as any[]).some(
@@ -355,7 +404,8 @@ export function ImportWorkoutPlanDialog({
       );
       return { block: b, rows, conflict };
     });
-  }, [blocks, catalogByName, userWorkouts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, catalogIndex, catalogByName, userWorkouts]);
 
   const totals = useMemo(() => {
     let matched = 0;
@@ -390,43 +440,57 @@ export function ImportWorkoutPlanDialog({
         .eq("user_id", userId);
       const baseIdx = count ?? 0;
 
-      // Resolve/create all exercises across all blocks in one round
-      const allNames = Array.from(
-        new Set(blocks.flatMap((b) => b.exercises.map((e) => e.name))),
-      );
-      const { data: existing } = await supabase
-        .from("exercises")
-        .select("id, name")
-        .in("name", allNames);
-      const byName = new Map<string, string>();
-      (existing ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
+      // Resolve exercises: prefer fuzzy match against the catalog (from dryRun),
+      // then existing rows by exact name, then create as last resort.
+      const idByParsedKey = new Map<string, string>(); // key = normalized parsed name
+      const groupByParsedKey = new Map<string, string>();
 
-      // Best muscle-group guess per new exercise name (parsed group → name heuristic → "Outros")
-      const groupByName = new Map<string, string>();
-      for (const b of blocks) {
-        for (const e of b.exercises) {
-          const k = e.name.toLowerCase();
-          if (groupByName.has(k)) continue;
-          const g = e.muscle_group || inferGroupFromText(e.name) || inferGroupFromText(b.name);
-          if (g) groupByName.set(k, g);
+      for (const b of dryRun) {
+        for (const r of b.rows) {
+          const key = stripAccents(r.parsed.name);
+          if (r.match) idByParsedKey.set(key, r.match.id);
+          if (r.matchGroup) groupByParsedKey.set(key, r.matchGroup);
         }
       }
 
-      const missing = allNames.filter((n) => !byName.has(n.toLowerCase()));
+      // Only rows without a fuzzy match need a DB lookup / creation.
+      const unresolvedNames = Array.from(
+        new Set(
+          blocks
+            .flatMap((b) => b.exercises.map((e) => e.name))
+            .filter((n) => !idByParsedKey.has(stripAccents(n))),
+        ),
+      );
+
+      if (unresolvedNames.length > 0) {
+        const { data: existing } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .in("name", unresolvedNames);
+        (existing ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
+      }
+
+      const missing = Array.from(
+        new Set(
+          blocks
+            .flatMap((b) => b.exercises.map((e) => e.name))
+            .filter((n) => !idByParsedKey.has(stripAccents(n))),
+        ),
+      );
       if (missing.length > 0) {
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
             missing.map((n) => ({
               name: n,
-              muscle_group: groupByName.get(n.toLowerCase()) ?? "Outros",
+              muscle_group: groupByParsedKey.get(stripAccents(n)) ?? "Outros",
               is_default: false,
               created_by: userId,
             })),
           )
           .select("id, name");
         if (cErr) throw cErr;
-        (created ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
+        (created ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
       }
 
       const createdWorkouts: { id: string; name: string }[] = [];
@@ -448,7 +512,7 @@ export function ImportWorkoutPlanDialog({
 
         const rows = b.exercises.map((p, idx) => ({
           workout_id: workout.id,
-          exercise_id: byName.get(p.name.toLowerCase())!,
+          exercise_id: idByParsedKey.get(stripAccents(p.name))!,
           order_idx: idx,
           target_sets: p.sets,
           target_reps: p.reps,
@@ -622,6 +686,11 @@ export function ImportWorkoutPlanDialog({
                           <tr key={i} className="border-t border-border">
                             <td className="px-2 py-1.5">
                               <div className="font-medium">{p.name}</div>
+                              {row.match && stripAccents(row.match.name) !== stripAccents(p.name) && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  → {row.match.name}
+                                </div>
+                              )}
                               {row.matchGroup && (
                                 <div className="text-[10px] text-muted-foreground">{row.matchGroup}</div>
                               )}
