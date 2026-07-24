@@ -176,6 +176,10 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
                   : null,
               rest_seconds: Math.min(600, Math.max(0, parseInt(String(r.rest_seconds ?? r.rest ?? 90), 10) || 90)),
               notes: r.notes ?? null,
+              muscle_group:
+                (typeof r.muscle_group === "string" && r.muscle_group.trim()) ||
+                inferGroupFromText(String(r.name ?? r.exercise ?? "")) ||
+                (typeof b.muscle_group === "string" ? b.muscle_group : null),
             } as ParsedExercise;
           })
           .filter(Boolean) as ParsedExercise[];
