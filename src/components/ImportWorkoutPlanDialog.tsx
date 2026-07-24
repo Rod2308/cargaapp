@@ -387,21 +387,36 @@ export function ImportWorkoutPlanDialog({
     const tokens = tokenize(parsedName);
     if (!tokens.length) return null;
 
+    // 1) prefer subset match (all parsed tokens present in catalog name)
     let best: { entry: (typeof catalogIndex)[number]; score: number } | null = null;
     for (const c of catalogIndex) {
       let hits = 0;
       for (const t of tokens) if (c.tokens.has(t)) hits++;
-      if (hits === 0) continue;
-      // require ALL parsed tokens to appear in the catalog name (subset match)
       if (hits !== tokens.length) continue;
-      // score: fewer extra tokens in catalog = better; same muscle group bonus
       const extra = c.tokens.size - hits;
       let score = 100 - extra * 5;
       if (contextGroup && c.muscle_group === contextGroup) score += 10;
       if (!best || score > best.score) best = { entry: c, score };
     }
-    return best ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group } : null;
+    if (best) return { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group };
+
+    // 2) fallback: at least one strong token (>=3 chars) matches, weighted by
+    //    coverage + context group. Prevents "Barra fixa ou puxada alta" or
+    //    "Puxada alta" from becoming a new "Outros" exercise.
+    for (const c of catalogIndex) {
+      let hits = 0;
+      for (const t of tokens) if (t.length >= 3 && c.tokens.has(t)) hits++;
+      if (hits === 0) continue;
+      const coverage = hits / Math.max(tokens.length, c.tokens.size);
+      let score = 40 + coverage * 40 + hits * 5;
+      if (contextGroup && c.muscle_group === contextGroup) score += 15;
+      if (!best || score > best.score) best = { entry: c, score };
+    }
+    return best && best.score >= 55
+      ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group }
+      : null;
   };
+
 
   const dryRun = useMemo(() => {
     return blocks.map((b) => {
