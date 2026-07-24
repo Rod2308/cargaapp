@@ -150,9 +150,29 @@ function parseHeader(raw: string): { label: string; name: string } | null {
   return null;
 }
 
+// Normalize free-form pasted text so the line-based parser can read it:
+// - collapse divider glyphs (⸻ ─ ═) into blank lines
+// - promote bullet markers (* • –) into line breaks
+// - split cabeçalhos ("Treino X", "Cardio:") em nova linha quando grudados
+// - insert newline entre `)Peito*` e antes de nomes de grupo colados a texto
+function normalizeInput(text: string): string {
+  const groupWord =
+    "Peito|Peitorais?|Ombros?|Tr[ií]ceps|B[ií]ceps|Costas|Dorsais?|Pernas?|Quadr[ií]ceps|Posterior(?:\\s+d[ao]\\s+(?:coxa|ombro))?|Gl[uú]teos?|Panturrilhas?|Abd[oô]men|Abdominais?|Antebra[cç]o|Trap[eé]zio|Cardio|Aer[oó]bico";
+  return text
+    .replace(/[⸻─═]{1,}/g, "\n\n")
+    .replace(/([^\n])\s*[*•]\s*/g, "$1\n")
+    .replace(/(\))\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, "$1\n$2")
+    .replace(/([^\n])\s*(Treino\s+[A-Za-z0-9])/g, "$1\n$2")
+    .replace(/([^\n])\s*(Dia\s+\d+)/gi, "$1\n$2")
+    .replace(/([^\n])\s*(Cardio\s*[:\-–—])/gi, "$1\n$2")
+    .replace(new RegExp(`([^\\n\\s])\\s*(${groupWord})(\\s*[:\\-–—]|\\s*\\n|\\s+[A-ZÁ])`, "gi"), "$1\n$2$3")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
 function parseBlocks(text: string): ParsedWorkoutBlock[] {
-  const trimmed = text.trim();
+  const trimmed = normalizeInput(text).trim();
   if (!trimmed) return [];
+
 
   // JSON support: array of blocks or single block
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
