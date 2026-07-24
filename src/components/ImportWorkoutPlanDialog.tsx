@@ -171,12 +171,15 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
     if (current && current.exercises.length) blocks.push(current);
   };
 
+  let currentGroup: string | null = null;
+
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
     // A line that IS an exercise takes priority
     const exMaybe = parseLine(line);
     const headerMaybe = exMaybe ? null : parseHeader(line);
+    const groupMaybe = exMaybe || headerMaybe ? null : parseMuscleGroupHeader(line);
 
     if (headerMaybe) {
       pushCurrent();
@@ -185,6 +188,12 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         name: headerMaybe.name || `Treino ${headerMaybe.label}`,
         exercises: [],
       };
+      // Try to infer default group from the block name (e.g. "Peito e tríceps")
+      currentGroup = inferGroupFromText(headerMaybe.name);
+      continue;
+    }
+    if (groupMaybe) {
+      currentGroup = groupMaybe;
       continue;
     }
     if (exMaybe) {
@@ -196,6 +205,8 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         };
         autoIdx++;
       }
+      const guessed = currentGroup ?? inferGroupFromText(exMaybe.name);
+      if (guessed) exMaybe.muscle_group = guessed;
       current.exercises.push(exMaybe);
     }
   }
