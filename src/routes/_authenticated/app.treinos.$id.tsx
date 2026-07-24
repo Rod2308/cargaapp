@@ -64,7 +64,7 @@ function WorkoutEditor() {
   const { data: exercises = [] } = useQuery({
     queryKey: ["exercises"],
     queryFn: async () => {
-      const { data } = await supabase.from("exercises").select("*").order("muscle_group").order("name");
+      const { data } = await supabase.from("exercises").select("*").order("name");
       return data ?? [];
     },
   });
