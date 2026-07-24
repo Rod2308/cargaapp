@@ -400,12 +400,28 @@ export function ImportWorkoutPlanDialog({
       const byName = new Map<string, string>();
       (existing ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
 
+      // Best muscle-group guess per new exercise name (parsed group → name heuristic → "Outros")
+      const groupByName = new Map<string, string>();
+      for (const b of blocks) {
+        for (const e of b.exercises) {
+          const k = e.name.toLowerCase();
+          if (groupByName.has(k)) continue;
+          const g = e.muscle_group || inferGroupFromText(e.name) || inferGroupFromText(b.name);
+          if (g) groupByName.set(k, g);
+        }
+      }
+
       const missing = allNames.filter((n) => !byName.has(n.toLowerCase()));
       if (missing.length > 0) {
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
-            missing.map((n) => ({ name: n, muscle_group: "Outros", is_default: false, created_by: userId })),
+            missing.map((n) => ({
+              name: n,
+              muscle_group: groupByName.get(n.toLowerCase()) ?? "Outros",
+              is_default: false,
+              created_by: userId,
+            })),
           )
           .select("id, name");
         if (cErr) throw cErr;
