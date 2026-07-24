@@ -64,7 +64,7 @@ function WorkoutEditor() {
   const { data: exercises = [] } = useQuery({
     queryKey: ["exercises"],
     queryFn: async () => {
-      const { data } = await supabase.from("exercises").select("*").order("muscle_group").order("name");
+      const { data } = await supabase.from("exercises").select("*").order("name");
       return data ?? [];
     },
   });
@@ -73,11 +73,13 @@ function WorkoutEditor() {
     return Array.from(new Set(exercises.map((e) => e.muscle_group))).sort();
   }, [exercises]);
 
-  const filtered = exercises.filter(
-    (e) =>
-      (muscleFilter === "all" || e.muscle_group === muscleFilter) &&
-      (!search || e.name.toLowerCase().includes(search.toLowerCase())),
-  );
+  const filtered = exercises
+    .filter(
+      (e) =>
+        (muscleFilter === "all" || e.muscle_group === muscleFilter) &&
+        (!search || e.name.toLowerCase().includes(search.toLowerCase())),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
   const updateWorkout = useMutation({
     mutationFn: async (patch: any) => {
