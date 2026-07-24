@@ -327,27 +327,76 @@ export function ImportWorkoutPlanDialog({
     },
   });
 
+  // --- Fuzzy catalog matching ------------------------------------------------
+  const stripAccents = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const STOPWORDS = new Set([
+    "com", "de", "da", "do", "das", "dos", "e", "em", "na", "no", "para", "a", "o",
+    "ou", "um", "uma", "the",
+  ]);
+  const tokenize = (s: string) =>
+    stripAccents(s)
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t && !STOPWORDS.has(t));
+
+  const catalogIndex = useMemo(() => {
+    return (catalog as any[]).map((e) => ({
+      id: e.id as string,
+      name: String(e.name),
+      muscle_group: String(e.muscle_group ?? ""),
+      key: stripAccents(String(e.name)),
+      tokens: new Set(tokenize(String(e.name))),
+    }));
+  }, [catalog]);
+
   const catalogByName = useMemo(() => {
     const m = new Map<string, { id: string; name: string; muscle_group: string }>();
-    (catalog as any[]).forEach((e) => m.set(String(e.name).toLowerCase(), e));
+    (catalog as any[]).forEach((e) => m.set(stripAccents(String(e.name)), e));
     return m;
   }, [catalog]);
 
+  const matchExercise = (
+    parsedName: string,
+    contextGroup?: string | null,
+  ): { id: string; name: string; muscle_group: string } | null => {
+    const key = stripAccents(parsedName);
+    const exact = catalogByName.get(key);
+    if (exact) return exact;
+
+    const tokens = tokenize(parsedName);
+    if (!tokens.length) return null;
+
+    let best: { entry: (typeof catalogIndex)[number]; score: number } | null = null;
+    for (const c of catalogIndex) {
+      let hits = 0;
+      for (const t of tokens) if (c.tokens.has(t)) hits++;
+      if (hits === 0) continue;
+      // require ALL parsed tokens to appear in the catalog name (subset match)
+      if (hits !== tokens.length) continue;
+      // score: fewer extra tokens in catalog = better; same muscle group bonus
+      const extra = c.tokens.size - hits;
+      let score = 100 - extra * 5;
+      if (contextGroup && c.muscle_group === contextGroup) score += 10;
+      if (!best || score > best.score) best = { entry: c, score };
+    }
+    return best ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group } : null;
+  };
+
   const dryRun = useMemo(() => {
-    const seenGlobal = new Set<string>();
     return blocks.map((b) => {
       const seenLocal = new Set<string>();
       const rows = b.exercises.map((p) => {
-        const key = p.name.toLowerCase();
-        const match = catalogByName.get(key);
+        const key = stripAccents(p.name);
+        const ctxGroup = p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null;
+        const match = matchExercise(p.name, ctxGroup);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
-        if (!match) seenGlobal.add(key);
         return {
           parsed: p,
+          match,
           status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-          matchGroup:
-            match?.muscle_group ?? p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null,
+          matchGroup: match?.muscle_group ?? ctxGroup,
         };
       });
       const conflict = (userWorkouts as any[]).some(
@@ -355,7 +404,8 @@ export function ImportWorkoutPlanDialog({
       );
       return { block: b, rows, conflict };
     });
-  }, [blocks, catalogByName, userWorkouts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, catalogIndex, catalogByName, userWorkouts]);
 
   const totals = useMemo(() => {
     let matched = 0;
