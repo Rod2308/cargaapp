@@ -27,6 +27,7 @@ export type ParsedExercise = {
   weight_kg: number | null;
   rest_seconds: number;
   notes?: string | null;
+  muscle_group?: string | null;
 };
 
 export type ParsedWorkoutBlock = {
@@ -35,12 +36,41 @@ export type ParsedWorkoutBlock = {
   exercises: ParsedExercise[];
 };
 
+// Aliases → canonical muscle group names used by the exercise catalog.
+const MUSCLE_ALIASES: Record<string, string> = {
+  peito: "Peito", peitoral: "Peito", peitorais: "Peito",
+  costas: "Costas", dorsal: "Costas", dorsais: "Costas",
+  ombro: "Ombros", ombros: "Ombros", deltoide: "Ombros", deltoides: "Ombros",
+  "posterior de ombro": "Ombros", "posterior do ombro": "Ombros",
+  triceps: "Tríceps", "tríceps": "Tríceps",
+  biceps: "Bíceps", "bíceps": "Bíceps",
+  antebraco: "Antebraço", "antebraço": "Antebraço",
+  perna: "Pernas", pernas: "Pernas",
+  quadriceps: "Pernas", "quadríceps": "Pernas",
+  posterior: "Pernas", "posterior de coxa": "Pernas", "posterior da coxa": "Pernas",
+  isquios: "Pernas", "ísquios": "Pernas",
+  gluteo: "Glúteos", "glúteo": "Glúteos", gluteos: "Glúteos", "glúteos": "Glúteos",
+  panturrilha: "Panturrilha", panturrilhas: "Panturrilha",
+  abdomen: "Abdômen", "abdômen": "Abdômen",
+  abdominal: "Abdômen", abdominais: "Abdômen", core: "Abdômen",
+  trapezio: "Trapézio", "trapézio": "Trapézio",
+  cardio: "Cardio", aerobico: "Cardio", "aeróbico": "Cardio",
+};
+
+function parseMuscleGroupHeader(raw: string): string | null {
+  const key = raw.trim().toLowerCase().replace(/[:\-–—]+$/g, "").trim();
+  if (!key || key.length > 30) return null;
+  if (/\d/.test(key) || /[x×]/i.test(key)) return null;
+  return MUSCLE_ALIASES[key] ?? null;
+}
+
 function parseLine(raw: string): ParsedExercise | null {
   let line = raw.trim();
   if (!line) return null;
   line = line.replace(/^\s*(?:\d+\s*[.)-]|[-*•])\s*/, "");
 
-  const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w-]+)/i);
+  // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
+  const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
   const reps = setsRepsMatch[2].slice(0, 12);
