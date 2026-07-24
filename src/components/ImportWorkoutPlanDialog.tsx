@@ -152,6 +152,25 @@ function parseLine(raw: string): ParsedExercise | null {
     };
   }
 
+  const seriesOnlyMatch = line.match(/^(.+?)\s*[:\-–—]\s*(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s*s[eé]ries?\b/i);
+  if (seriesOnlyMatch) {
+    const name = seriesOnlyMatch[1].trim().replace(/[:\-–—]+\s*$/, "").slice(0, 80);
+    if (!name) return null;
+    const minSets = parseInt(seriesOnlyMatch[2], 10);
+    const maxSets = seriesOnlyMatch[3] ? parseInt(seriesOnlyMatch[3], 10) : minSets;
+    const sets = Math.min(20, Math.max(1, maxSets));
+    const notes = seriesOnlyMatch[3] ? `${minSets}-${maxSets} séries` : `${sets} séries`;
+    return {
+      name,
+      sets,
+      reps: "livre",
+      weight_kg: null,
+      rest_seconds: 60,
+      notes,
+      muscle_group: inferGroupFromText(name),
+    };
+  }
+
   // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
   const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
@@ -430,6 +449,12 @@ export function ImportWorkoutPlanDialog({
     "leg press": ["Leg Press"],
     "cadeira extensora": ["Cadeira extensora", "Leg Extensions"],
     "afundo": ["Afundo", "Dumbbell Lunges", "Barbell Lunge"],
+    "panturrilha em pe": ["Panturrilha em pé", "Standing Calf Raises", "Calf Press On The Leg Press Machine"],
+    "panturrilha em pé": ["Panturrilha em pé", "Standing Calf Raises", "Calf Press On The Leg Press Machine"],
+    "panturrilha": ["Panturrilha em pé", "Standing Calf Raises", "Calf Press On The Leg Press Machine"],
+    "abdomen": ["Abdominal", "Crunches", "Plank"],
+    "abdômen": ["Abdominal", "Crunches", "Plank"],
+    "abdominal": ["Abdominal", "Crunches", "Plank"],
     "cardio": ["Esteira - corrida", "Bicicleta ergométrica", "Cardio"],
   };
 
@@ -478,6 +503,36 @@ export function ImportWorkoutPlanDialog({
       muscle_group: "Cardio",
       equipment: "Esteira",
       image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Running_Treadmill/0.jpg",
+    },
+    "panturrilha em pe": {
+      muscle_group: "Panturrilha",
+      equipment: "Livre",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/0.jpg",
+    },
+    "panturrilha em pé": {
+      muscle_group: "Panturrilha",
+      equipment: "Livre",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/0.jpg",
+    },
+    panturrilha: {
+      muscle_group: "Panturrilha",
+      equipment: "Livre",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/0.jpg",
+    },
+    abdomen: {
+      muscle_group: "Abdômen",
+      equipment: "Peso corporal",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crunches/0.jpg",
+    },
+    "abdômen": {
+      muscle_group: "Abdômen",
+      equipment: "Peso corporal",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crunches/0.jpg",
+    },
+    abdominal: {
+      muscle_group: "Abdômen",
+      equipment: "Peso corporal",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crunches/0.jpg",
     },
   };
 
