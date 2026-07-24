@@ -440,43 +440,57 @@ export function ImportWorkoutPlanDialog({
         .eq("user_id", userId);
       const baseIdx = count ?? 0;
 
-      // Resolve/create all exercises across all blocks in one round
-      const allNames = Array.from(
-        new Set(blocks.flatMap((b) => b.exercises.map((e) => e.name))),
-      );
-      const { data: existing } = await supabase
-        .from("exercises")
-        .select("id, name")
-        .in("name", allNames);
-      const byName = new Map<string, string>();
-      (existing ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
+      // Resolve exercises: prefer fuzzy match against the catalog (from dryRun),
+      // then existing rows by exact name, then create as last resort.
+      const idByParsedKey = new Map<string, string>(); // key = normalized parsed name
+      const groupByParsedKey = new Map<string, string>();
 
-      // Best muscle-group guess per new exercise name (parsed group → name heuristic → "Outros")
-      const groupByName = new Map<string, string>();
-      for (const b of blocks) {
-        for (const e of b.exercises) {
-          const k = e.name.toLowerCase();
-          if (groupByName.has(k)) continue;
-          const g = e.muscle_group || inferGroupFromText(e.name) || inferGroupFromText(b.name);
-          if (g) groupByName.set(k, g);
+      for (const b of dryRun) {
+        for (const r of b.rows) {
+          const key = stripAccents(r.parsed.name);
+          if (r.match) idByParsedKey.set(key, r.match.id);
+          if (r.matchGroup) groupByParsedKey.set(key, r.matchGroup);
         }
       }
 
-      const missing = allNames.filter((n) => !byName.has(n.toLowerCase()));
+      // Only rows without a fuzzy match need a DB lookup / creation.
+      const unresolvedNames = Array.from(
+        new Set(
+          blocks
+            .flatMap((b) => b.exercises.map((e) => e.name))
+            .filter((n) => !idByParsedKey.has(stripAccents(n))),
+        ),
+      );
+
+      if (unresolvedNames.length > 0) {
+        const { data: existing } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .in("name", unresolvedNames);
+        (existing ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
+      }
+
+      const missing = Array.from(
+        new Set(
+          blocks
+            .flatMap((b) => b.exercises.map((e) => e.name))
+            .filter((n) => !idByParsedKey.has(stripAccents(n))),
+        ),
+      );
       if (missing.length > 0) {
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
             missing.map((n) => ({
               name: n,
-              muscle_group: groupByName.get(n.toLowerCase()) ?? "Outros",
+              muscle_group: groupByParsedKey.get(stripAccents(n)) ?? "Outros",
               is_default: false,
               created_by: userId,
             })),
           )
           .select("id, name");
         if (cErr) throw cErr;
-        (created ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
+        (created ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
       }
 
       const createdWorkouts: { id: string; name: string }[] = [];
@@ -498,7 +512,7 @@ export function ImportWorkoutPlanDialog({
 
         const rows = b.exercises.map((p, idx) => ({
           workout_id: workout.id,
-          exercise_id: byName.get(p.name.toLowerCase())!,
+          exercise_id: idByParsedKey.get(stripAccents(p.name))!,
           order_idx: idx,
           target_sets: p.sets,
           target_reps: p.reps,
