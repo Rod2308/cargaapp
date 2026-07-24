@@ -435,7 +435,16 @@ function Dashboard() {
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
-  const nextWorkout = workouts[0];
+  // "Próximo treino" segue a mesma sugestão inteligente (rotação do plano +
+   // recuperação muscular). Só cai no primeiro treino da lista se não houver
+   // sugestão específica (ex: dia de descanso ou catálogo vazio).
+   const nextWorkout = useMemo(() => {
+     if (workoutSugeridoId) {
+       const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
+       if (w) return w;
+     }
+     return workouts[0];
+   }, [workouts, workoutSugeridoId]);
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
 
   return (
