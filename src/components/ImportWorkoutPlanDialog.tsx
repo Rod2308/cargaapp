@@ -27,6 +27,7 @@ export type ParsedExercise = {
   weight_kg: number | null;
   rest_seconds: number;
   notes?: string | null;
+  muscle_group?: string | null;
 };
 
 export type ParsedWorkoutBlock = {
@@ -35,12 +36,71 @@ export type ParsedWorkoutBlock = {
   exercises: ParsedExercise[];
 };
 
+// Aliases → canonical muscle group names used by the exercise catalog.
+const MUSCLE_ALIASES: Record<string, string> = {
+  peito: "Peito", peitoral: "Peito", peitorais: "Peito",
+  costas: "Costas", dorsal: "Costas", dorsais: "Costas",
+  ombro: "Ombros", ombros: "Ombros", deltoide: "Ombros", deltoides: "Ombros",
+  "posterior de ombro": "Ombros", "posterior do ombro": "Ombros",
+  triceps: "Tríceps", "tríceps": "Tríceps",
+  biceps: "Bíceps", "bíceps": "Bíceps",
+  antebraco: "Antebraço", "antebraço": "Antebraço",
+  perna: "Pernas", pernas: "Pernas",
+  quadriceps: "Pernas", "quadríceps": "Pernas",
+  posterior: "Pernas", "posterior de coxa": "Pernas", "posterior da coxa": "Pernas",
+  isquios: "Pernas", "ísquios": "Pernas",
+  gluteo: "Glúteos", "glúteo": "Glúteos", gluteos: "Glúteos", "glúteos": "Glúteos",
+  panturrilha: "Panturrilha", panturrilhas: "Panturrilha",
+  abdomen: "Abdômen", "abdômen": "Abdômen",
+  abdominal: "Abdômen", abdominais: "Abdômen", core: "Abdômen",
+  trapezio: "Trapézio", "trapézio": "Trapézio",
+  cardio: "Cardio", aerobico: "Cardio", "aeróbico": "Cardio",
+};
+
+function parseMuscleGroupHeader(raw: string): string | null {
+  const key = raw.trim().toLowerCase().replace(/[:\-–—]+$/g, "").trim();
+  if (!key || key.length > 30) return null;
+  if (/\d/.test(key) || /[x×]/i.test(key)) return null;
+  return MUSCLE_ALIASES[key] ?? null;
+}
+
+// Heuristic: given free text (block name or exercise name), guess a muscle group.
+const NAME_GROUP_HINTS: Array<[RegExp, string]> = [
+  [/\b(supino|crucifix|crossover|peck|voador|flex[aã]o)\b/i, "Peito"],
+  [/\b(puxada|remada|barra fixa|pulldown|pull ?over|levantamento terra|deadlift)\b/i, "Costas"],
+  [/\b(face ?pull)\b/i, "Ombros"],
+  [/\b(desenvolvim|arnold|eleva[cç][aã]o (lateral|frontal)|militar|shoulder|shrug|encolhimento)\b/i, "Ombros"],
+  [/\b(tr[ií]ceps|frances|coice|kickback|testa)\b/i, "Tríceps"],
+  [/\b(b[ií]ceps|rosca|scott|martelo|curl)\b/i, "Bíceps"],
+  [/\b(agachamento|leg press|cadeira extensora|hack|afundo|avan[cç]o|passada|squat|b[uú]lgaro)\b/i, "Pernas"],
+  [/\b(cadeira flexora|mesa flexora|st[ií]ff|posterior|isqui|good ?morning)\b/i, "Pernas"],
+  [/\b(gl[uú]teo|hip ?thrust|eleva[cç][aã]o p[eé]lvica|abdu[cç][aã]o)\b/i, "Glúteos"],
+  [/\b(panturrilha|gemelar|gastroc|calf)\b/i, "Panturrilha"],
+  [/\b(abdominal|abd[oô]men|prancha|plank|crunch|obl[ií]quo|core)\b/i, "Abdômen"],
+  [/\b(antebra[cç]o|forearm|wrist|punho)\b/i, "Antebraço"],
+  [/\b(corrida|caminhada|bike|bicicleta|esteira|el[ií]ptico|nata[cç][aã]o|rem[oó] ergometro|cardio|aer[oó]bico|hiit|jump)\b/i, "Cardio"],
+];
+
+function inferGroupFromText(text: string | undefined | null): string | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  // Explicit alias mentions (e.g. "Peito e tríceps" → Peito wins by first match order)
+  for (const key of Object.keys(MUSCLE_ALIASES)) {
+    // word-boundary match on the alias
+    const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (re.test(lower)) return MUSCLE_ALIASES[key];
+  }
+  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return g;
+  return null;
+}
+
 function parseLine(raw: string): ParsedExercise | null {
   let line = raw.trim();
   if (!line) return null;
   line = line.replace(/^\s*(?:\d+\s*[.)-]|[-*•])\s*/, "");
 
-  const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w-]+)/i);
+  // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
+  const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
   const reps = setsRepsMatch[2].slice(0, 12);
@@ -116,6 +176,10 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
                   : null,
               rest_seconds: Math.min(600, Math.max(0, parseInt(String(r.rest_seconds ?? r.rest ?? 90), 10) || 90)),
               notes: r.notes ?? null,
+              muscle_group:
+                (typeof r.muscle_group === "string" && r.muscle_group.trim()) ||
+                inferGroupFromText(String(r.name ?? r.exercise ?? "")) ||
+                (typeof b.muscle_group === "string" ? b.muscle_group : null),
             } as ParsedExercise;
           })
           .filter(Boolean) as ParsedExercise[];
@@ -141,12 +205,15 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
     if (current && current.exercises.length) blocks.push(current);
   };
 
+  let currentGroup: string | null = null;
+
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
     // A line that IS an exercise takes priority
     const exMaybe = parseLine(line);
     const headerMaybe = exMaybe ? null : parseHeader(line);
+    const groupMaybe = exMaybe || headerMaybe ? null : parseMuscleGroupHeader(line);
 
     if (headerMaybe) {
       pushCurrent();
@@ -155,6 +222,12 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         name: headerMaybe.name || `Treino ${headerMaybe.label}`,
         exercises: [],
       };
+      // Try to infer default group from the block name (e.g. "Peito e tríceps")
+      currentGroup = inferGroupFromText(headerMaybe.name);
+      continue;
+    }
+    if (groupMaybe) {
+      currentGroup = groupMaybe;
       continue;
     }
     if (exMaybe) {
@@ -166,6 +239,8 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         };
         autoIdx++;
       }
+      const guessed = currentGroup ?? inferGroupFromText(exMaybe.name);
+      if (guessed) exMaybe.muscle_group = guessed;
       current.exercises.push(exMaybe);
     }
   }
@@ -271,7 +346,8 @@ export function ImportWorkoutPlanDialog({
         return {
           parsed: p,
           status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-          matchGroup: match?.muscle_group ?? null,
+          matchGroup:
+            match?.muscle_group ?? p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null,
         };
       });
       const conflict = (userWorkouts as any[]).some(
@@ -325,12 +401,28 @@ export function ImportWorkoutPlanDialog({
       const byName = new Map<string, string>();
       (existing ?? []).forEach((e: any) => byName.set(e.name.toLowerCase(), e.id));
 
+      // Best muscle-group guess per new exercise name (parsed group → name heuristic → "Outros")
+      const groupByName = new Map<string, string>();
+      for (const b of blocks) {
+        for (const e of b.exercises) {
+          const k = e.name.toLowerCase();
+          if (groupByName.has(k)) continue;
+          const g = e.muscle_group || inferGroupFromText(e.name) || inferGroupFromText(b.name);
+          if (g) groupByName.set(k, g);
+        }
+      }
+
       const missing = allNames.filter((n) => !byName.has(n.toLowerCase()));
       if (missing.length > 0) {
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
-            missing.map((n) => ({ name: n, muscle_group: "Outros", is_default: false, created_by: userId })),
+            missing.map((n) => ({
+              name: n,
+              muscle_group: groupByName.get(n.toLowerCase()) ?? "Outros",
+              is_default: false,
+              created_by: userId,
+            })),
           )
           .select("id, name");
         if (cErr) throw cErr;
