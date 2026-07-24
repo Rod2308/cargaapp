@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" rx="20" fill="#1f2937"/>
+  <g fill="none" stroke="#fbbf24" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="100" cy="100" r="55"/>
+    <path d="M100 45 L100 155 M45 100 L155 100 M62 62 L138 138 M138 62 L62 138"/>
+  </g>
+  <text x="100" y="185" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#fbbf24" font-weight="600">ESPORTE</text>
+</svg>
