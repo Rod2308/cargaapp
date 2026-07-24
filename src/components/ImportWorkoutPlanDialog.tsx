@@ -410,9 +410,26 @@ export function ImportWorkoutPlanDialog({
     "supino inclinado halteres": ["Supino inclinado com halteres", "Incline Dumbbell Bench Press"],
     "supino inclinado com halteres": ["Incline Dumbbell Bench Press", "Supino inclinado com halteres"],
     "crossover": ["Crossover na polia"],
-    "desenvolvimento": ["Desenvolvimento militar com barra", "Desenvolvimento com halteres"],
+    "desenvolvimento": ["Desenvolvimento militar com barra", "Desenvolvimento com halteres", "Standing Military Press"],
+    "elevacao lateral": ["Elevação lateral com halteres", "Seated Side Lateral Raise", "One-Arm Side Laterals"],
+    "elevação lateral": ["Elevação lateral com halteres", "Seated Side Lateral Raise", "One-Arm Side Laterals"],
     "triceps corda": ["Tríceps na polia com corda"],
     "triceps frances": ["Tríceps francês na polia alta", "Francês com halter"],
+    "tríceps corda": ["Tríceps na polia com corda", "Triceps Pushdown - Rope Attachment"],
+    "tríceps francês": ["Tríceps francês na polia alta", "Cable Incline Triceps Extension"],
+    "barra fixa ou puxada alta": ["Puxada alta", "Wide-Grip Lat Pulldown", "Pullups"],
+    "puxada alta": ["Wide-Grip Lat Pulldown", "Puxada alta"],
+    "barra fixa": ["Pullups", "Barra fixa"],
+    "remada curvada": ["Remada curvada com barra", "Bent Over Barbell Row"],
+    "remada baixa": ["Remada baixa", "Seated Cable Rows"],
+    "pulldown": ["Straight-Arm Pulldown", "Rope Straight-Arm Pulldown", "Wide-Grip Lat Pulldown"],
+    "face pull": ["Face Pull"],
+    "rosca direta": ["Rosca direta com barra", "Barbell Curl"],
+    "rosca martelo": ["Rosca martelo", "Hammer Curls", "Alternate Hammer Curl"],
+    "agachamento livre": ["Agachamento livre", "Barbell Squat", "Barbell Full Squat"],
+    "leg press": ["Leg Press"],
+    "cadeira extensora": ["Cadeira extensora", "Leg Extensions"],
+    "afundo": ["Afundo", "Dumbbell Lunges", "Barbell Lunge"],
     "cardio": ["Esteira - corrida", "Bicicleta ergométrica", "Cardio"],
   };
   const STOPWORDS = new Set([
@@ -439,7 +456,7 @@ export function ImportWorkoutPlanDialog({
   }, [catalog]);
 
   const catalogByName = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; muscle_group: string; image_url?: string | null; is_default?: boolean }>();
+    const m = new Map<string, { id: string; name: string; muscle_group: string; image_url?: string | null; is_default?: boolean; equipment?: string | null }>();
     (catalog as any[]).forEach((e) => {
       const key = stripAccents(String(e.name));
       const current = m.get(key);
@@ -449,6 +466,7 @@ export function ImportWorkoutPlanDialog({
         muscle_group: String(e.muscle_group ?? ""),
         image_url: typeof e.image_url === "string" ? e.image_url : null,
         is_default: Boolean(e.is_default),
+        equipment: typeof e.equipment === "string" ? e.equipment : null,
       };
       const currentScore = (current?.image_url ? 2 : 0) + (current?.is_default ? 1 : 0);
       const candidateScore = (candidate.image_url ? 2 : 0) + (candidate.is_default ? 1 : 0);
@@ -461,7 +479,7 @@ export function ImportWorkoutPlanDialog({
     parsedName: string,
     contextGroup?: string | null,
     preferredMatch?: string | null,
-  ): { id: string; name: string; muscle_group: string } | null => {
+  ): { id: string; name: string; muscle_group: string; image_url?: string | null; equipment?: string | null } | null => {
     const key = stripAccents(parsedName);
     const aliasCandidates = [
       ...(preferredMatch ? [preferredMatch] : []),
@@ -491,7 +509,15 @@ export function ImportWorkoutPlanDialog({
       if (c.key === key) score += c.image_url ? 10 : -25;
       if (!best || score > best.score) best = { entry: c, score };
     }
-    if (best) return { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group };
+    if (best) {
+      return {
+        id: best.entry.id,
+        name: best.entry.name,
+        muscle_group: best.entry.muscle_group,
+        image_url: best.entry.image_url,
+        equipment: best.entry.equipment,
+      };
+    }
 
     // 2) fallback: at least one strong token (>=3 chars) matches, weighted by
     //    coverage + context group. Prevents "Barra fixa ou puxada alta" or
@@ -509,7 +535,13 @@ export function ImportWorkoutPlanDialog({
       if (!best || score > best.score) best = { entry: c, score };
     }
     return best && best.score >= 55
-      ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group }
+      ? {
+          id: best.entry.id,
+          name: best.entry.name,
+          muscle_group: best.entry.muscle_group,
+          image_url: best.entry.image_url,
+          equipment: best.entry.equipment,
+        }
       : null;
   };
 
@@ -580,7 +612,25 @@ export function ImportWorkoutPlanDialog({
       for (const b of dryRun) {
         for (const r of b.rows) {
           const key = stripAccents(r.parsed.name);
-          if (r.match) idByParsedKey.set(key, r.match.id);
+          if (r.match) {
+            idByParsedKey.set(key, r.match.id);
+            const detectedGroup = r.matchGroup;
+            const shouldRepairGroup = detectedGroup && (!r.match.muscle_group || r.match.muscle_group === "Outros");
+            const shouldRepairImage = detectedGroup && !r.match.image_url && FALLBACK_IMAGE_BY_GROUP[detectedGroup];
+            const shouldRepairEquipment = detectedGroup && !r.match.equipment && FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup];
+
+            if (shouldRepairGroup || shouldRepairImage || shouldRepairEquipment) {
+              const { error: repairErr } = await supabase
+                .from("exercises")
+                .update({
+                  ...(shouldRepairGroup ? { muscle_group: detectedGroup } : {}),
+                  ...(shouldRepairImage ? { image_url: FALLBACK_IMAGE_BY_GROUP[detectedGroup] } : {}),
+                  ...(shouldRepairEquipment ? { equipment: FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup] } : {}),
+                })
+                .eq("id", r.match.id);
+              if (repairErr) throw repairErr;
+            }
+          }
           if (r.matchGroup) groupByParsedKey.set(key, r.matchGroup);
         }
       }
@@ -609,7 +659,7 @@ export function ImportWorkoutPlanDialog({
           const shouldRepairEquipment = detectedGroup && !e.equipment && FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup];
 
           if (shouldRepairGroup || shouldRepairImage || shouldRepairEquipment) {
-            await supabase
+            const { error: repairErr } = await supabase
               .from("exercises")
               .update({
                 ...(shouldRepairGroup ? { muscle_group: detectedGroup } : {}),
@@ -617,6 +667,7 @@ export function ImportWorkoutPlanDialog({
                 ...(shouldRepairEquipment ? { equipment: FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup] } : {}),
               })
               .eq("id", e.id);
+            if (repairErr) throw repairErr;
           }
         }
       }
