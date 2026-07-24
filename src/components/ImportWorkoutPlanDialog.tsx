@@ -499,6 +499,71 @@ export function ImportWorkoutPlanDialog({
       equipment: "Polia",
       image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Incline_Triceps_Extension/0.jpg",
     },
+    "barra fixa": {
+      muscle_group: "Costas",
+      equipment: "Peso corporal",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pullups/0.jpg",
+    },
+    "barra fixa ou puxada alta": {
+      muscle_group: "Costas",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Wide-Grip_Lat_Pulldown/0.jpg",
+    },
+    "puxada alta": {
+      muscle_group: "Costas",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Wide-Grip_Lat_Pulldown/0.jpg",
+    },
+    "remada curvada": {
+      muscle_group: "Costas",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Barbell_Row/0.jpg",
+    },
+    "remada baixa": {
+      muscle_group: "Costas",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Cable_Rows/0.jpg",
+    },
+    pulldown: {
+      muscle_group: "Costas",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Straight-Arm_Pulldown/0.jpg",
+    },
+    "face pull": {
+      muscle_group: "Ombros",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull/0.jpg",
+    },
+    "rosca direta": {
+      muscle_group: "Bíceps",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/0.jpg",
+    },
+    "rosca martelo": {
+      muscle_group: "Bíceps",
+      equipment: "Halteres",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hammer_Curls/0.jpg",
+    },
+    "agachamento livre": {
+      muscle_group: "Pernas",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Squat/0.jpg",
+    },
+    "leg press": {
+      muscle_group: "Pernas",
+      equipment: "Máquina",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press/0.jpg",
+    },
+    "cadeira extensora": {
+      muscle_group: "Pernas",
+      equipment: "Máquina",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Extensions/0.jpg",
+    },
+    afundo: {
+      muscle_group: "Pernas",
+      equipment: "Halteres",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Lunges/0.jpg",
+    },
     cardio: {
       muscle_group: "Cardio",
       equipment: "Esteira",
