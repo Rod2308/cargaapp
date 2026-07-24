@@ -346,7 +346,8 @@ export function ImportWorkoutPlanDialog({
         return {
           parsed: p,
           status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-          matchGroup: match?.muscle_group ?? null,
+          matchGroup:
+            match?.muscle_group ?? p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null,
         };
       });
       const conflict = (userWorkouts as any[]).some(
