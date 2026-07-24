@@ -237,7 +237,24 @@ function Dashboard() {
     }
 
 
-    // Sugestão baseada em análise de recuperação (sem rotação fixa do plano)
+    // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
+    // com base no último realmente feito.
+    const planoWorkouts = (workouts as any[])
+      .filter((w) => w.label && /^[A-Z]$/i.test(String(w.label).trim()))
+      .map((w) => ({ id: w.id, label: w.label, name: w.name }));
+    const doPlano = planoWorkouts.length >= 2
+      ? sugerirTreinoDoPlano({
+          workouts: planoWorkouts,
+          sessoes,
+          atividadesExtras: extras,
+          checkin: todayCheckin,
+        })
+      : null;
+    if (doPlano) {
+      return { suggestion: doPlano.sugestao, workoutId: doPlano.workoutId };
+    }
+
+    // 2) Fallback: sugestão por análise de recuperação (grupos musculares)
     const geral = sugerirTreinoDoDia({
       sessoes,
       atividadesExtras: extras,
@@ -276,6 +293,7 @@ function Dashboard() {
       }
     }
     return { suggestion: ajustada, workoutId: wid };
+
   }, [todayCheckin, last7Sessions, workouts]);
 
   const suggestion = planoOuGeral.suggestion;
