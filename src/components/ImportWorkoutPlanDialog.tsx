@@ -406,6 +406,9 @@ export function ImportWorkoutPlanDialog({
     s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const CATALOG_NAME_ALIASES: Record<string, string[]> = {
     "supino reto": ["Supino reto com barra", "Supino reto barra", "Supino reto com halteres"],
+    "supino inclinado": ["Supino inclinado com halteres", "Supino inclinado com barra", "Incline Dumbbell Bench Press", "Incline Bench Press"],
+    "supino inclinado halteres": ["Supino inclinado com halteres", "Incline Dumbbell Bench Press"],
+    "supino inclinado com halteres": ["Incline Dumbbell Bench Press", "Supino inclinado com halteres"],
     "crossover": ["Crossover na polia"],
     "desenvolvimento": ["Desenvolvimento militar com barra", "Desenvolvimento com halteres"],
     "triceps corda": ["Tríceps na polia com corda"],
@@ -520,11 +523,12 @@ export function ImportWorkoutPlanDialog({
         const match = matchExercise(p.name, ctxGroup, p.preferred_match);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
+        const matchGroup = match?.muscle_group && match.muscle_group !== "Outros" ? match.muscle_group : ctxGroup;
         return {
           parsed: p,
           match,
           status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
-          matchGroup: match?.muscle_group ?? ctxGroup,
+          matchGroup,
         };
       });
       const conflict = (userWorkouts as any[]).some(
@@ -593,9 +597,28 @@ export function ImportWorkoutPlanDialog({
       if (unresolvedNames.length > 0) {
         const { data: existing } = await supabase
           .from("exercises")
-          .select("id, name")
+          .select("id, name, muscle_group, image_url, equipment")
           .in("name", unresolvedNames);
-        (existing ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
+        for (const e of existing ?? []) {
+          const key = stripAccents(e.name);
+          idByParsedKey.set(key, e.id);
+
+          const detectedGroup = groupByParsedKey.get(key);
+          const shouldRepairGroup = detectedGroup && (!e.muscle_group || e.muscle_group === "Outros");
+          const shouldRepairImage = detectedGroup && !e.image_url && FALLBACK_IMAGE_BY_GROUP[detectedGroup];
+          const shouldRepairEquipment = detectedGroup && !e.equipment && FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup];
+
+          if (shouldRepairGroup || shouldRepairImage || shouldRepairEquipment) {
+            await supabase
+              .from("exercises")
+              .update({
+                ...(shouldRepairGroup ? { muscle_group: detectedGroup } : {}),
+                ...(shouldRepairImage ? { image_url: FALLBACK_IMAGE_BY_GROUP[detectedGroup] } : {}),
+                ...(shouldRepairEquipment ? { equipment: FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup] } : {}),
+              })
+              .eq("id", e.id);
+          }
+        }
       }
 
       const missing = Array.from(
