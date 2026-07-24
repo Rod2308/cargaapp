@@ -432,6 +432,86 @@ export function ImportWorkoutPlanDialog({
     "afundo": ["Afundo", "Dumbbell Lunges", "Barbell Lunge"],
     "cardio": ["Esteira - corrida", "Bicicleta ergométrica", "Cardio"],
   };
+
+  const DEFAULT_METADATA_BY_NAME: Record<string, { muscle_group: string; equipment: string; image_url: string }> = {
+    "supino reto": {
+      muscle_group: "Peito",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Bench_Press_-_Medium_Grip/0.jpg",
+    },
+    "supino inclinado": {
+      muscle_group: "Peito",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Incline_Bench_Press_-_Medium_Grip/0.jpg",
+    },
+    "supino inclinado com halteres": {
+      muscle_group: "Peito",
+      equipment: "Halteres",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Press/0.jpg",
+    },
+    "crossover": {
+      muscle_group: "Peito",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Crossover/0.jpg",
+    },
+    "desenvolvimento": {
+      muscle_group: "Ombros",
+      equipment: "Barra",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Military_Press/0.jpg",
+    },
+    "elevacao lateral": {
+      muscle_group: "Ombros",
+      equipment: "Halteres",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Side_Lateral_Raise/0.jpg",
+    },
+    "triceps corda": {
+      muscle_group: "Tríceps",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown_-_Rope_Attachment/0.jpg",
+    },
+    "triceps frances": {
+      muscle_group: "Tríceps",
+      equipment: "Polia",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Incline_Triceps_Extension/0.jpg",
+    },
+    cardio: {
+      muscle_group: "Cardio",
+      equipment: "Esteira",
+      image_url: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Running_Treadmill/0.jpg",
+    },
+  };
+
+  const getDefaultMetadata = (name: string, group?: string | null) => {
+    const byName = DEFAULT_METADATA_BY_NAME[stripAccents(name)];
+    if (byName) return byName;
+    const fallbackGroup = group ?? inferGroupFromText(name);
+    if (!fallbackGroup) return null;
+    const image_url = FALLBACK_IMAGE_BY_GROUP[fallbackGroup];
+    const equipment = FALLBACK_EQUIPMENT_BY_GROUP[fallbackGroup];
+    if (!image_url && !equipment) return null;
+    return {
+      muscle_group: fallbackGroup,
+      equipment: equipment ?? "Livre",
+      image_url: image_url ?? "",
+    };
+  };
+
+  const buildExerciseRepair = (
+    current: { name: string; muscle_group?: string | null; image_url?: string | null; equipment?: string | null },
+    detectedGroup?: string | null,
+  ) => {
+    const metadata = getDefaultMetadata(current.name, detectedGroup);
+    if (!metadata) return null;
+
+    const nextGroup = current.muscle_group && current.muscle_group !== "Outros" ? current.muscle_group : metadata.muscle_group;
+    const patch = {
+      ...((!current.muscle_group || current.muscle_group === "Outros") && nextGroup ? { muscle_group: nextGroup } : {}),
+      ...(!current.image_url && metadata.image_url ? { image_url: metadata.image_url } : {}),
+      ...(!current.equipment && metadata.equipment ? { equipment: metadata.equipment } : {}),
+    };
+
+    return Object.keys(patch).length ? patch : null;
+  };
   const STOPWORDS = new Set([
     "com", "de", "da", "do", "das", "dos", "e", "em", "na", "no", "para", "a", "o",
     "ou", "um", "uma", "the",
@@ -614,19 +694,20 @@ export function ImportWorkoutPlanDialog({
           const key = stripAccents(r.parsed.name);
           if (r.match) {
             idByParsedKey.set(key, r.match.id);
-            const detectedGroup = r.matchGroup;
-            const shouldRepairGroup = detectedGroup && (!r.match.muscle_group || r.match.muscle_group === "Outros");
-            const shouldRepairImage = detectedGroup && !r.match.image_url && FALLBACK_IMAGE_BY_GROUP[detectedGroup];
-            const shouldRepairEquipment = detectedGroup && !r.match.equipment && FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup];
+            const repair = buildExerciseRepair(
+              {
+                name: r.match.name,
+                muscle_group: r.match.muscle_group,
+                image_url: r.match.image_url,
+                equipment: r.match.equipment,
+              },
+              r.matchGroup,
+            );
 
-            if (shouldRepairGroup || shouldRepairImage || shouldRepairEquipment) {
+            if (repair) {
               const { error: repairErr } = await supabase
                 .from("exercises")
-                .update({
-                  ...(shouldRepairGroup ? { muscle_group: detectedGroup } : {}),
-                  ...(shouldRepairImage ? { image_url: FALLBACK_IMAGE_BY_GROUP[detectedGroup] } : {}),
-                  ...(shouldRepairEquipment ? { equipment: FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup] } : {}),
-                })
+                .update(repair)
                 .eq("id", r.match.id);
               if (repairErr) throw repairErr;
             }
@@ -653,19 +734,11 @@ export function ImportWorkoutPlanDialog({
           const key = stripAccents(e.name);
           idByParsedKey.set(key, e.id);
 
-          const detectedGroup = groupByParsedKey.get(key);
-          const shouldRepairGroup = detectedGroup && (!e.muscle_group || e.muscle_group === "Outros");
-          const shouldRepairImage = detectedGroup && !e.image_url && FALLBACK_IMAGE_BY_GROUP[detectedGroup];
-          const shouldRepairEquipment = detectedGroup && !e.equipment && FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup];
-
-          if (shouldRepairGroup || shouldRepairImage || shouldRepairEquipment) {
+          const repair = buildExerciseRepair(e, groupByParsedKey.get(key));
+          if (repair) {
             const { error: repairErr } = await supabase
               .from("exercises")
-              .update({
-                ...(shouldRepairGroup ? { muscle_group: detectedGroup } : {}),
-                ...(shouldRepairImage ? { image_url: FALLBACK_IMAGE_BY_GROUP[detectedGroup] } : {}),
-                ...(shouldRepairEquipment ? { equipment: FALLBACK_EQUIPMENT_BY_GROUP[detectedGroup] } : {}),
-              })
+              .update(repair)
               .eq("id", e.id);
             if (repairErr) throw repairErr;
           }
@@ -683,14 +756,18 @@ export function ImportWorkoutPlanDialog({
         const { data: created, error: cErr } = await supabase
           .from("exercises")
           .insert(
-            missing.map((n) => ({
-              name: n,
-              muscle_group: groupByParsedKey.get(stripAccents(n)) ?? "Outros",
-              equipment: FALLBACK_EQUIPMENT_BY_GROUP[groupByParsedKey.get(stripAccents(n)) ?? ""] ?? null,
-              image_url: FALLBACK_IMAGE_BY_GROUP[groupByParsedKey.get(stripAccents(n)) ?? ""] ?? null,
-              is_default: false,
-              created_by: userId,
-            })),
+            missing.map((n) => {
+              const detectedGroup = groupByParsedKey.get(stripAccents(n));
+              const metadata = getDefaultMetadata(n, detectedGroup);
+              return {
+                name: n,
+                muscle_group: metadata?.muscle_group ?? detectedGroup ?? "Outros",
+                equipment: metadata?.equipment ?? null,
+                image_url: metadata?.image_url || null,
+                is_default: false,
+                created_by: userId,
+              };
+            }),
           )
           .select("id, name");
         if (cErr) throw cErr;
