@@ -150,9 +150,29 @@ function parseHeader(raw: string): { label: string; name: string } | null {
   return null;
 }
 
+// Normalize free-form pasted text so the line-based parser can read it:
+// - collapse divider glyphs (⸻ ─ ═) into blank lines
+// - promote bullet markers (* • –) into line breaks
+// - split cabeçalhos ("Treino X", "Cardio:") em nova linha quando grudados
+// - insert newline entre `)Peito*` e antes de nomes de grupo colados a texto
+function normalizeInput(text: string): string {
+  const groupWord =
+    "Peito|Peitorais?|Ombros?|Tr[ií]ceps|B[ií]ceps|Costas|Dorsais?|Pernas?|Quadr[ií]ceps|Posterior(?:\\s+d[ao]\\s+(?:coxa|ombro))?|Gl[uú]teos?|Panturrilhas?|Abd[oô]men|Abdominais?|Antebra[cç]o|Trap[eé]zio|Cardio|Aer[oó]bico";
+  return text
+    .replace(/[⸻─═]{1,}/g, "\n\n")
+    .replace(/([^\n])\s*[*•]\s*/g, "$1\n")
+    .replace(/(\))\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, "$1\n$2")
+    .replace(/([^\n])\s*(Treino\s+[A-Za-z0-9])/g, "$1\n$2")
+    .replace(/([^\n])\s*(Dia\s+\d+)/gi, "$1\n$2")
+    .replace(/([^\n])\s*(Cardio\s*[:\-–—])/gi, "$1\n$2")
+    .replace(new RegExp(`([^\\n\\s])\\s*(${groupWord})(\\s*[:\\-–—]|\\s*\\n|\\s+[A-ZÁ])`, "gi"), "$1\n$2$3")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
 function parseBlocks(text: string): ParsedWorkoutBlock[] {
-  const trimmed = text.trim();
+  const trimmed = normalizeInput(text).trim();
   if (!trimmed) return [];
+
 
   // JSON support: array of blocks or single block
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
@@ -367,21 +387,36 @@ export function ImportWorkoutPlanDialog({
     const tokens = tokenize(parsedName);
     if (!tokens.length) return null;
 
+    // 1) prefer subset match (all parsed tokens present in catalog name)
     let best: { entry: (typeof catalogIndex)[number]; score: number } | null = null;
     for (const c of catalogIndex) {
       let hits = 0;
       for (const t of tokens) if (c.tokens.has(t)) hits++;
-      if (hits === 0) continue;
-      // require ALL parsed tokens to appear in the catalog name (subset match)
       if (hits !== tokens.length) continue;
-      // score: fewer extra tokens in catalog = better; same muscle group bonus
       const extra = c.tokens.size - hits;
       let score = 100 - extra * 5;
       if (contextGroup && c.muscle_group === contextGroup) score += 10;
       if (!best || score > best.score) best = { entry: c, score };
     }
-    return best ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group } : null;
+    if (best) return { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group };
+
+    // 2) fallback: at least one strong token (>=3 chars) matches, weighted by
+    //    coverage + context group. Prevents "Barra fixa ou puxada alta" or
+    //    "Puxada alta" from becoming a new "Outros" exercise.
+    for (const c of catalogIndex) {
+      let hits = 0;
+      for (const t of tokens) if (t.length >= 3 && c.tokens.has(t)) hits++;
+      if (hits === 0) continue;
+      const coverage = hits / Math.max(tokens.length, c.tokens.size);
+      let score = 40 + coverage * 40 + hits * 5;
+      if (contextGroup && c.muscle_group === contextGroup) score += 15;
+      if (!best || score > best.score) best = { entry: c, score };
+    }
+    return best && best.score >= 55
+      ? { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group }
+      : null;
   };
+
 
   const dryRun = useMemo(() => {
     return blocks.map((b) => {
