@@ -28,6 +28,7 @@ export type ParsedExercise = {
   rest_seconds: number;
   notes?: string | null;
   muscle_group?: string | null;
+  preferred_match?: string | null;
 };
 
 export type ParsedWorkoutBlock = {
@@ -94,16 +95,68 @@ function inferGroupFromText(text: string | undefined | null): string | null {
   return null;
 }
 
+const FALLBACK_IMAGE_BY_GROUP: Record<string, string> = {
+  Peito: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Bench_Press_-_Medium_Grip/0.jpg",
+  Costas: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Wide-Grip_Lat_Pulldown/0.jpg",
+  Ombros: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Military_Press/0.jpg",
+  Tríceps: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown_-_Rope_Attachment/0.jpg",
+  Bíceps: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/0.jpg",
+  Pernas: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Squat/0.jpg",
+  Glúteos: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Hip_Thrust/0.jpg",
+  Panturrilha: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/0.jpg",
+  Abdômen: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crunches/0.jpg",
+  Cardio: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Running_Treadmill/0.jpg",
+};
+
+const FALLBACK_EQUIPMENT_BY_GROUP: Record<string, string> = {
+  Peito: "Banco",
+  Costas: "Polia",
+  Ombros: "Barra",
+  Tríceps: "Polia",
+  Bíceps: "Barra",
+  Pernas: "Livre",
+  Glúteos: "Barra",
+  Panturrilha: "Livre",
+  Abdômen: "Peso corporal",
+  Cardio: "Esteira",
+};
+
+function normalizeRepRange(value: string): string {
+  return value.replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().slice(0, 12);
+}
+
 function parseLine(raw: string): ParsedExercise | null {
   let line = raw.trim();
   if (!line) return null;
   line = line.replace(/^\s*(?:\d+\s*[.)-]|[-*•])\s*/, "");
 
+  const cardioMatch = line.match(/^(cardio|aer[oó]bico|condicionamento)\s*[:\-–—]\s*(.+)$/i);
+  if (cardioMatch) {
+    const details = cardioMatch[2].trim();
+    const durationRange = details.match(/(\d{1,3})\s*[-–—]\s*(\d{1,3})\s*(?:min|mins|minutos?)\b/i);
+    const durationSingle = details.match(/(\d{1,3})\s*(?:min|mins|minutos?)\b/i);
+    const reps = durationRange
+      ? `${durationRange[1]}-${durationRange[2]} min`
+      : durationSingle
+        ? `${durationSingle[1]} min`
+        : normalizeRepRange(details || "30 min");
+    return {
+      name: "Cardio",
+      sets: 1,
+      reps,
+      weight_kg: null,
+      rest_seconds: 0,
+      notes: details || null,
+      muscle_group: "Cardio",
+      preferred_match: "Esteira - corrida",
+    };
+  }
+
   // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
   const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
-  const reps = setsRepsMatch[2].slice(0, 12);
+  const reps = normalizeRepRange(setsRepsMatch[2]);
 
   let name = line.slice(0, setsRepsMatch.index).trim();
   name = name.replace(/[:\-–—]+\s*$/, "").trim();
@@ -200,6 +253,7 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
                 (typeof r.muscle_group === "string" && r.muscle_group.trim()) ||
                 inferGroupFromText(String(r.name ?? r.exercise ?? "")) ||
                 (typeof b.muscle_group === "string" ? b.muscle_group : null),
+              preferred_match: typeof r.preferred_match === "string" ? r.preferred_match : null,
             } as ParsedExercise;
           })
           .filter(Boolean) as ParsedExercise[];
@@ -334,7 +388,7 @@ export function ImportWorkoutPlanDialog({
     enabled: open,
     queryKey: ["exercises-catalog-lite"],
     queryFn: async () => {
-      const { data } = await supabase.from("exercises").select("id, name, muscle_group");
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group, image_url, is_default, equipment");
       return data ?? [];
     },
   });
@@ -350,6 +404,14 @@ export function ImportWorkoutPlanDialog({
   // --- Fuzzy catalog matching ------------------------------------------------
   const stripAccents = (s: string) =>
     s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const CATALOG_NAME_ALIASES: Record<string, string[]> = {
+    "supino reto": ["Supino reto com barra", "Supino reto barra", "Supino reto com halteres"],
+    "crossover": ["Crossover na polia"],
+    "desenvolvimento": ["Desenvolvimento militar com barra", "Desenvolvimento com halteres"],
+    "triceps corda": ["Tríceps na polia com corda"],
+    "triceps frances": ["Tríceps francês na polia alta", "Francês com halter"],
+    "cardio": ["Esteira - corrida", "Bicicleta ergométrica", "Cardio"],
+  };
   const STOPWORDS = new Set([
     "com", "de", "da", "do", "das", "dos", "e", "em", "na", "no", "para", "a", "o",
     "ou", "um", "uma", "the",
@@ -365,29 +427,53 @@ export function ImportWorkoutPlanDialog({
       id: e.id as string,
       name: String(e.name),
       muscle_group: String(e.muscle_group ?? ""),
+      image_url: typeof e.image_url === "string" ? e.image_url : null,
+      is_default: Boolean(e.is_default),
+      equipment: typeof e.equipment === "string" ? e.equipment : null,
       key: stripAccents(String(e.name)),
       tokens: new Set(tokenize(String(e.name))),
     }));
   }, [catalog]);
 
   const catalogByName = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; muscle_group: string }>();
-    (catalog as any[]).forEach((e) => m.set(stripAccents(String(e.name)), e));
+    const m = new Map<string, { id: string; name: string; muscle_group: string; image_url?: string | null; is_default?: boolean }>();
+    (catalog as any[]).forEach((e) => {
+      const key = stripAccents(String(e.name));
+      const current = m.get(key);
+      const candidate = {
+        id: e.id as string,
+        name: String(e.name),
+        muscle_group: String(e.muscle_group ?? ""),
+        image_url: typeof e.image_url === "string" ? e.image_url : null,
+        is_default: Boolean(e.is_default),
+      };
+      const currentScore = (current?.image_url ? 2 : 0) + (current?.is_default ? 1 : 0);
+      const candidateScore = (candidate.image_url ? 2 : 0) + (candidate.is_default ? 1 : 0);
+      if (!current || candidateScore > currentScore) m.set(key, candidate);
+    });
     return m;
   }, [catalog]);
 
   const matchExercise = (
     parsedName: string,
     contextGroup?: string | null,
+    preferredMatch?: string | null,
   ): { id: string; name: string; muscle_group: string } | null => {
     const key = stripAccents(parsedName);
-    const exact = catalogByName.get(key);
-    if (exact) return exact;
+    const aliasCandidates = [
+      ...(preferredMatch ? [preferredMatch] : []),
+      ...(CATALOG_NAME_ALIASES[key] ?? []),
+    ];
+    for (const candidateName of aliasCandidates) {
+      const aliasMatch = catalogByName.get(stripAccents(candidateName));
+      if (aliasMatch) return aliasMatch;
+    }
 
     const tokens = tokenize(parsedName);
     if (!tokens.length) return null;
 
-    // 1) prefer subset match (all parsed tokens present in catalog name)
+    // 1) prefer subset match (all parsed tokens present in catalog name), but
+    //    rank default/image-rich catalog rows over old custom rows without media.
     let best: { entry: (typeof catalogIndex)[number]; score: number } | null = null;
     for (const c of catalogIndex) {
       let hits = 0;
@@ -395,7 +481,11 @@ export function ImportWorkoutPlanDialog({
       if (hits !== tokens.length) continue;
       const extra = c.tokens.size - hits;
       let score = 100 - extra * 5;
-      if (contextGroup && c.muscle_group === contextGroup) score += 10;
+      if (contextGroup && c.muscle_group === contextGroup) score += 25;
+      else if (contextGroup && c.muscle_group !== contextGroup) score -= 20;
+      if (c.image_url) score += 15;
+      if (c.is_default) score += 8;
+      if (c.key === key) score += c.image_url ? 10 : -25;
       if (!best || score > best.score) best = { entry: c, score };
     }
     if (best) return { id: best.entry.id, name: best.entry.name, muscle_group: best.entry.muscle_group };
@@ -409,7 +499,10 @@ export function ImportWorkoutPlanDialog({
       if (hits === 0) continue;
       const coverage = hits / Math.max(tokens.length, c.tokens.size);
       let score = 40 + coverage * 40 + hits * 5;
-      if (contextGroup && c.muscle_group === contextGroup) score += 15;
+      if (contextGroup && c.muscle_group === contextGroup) score += 20;
+      else if (contextGroup && c.muscle_group !== contextGroup) score -= 15;
+      if (c.image_url) score += 10;
+      if (c.is_default) score += 5;
       if (!best || score > best.score) best = { entry: c, score };
     }
     return best && best.score >= 55
@@ -424,7 +517,7 @@ export function ImportWorkoutPlanDialog({
       const rows = b.exercises.map((p) => {
         const key = stripAccents(p.name);
         const ctxGroup = p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null;
-        const match = matchExercise(p.name, ctxGroup);
+        const match = matchExercise(p.name, ctxGroup, p.preferred_match);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
         return {
@@ -519,6 +612,8 @@ export function ImportWorkoutPlanDialog({
             missing.map((n) => ({
               name: n,
               muscle_group: groupByParsedKey.get(stripAccents(n)) ?? "Outros",
+              equipment: FALLBACK_EQUIPMENT_BY_GROUP[groupByParsedKey.get(stripAccents(n)) ?? ""] ?? null,
+              image_url: FALLBACK_IMAGE_BY_GROUP[groupByParsedKey.get(stripAccents(n)) ?? ""] ?? null,
               is_default: false,
               created_by: userId,
             })),
@@ -545,16 +640,20 @@ export function ImportWorkoutPlanDialog({
         if (wErr) throw wErr;
         createdWorkouts.push({ id: workout.id, name: workout.name });
 
-        const rows = b.exercises.map((p, idx) => ({
-          workout_id: workout.id,
-          exercise_id: idByParsedKey.get(stripAccents(p.name))!,
-          order_idx: idx,
-          target_sets: p.sets,
-          target_reps: p.reps,
-          target_weight_kg: p.weight_kg,
-          target_rest_seconds: p.rest_seconds,
-          notes: p.notes ?? null,
-        }));
+        const rows = b.exercises.map((p, idx) => {
+          const exerciseId = idByParsedKey.get(stripAccents(p.name));
+          if (!exerciseId) throw new Error(`Exercício não resolvido: ${p.name}`);
+          return {
+            workout_id: workout.id,
+            exercise_id: exerciseId,
+            order_idx: idx,
+            target_sets: p.sets,
+            target_reps: p.reps,
+            target_weight_kg: p.weight_kg,
+            target_rest_seconds: p.rest_seconds,
+            notes: p.notes ?? null,
+          };
+        });
         const { error: weErr } = await supabase.from("workout_exercises").insert(rows);
         if (weErr) throw weErr;
       }
@@ -748,8 +847,8 @@ export function ImportWorkoutPlanDialog({
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground">
-              Nada é salvo até você clicar em <b>Importar</b>. Exercícios novos vão para o grupo "Outros" e
-              podem ser ajustados depois.
+              Nada é salvo até você clicar em <b>Importar</b>. Exercícios novos usam o grupo muscular detectado
+              e recebem uma imagem padrão quando houver contexto suficiente.
             </p>
           </div>
         )}
