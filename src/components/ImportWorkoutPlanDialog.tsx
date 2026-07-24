@@ -686,6 +686,11 @@ export function ImportWorkoutPlanDialog({
                           <tr key={i} className="border-t border-border">
                             <td className="px-2 py-1.5">
                               <div className="font-medium">{p.name}</div>
+                              {row.match && stripAccents(row.match.name) !== stripAccents(p.name) && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  → {row.match.name}
+                                </div>
+                              )}
                               {row.matchGroup && (
                                 <div className="text-[10px] text-muted-foreground">{row.matchGroup}</div>
                               )}
