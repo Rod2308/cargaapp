@@ -332,7 +332,7 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         };
         autoIdx++;
       }
-      const guessed = currentGroup ?? inferGroupFromText(exMaybe.name);
+      const guessed = inferGroupFromText(exMaybe.name) ?? currentGroup;
       if (guessed) exMaybe.muscle_group = guessed;
       current.exercises.push(exMaybe);
     }
