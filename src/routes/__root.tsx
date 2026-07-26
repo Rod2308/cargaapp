@@ -120,6 +120,10 @@ function RootComponent() {
     registerSW();
     initSyncQueue();
     setupQueryPersister(queryClient);
+    // Mantém o token do Supabase persistido corretamente em qualquer origem
+    // (inclui o retorno do Google e da ponte /auth-bridge).
+    const detachPersistence = attachSessionPersistence(supabase.auth);
+
     // Pré-carrega dados essenciais para uso offline (best-effort)
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) void prefetchOfflineEssentials(queryClient, data.user.id);
