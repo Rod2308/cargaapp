@@ -28,9 +28,11 @@ import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
+  proximoNaRotina,
   type WorkoutSession,
   type ExtraActivity,
 } from "@/lib/daily-suggestion";
+
 
 
 export const Route = createFileRoute("/_authenticated/app/")({
@@ -50,13 +52,31 @@ function Dashboard() {
     },
   });
 
-  const { data: workouts = [] } = useQuery({
+  const { data: workouts = [], isLoading: workoutsLoading } = useQuery({
     queryKey: ["workouts", user.id],
     queryFn: async () => {
       const { data } = await supabase.from("workouts").select("*").eq("user_id", user.id).order("order_idx");
       return data ?? [];
     },
   });
+
+  // Último treino do plano efetivamente concluído (independe de check-in diário).
+  // Prefixo "recent-sessions" para ser invalidado junto com as demais telas.
+  const { data: lastPlanSession, isLoading: lastPlanLoading } = useQuery({
+    queryKey: ["recent-sessions", user.id, "last-plan"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("workout_id, started_at, ended_at")
+        .eq("user_id", user.id)
+        .not("workout_id", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(1);
+      return data?.[0] ?? null;
+    },
+  });
+
+
 
   const { data: recent = [] } = useQuery({
     queryKey: ["recent-sessions", user.id],
@@ -435,17 +455,39 @@ function Dashboard() {
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
-  // "Próximo treino" segue a mesma sugestão inteligente (rotação do plano +
-   // recuperação muscular). Só cai no primeiro treino da lista se não houver
-   // sugestão específica (ex: dia de descanso ou catálogo vazio).
-   const nextWorkout = useMemo(() => {
-     if (workoutSugeridoId) {
-       const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
-       if (w) return w;
-     }
-     return workouts[0];
-   }, [workouts, workoutSugeridoId]);
+  // "Próximo treino":
+  // 1) sugestão inteligente (rotação do plano + recuperação muscular), quando há check-in;
+  // 2) senão, rotação pura pelo último treino concluído (A → B → C → A);
+  // 3) senão, primeiro treino da rotina.
+  const nextWorkout = useMemo(() => {
+    if (workoutSugeridoId) {
+      const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
+      if (w) return w;
+    }
+    return (
+      proximoNaRotina(workouts as any[], lastPlanSession?.workout_id ?? null) ??
+      (workouts[0] as any)
+    );
+  }, [workouts, workoutSugeridoId, lastPlanSession]);
+
+  const nextWorkoutLoading = workoutsLoading || lastPlanLoading;
+  const isRestDay = suggestion?.intensidade === "descanso";
+
+  // Contagem de exercícios do próximo treino (informação de apoio no card)
+  const { data: nextWorkoutExerciseCount } = useQuery({
+    queryKey: ["workout-exercise-count", nextWorkout?.id],
+    enabled: !!nextWorkout?.id,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("workout_exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("workout_id", nextWorkout.id);
+      return count ?? 0;
+    },
+  });
+
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
+
 
   return (
     <div className="app-container pt-8 sm:pt-12">
@@ -531,32 +573,57 @@ function Dashboard() {
       {/* Bento */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {/* Start workout — hero tile */}
-        {nextWorkout ? (
+        {nextWorkoutLoading ? (
+          <div className="card-lift col-span-2 row-span-2 flex flex-col items-start gap-4 p-5 sm:p-7 md:col-span-2 md:min-h-[280px]">
+            <div className="h-3 w-28 animate-pulse rounded-full bg-muted" />
+            <div className="h-16 w-40 animate-pulse rounded-2xl bg-muted" />
+            <div className="h-4 w-48 animate-pulse rounded-full bg-muted" />
+            <div className="mt-auto h-10 w-36 animate-pulse rounded-full bg-muted" />
+          </div>
+        ) : nextWorkout ? (
           <button
             onClick={() => startSession.mutate({ workoutId: nextWorkout.id })}
             disabled={startSession.isPending}
-            className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left sm:p-7 md:col-span-2 md:min-h-[280px]"
+            className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left transition-opacity duration-300 sm:p-7 md:col-span-2 md:min-h-[280px]"
           >
-            <span className="text-eyebrow text-white/60">Próximo treino</span>
+            <span className="text-eyebrow text-white/60">Seu próximo treino</span>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <span className="font-display text-6xl font-black leading-none text-brand sm:text-7xl md:text-8xl">
                 {nextWorkout.label}
               </span>
               <span className="mb-1 font-display text-xl leading-tight sm:text-2xl">{nextWorkout.name}</span>
             </div>
+            <span className="mt-2 text-xs text-white/60">
+              {isRestDay
+                ? "Hoje é dia de descanso — mantenha o foco na recuperação. Se quiser, treine leve."
+                : [
+                    lastPlanSession?.workout_id
+                      ? `Depois do último treino registrado`
+                      : "Primeiro treino da sua rotina",
+                    nextWorkoutExerciseCount
+                      ? `${nextWorkoutExerciseCount} exercício${nextWorkoutExerciseCount > 1 ? "s" : ""}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+            </span>
             <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
-              <Play className="size-4 fill-current" /> Iniciar agora
+              <Play className="size-4 fill-current" /> Iniciar treino
             </span>
           </button>
         ) : (
           <div className="card-lift col-span-2 row-span-2 flex flex-col items-start p-5 sm:p-7 md:col-span-2">
-            <span className="text-eyebrow text-muted-foreground">Comece</span>
-            <p className="mt-2 font-display text-2xl">Monte seu primeiro treino</p>
+            <span className="text-eyebrow text-muted-foreground">Nenhum treino agendado</span>
+            <p className="mt-2 font-display text-2xl">Crie sua rotina de treinos</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Monte seus treinos (A, B, C…) e o app passa a indicar automaticamente o próximo da sequência.
+            </p>
             <Button className="mt-4" onClick={() => navigate({ to: "/app/treinos" })}>
               <Plus className="size-4" /> Criar treino
             </Button>
           </div>
         )}
+
 
         {/* Streak / stats */}
         <div className="card-lift flex flex-col p-4 sm:p-5">
