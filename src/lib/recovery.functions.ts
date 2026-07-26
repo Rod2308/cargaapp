@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { computeRecoveryAdviceFor, type RecoveryAdvice } from "./recovery.server";
+import { computeRecoveryAdviceFor, type RecoveryAdvice } from "./recovery-core";
 
 export type { RecoveryAdvice };
 
 /**
- * Server function wrapper. All computation lives in recovery.server.ts so
+ * Server function wrapper. All computation lives in recovery-core.ts so
  * other server-fn handlers (e.g. the coach) can import the helper directly
  * without going through the RPC stub.
  */
