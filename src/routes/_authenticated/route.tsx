@@ -31,6 +31,9 @@ function Layout() {
   const queryClient = useQueryClient();
   const [unread, setUnread] = useState(0);
 
+  // Sincronização automática das atividades do Strava
+  useStravaAutoSync();
+
   useEffect(() => {
     // Revalida a assinatura Web Push ao abrir o app (recria se sumiu do backend).
     ensureWebPushSubscribed();
