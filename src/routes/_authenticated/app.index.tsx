@@ -652,6 +652,35 @@ function Dashboard() {
                     .filter(Boolean)
                     .join(" · ")}
             </span>
+
+            {/* Motivo da escolha */}
+            {nextWorkoutReason ? (
+              <div className="mt-4 w-full rounded-2xl bg-white/5 p-3">
+                <span className="text-eyebrow text-white/50">Por que este treino?</span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {nextWorkoutReason.grupos.length > 0 ? (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      Grupo: {nextWorkoutReason.grupos.join(", ")}
+                    </span>
+                  ) : null}
+                  {nextWorkoutReason.recuperacao ? (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      Recuperação: {nextWorkoutReason.recuperacao}
+                    </span>
+                  ) : null}
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                    Sugestão: {nextWorkoutReason.origem}
+                  </span>
+                </div>
+                {nextWorkoutReason.motivo ? (
+                  <p className="mt-2 text-[11px] leading-snug text-white/60">{nextWorkoutReason.motivo}</p>
+                ) : null}
+                {nextWorkoutReason.scoreDetalhe ? (
+                  <p className="mt-1 text-[11px] leading-snug text-white/40">{nextWorkoutReason.scoreDetalhe}</p>
+                ) : null}
+              </div>
+            ) : null}
+
             <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
               <Play className="size-4 fill-current" /> Iniciar treino
             </span>
