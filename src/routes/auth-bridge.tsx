@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Dumbbell, AlertTriangle } from "lucide-react";
 import { safeNextPath } from "@/lib/auth-bridge";
+import { recordLoginMarker } from "@/lib/login-check";
 
 export const Route = createFileRoute("/auth-bridge")({
   ssr: false,
@@ -43,6 +44,8 @@ function AuthBridgePage() {
           setError("Não foi possível concluir o login. Tente novamente.");
           return;
         }
+        // Marca que a sessão desta origem chegou pela ponte (usado em /status-login).
+        recordLoginMarker("bridge");
         window.location.replace(next);
       })
       .catch(() => setError("Não foi possível concluir o login. Tente novamente."));
