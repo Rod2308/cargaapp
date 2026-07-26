@@ -187,7 +187,7 @@ function PasswordChecklist({ password }: { password: string }) {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; bridge?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
     // Origem espelho que pediu a ponte de login (validada contra a allow-list).
     bridge: isAllowedBridgeOrigin(typeof s.bridge === "string" ? s.bridge : null)
