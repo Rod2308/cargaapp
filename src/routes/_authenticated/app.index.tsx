@@ -171,7 +171,18 @@ function Dashboard() {
     refetch: refetchRecovery,
   } = useQuery({
     queryKey: ["recovery", user.id, todayStr],
-    queryFn: () => fetchRecovery(),
+    queryFn: async () => {
+      // Em origens espelho (ex.: Vercel) o app é servido como estático e as
+      // server functions não existem — nesse caso calculamos a recuperação no
+      // próprio navegador, com exatamente o mesmo motor usado no servidor.
+      try {
+        return await fetchRecovery();
+      } catch (err) {
+        console.warn("[recovery] server function indisponível, calculando localmente", err);
+        const { computeRecoveryAdviceFor } = await import("@/lib/recovery-core");
+        return await computeRecoveryAdviceFor(supabase, user.id);
+      }
+    },
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: true,
     retry: false,
