@@ -28,9 +28,11 @@ import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
+  proximoNaRotina,
   type WorkoutSession,
   type ExtraActivity,
 } from "@/lib/daily-suggestion";
+
 
 
 export const Route = createFileRoute("/_authenticated/app/")({
