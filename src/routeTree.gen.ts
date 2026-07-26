@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as StatusLoginRouteImport } from './routes/status-login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -50,6 +51,11 @@ import { Route as AuthenticatedAppGruposIdClassificacaoRouteImport } from './rou
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusLoginRoute = StatusLoginRouteImport.update({
+  id: '/status-login',
+  path: '/status-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -261,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -299,6 +306,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -338,6 +346,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -378,6 +387,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  StatusLoginRoute: typeof StatusLoginRoute
   TermosRoute: typeof TermosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -515,6 +528,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status-login': {
+      id: '/status-login'
+      path: '/status-login'
+      fullPath: '/status-login'
+      preLoaderRoute: typeof StatusLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -859,6 +879,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  StatusLoginRoute: StatusLoginRoute,
   TermosRoute: TermosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
