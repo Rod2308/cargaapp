@@ -22,6 +22,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { ArrowLeft, TrendingUp, Trophy, Dumbbell } from "lucide-react";
+import { OneRmPanel } from "@/components/OneRmPanel";
+import type { OneRmSet } from "@/lib/one-rm";
 
 export const Route = createFileRoute("/_authenticated/app/progresso")({
   component: ProgressPage,
@@ -139,6 +141,16 @@ function ProgressPage() {
     return { maxWeight, maxReps, maxVolume };
   }, [current, chart]);
 
+  const oneRmSets = useMemo<OneRmSet[]>(() => {
+    if (!current) return [];
+    return current.sets.map((s) => ({
+      weight_kg: s.weight_kg,
+      reps: s.reps,
+      rpe: s.rpe,
+      date: s.sessions?.started_at ?? s.completed_at,
+    }));
+  }, [current]);
+
   return (
     <div className="mx-auto max-w-3xl px-4 pb-24 pt-6">
       <div className="mb-6 flex items-center gap-3">
@@ -207,6 +219,8 @@ function ProgressPage() {
                   value={prs.maxVolume ? `${prs.maxVolume} kg` : "—"}
                 />
               </div>
+
+              <OneRmPanel sets={oneRmSets} exerciseName={current.name} />
 
               {/* Chart */}
               {chart.length > 1 && (
