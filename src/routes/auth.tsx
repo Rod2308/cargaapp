@@ -367,6 +367,11 @@ function AuthPage() {
 
 
   async function google() {
+    // Grava a preferência de "Lembrar-me" ANTES do redirect do OAuth: no retorno
+    // do Google não há clique de botão, então essa é a única chance de registrá-la.
+    // A persistência do token em si é aplicada pelo listener de auth no boot.
+    applyRememberMe(remember);
+
     setBusy(true);
     const isNative =
       typeof window !== "undefined" &&
