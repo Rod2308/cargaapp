@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import { ensureWebPushSubscribed } from "@/lib/web-push-client";
+import { useStravaAutoSync } from "@/hooks/useStravaAutoSync";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -29,6 +30,9 @@ function Layout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [unread, setUnread] = useState(0);
+
+  // Sincronização automática das atividades do Strava
+  useStravaAutoSync();
 
   useEffect(() => {
     // Revalida a assinatura Web Push ao abrir o app (recria se sumiu do backend).
