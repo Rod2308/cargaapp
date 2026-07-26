@@ -367,9 +367,14 @@ function AuthPage() {
     const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
 
     const nativeParam = new URLSearchParams(window.location.search).get("native");
-    const myRedirectUri = nativeParam === "1" 
-      ? `${window.location.origin}/?native=1` 
-      : `${window.location.origin}${redirectTo}`;
+    // Com ?bridge=, o retorno do Google volta para esta mesma tela canônica
+    // mantendo o parâmetro, e o efeito acima devolve a sessão para a origem espelho.
+    const bridgeReturn = bridge
+      ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
+      : null;
+    const myRedirectUri = nativeParam === "1"
+      ? `${window.location.origin}/?native=1`
+      : bridgeReturn ?? `${window.location.origin}${redirectTo}`;
 
     if (isLovable) {
       // Usa o atalho original da Lovable se estivermos lá dentro
@@ -383,7 +388,7 @@ function AuthPage() {
       }
       if (result.redirected) return;
       setBusy(false);
-      window.location.href = redirectTo;
+      await finishLogin();
     } else {
       // Usa o Supabase oficial se estivermos na Vercel ou no seu domínio próprio
       const { error } = await supabase.auth.signInWithOAuth({
@@ -396,6 +401,7 @@ function AuthPage() {
         return;
       }
     }
+
   }
 
   return (
