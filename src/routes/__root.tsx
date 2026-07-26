@@ -206,10 +206,12 @@ function RootComponent() {
     }
     return () => {
       data.subscription.unsubscribe();
+      detachPersistence();
       nativeAuthUnsub?.();
       removeUrlListener?.();
       window.removeEventListener("online", handleOnline);
     };
+
   }, [router, queryClient]);
   return (
     <QueryClientProvider client={queryClient}>
