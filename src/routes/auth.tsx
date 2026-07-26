@@ -11,11 +11,13 @@ import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
 import {
+  CANONICAL_ORIGIN,
   handOffSessionToBridge,
   isAllowedBridgeOrigin,
   isBridgeOrigin,
   redirectToCanonicalLogin,
 } from "@/lib/auth-bridge";
+
 
 
 
