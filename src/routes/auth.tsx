@@ -242,21 +242,35 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    // Valida a sessão no servidor (getUser) antes de sair da tela de login.
+    // Só com getSession (validação local) uma sessão expirada/inválida causaria
+    // um laço /auth → /app → /auth, porque a rota protegida usa getUser.
+    async function validSession() {
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error || !userData.user) {
+        await supabase.auth.signOut().catch(() => {});
+        return null;
+      }
+      const { data } = await supabase.auth.getSession();
+      return data.session ?? null;
+    }
+
     // Origem espelho (ex.: Vercel): o provedor não pode redirecionar para cá,
     // então o login acontece na origem canônica e volta pela ponte.
     if (!bridge && isBridgeOrigin()) {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) window.location.href = redirectTo;
+      validSession().then((session) => {
+        if (session) window.location.href = redirectTo;
         else redirectToCanonicalLogin(redirectTo);
       });
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) return;
-      if (bridge && handOffSessionToBridge(bridge, data.session, redirectTo)) return;
+    validSession().then((session) => {
+      if (!session) return;
+      if (bridge && handOffSessionToBridge(bridge, session, redirectTo)) return;
       window.location.href = redirectTo;
     });
   }, [redirectTo, bridge]);
+
 
 
   useEffect(() => {
