@@ -25,18 +25,22 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # Copiando as suas variáveis de ambiente do Supabase (para o app conseguir conectar no banco)
       - name: Create .env file
-        env:
-          ENV_FILE: ${{ secrets.ENV_FILE }}
-        run: echo "$ENV_FILE" > .env
+        run: |
+          echo 'SUPABASE_PROJECT_ID="lgxwvmhaaxiymhjqmglk"' > .env
+          echo 'SUPABASE_PUBLISHABLE_KEY="sb_publishable_Wn25jk_uxUmXuuBNBSS7LA_TPuCdCCU"' >> .env
+          echo 'SUPABASE_URL="https://lgxwvmhaaxiymhjqmglk.supabase.co"' >> .env
+          echo 'VITE_SUPABASE_PROJECT_ID="lgxwvmhaaxiymhjqmglk"' >> .env
+          echo 'VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_Wn25jk_uxUmXuuBNBSS7LA_TPuCdCCU"' >> .env
+          echo 'VITE_SUPABASE_URL="https://lgxwvmhaaxiymhjqmglk.supabase.co"' >> .env
 
       - name: Install dependencies
         run: npm install
 
-      - name: Create dist/index.html for cap sync
-        run: |
-          mkdir -p dist
-          echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Carga App</title></head><body></body></html>' > dist/index.html
+      # CORREÇÃO AQUI: Agora ele vai compilar o seu projeto de verdade!
+      - name: Build the App
+        run: npm run build
 
       - name: Sync Capacitor Android
         run: npx cap sync android
