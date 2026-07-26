@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import { ensureWebPushSubscribed } from "@/lib/web-push-client";
+import { useStravaAutoSync } from "@/hooks/useStravaAutoSync";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
