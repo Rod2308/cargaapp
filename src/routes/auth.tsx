@@ -11,11 +11,13 @@ import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
 import {
+  CANONICAL_ORIGIN,
   handOffSessionToBridge,
   isAllowedBridgeOrigin,
   isBridgeOrigin,
   redirectToCanonicalLogin,
 } from "@/lib/auth-bridge";
+
 
 
 
@@ -222,14 +224,19 @@ function AuthPage() {
     const parsed = emailSchema.safeParse(forgotEmail || email);
     if (!parsed.success) return toast.error(parsed.error.issues[0]?.message ?? "Email inválido.");
     setForgotBusy(true);
+    // O provedor de auth só aceita redirecionar para a origem canônica. Numa origem
+    // espelho (ex.: Vercel) o link do email precisa apontar para a origem canônica,
+    // senão o usuário cai num link "inválido ou expirado".
+    const resetOrigin = isBridgeOrigin() ? CANONICAL_ORIGIN : window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${resetOrigin}/reset-password`,
     });
     setForgotBusy(false);
     if (error) return toast.error(translateAuthError(error));
     toast.success(`Enviamos um link de redefinição para ${parsed.data}. Verifique sua caixa de entrada e o spam.`, { duration: 8000 });
     setForgotOpen(false);
   }
+
 
   // Conclui o login: na origem canônica com ?bridge=, devolve a sessão para a
   // origem espelho; caso contrário segue para o destino normal.
