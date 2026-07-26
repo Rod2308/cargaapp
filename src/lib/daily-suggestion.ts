@@ -632,3 +632,37 @@ export function sugerirTreinoDoPlano(args: {
     },
   };
 }
+
+// ============================================================================
+// Rotação simples do plano — independente de check-in diário.
+// Dado o último treino do plano efetivamente concluído, devolve o próximo.
+// ============================================================================
+
+export type RotinaWorkout = { id: string; label: string | null; name: string };
+
+export function ordenarRotina<T extends RotinaWorkout>(workouts: T[]): T[] {
+  const comLetra = workouts.filter((w) => w.label && /^[A-Z]$/i.test(String(w.label).trim()));
+  if (comLetra.length >= 2) {
+    return [...comLetra].sort((a, b) =>
+      String(a.label).trim().toUpperCase().localeCompare(String(b.label).trim().toUpperCase()),
+    );
+  }
+  return workouts;
+}
+
+/**
+ * Próximo treino da rotina com base no último concluído.
+ * - Sem histórico → primeiro treino da rotina.
+ * - Último = último da lista → recicla para o primeiro.
+ */
+export function proximoNaRotina<T extends RotinaWorkout>(
+  workouts: T[],
+  ultimoWorkoutId: string | null | undefined,
+): T | null {
+  const rotina = ordenarRotina(workouts);
+  if (rotina.length === 0) return null;
+  if (!ultimoWorkoutId) return rotina[0];
+  const idx = rotina.findIndex((w) => w.id === ultimoWorkoutId);
+  if (idx < 0) return rotina[0];
+  return rotina[(idx + 1) % rotina.length];
+}
