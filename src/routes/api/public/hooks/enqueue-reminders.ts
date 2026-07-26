@@ -74,40 +74,83 @@ export const Route = createFileRoute("/api/public/hooks/enqueue-reminders")({
           }
         }
 
-        // === Lembrete diário de treino (19h America/Sao_Paulo) ===
-        const spNow = new Date(
-          now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }),
-        );
-        const spHour = spNow.getHours();
-        if (spHour === 19) {
-          const spDate = spNow.toISOString().slice(0, 10);
-          const startOfDay = new Date(spNow);
-          startOfDay.setHours(0, 0, 0, 0);
-          // volta para UTC
-          const startUtc = new Date(
-            startOfDay.getTime() - (spNow.getTime() - now.getTime()),
-          ).toISOString();
+        // === Lembrete diário de treino (por preferência do usuário) ===
+        const { data: subs } = await supabaseAdmin
+          .from("push_subscriptions")
+          .select("user_id");
+        const userIds = Array.from(new Set((subs ?? []).map((s) => s.user_id)));
 
-          const { data: subs } = await supabaseAdmin
-            .from("push_subscriptions")
-            .select("user_id");
-          const userIds = Array.from(new Set((subs ?? []).map((s) => s.user_id)));
+        if (userIds.length > 0) {
+          const { data: settingsRows } = await supabaseAdmin
+            .from("workout_reminder_settings")
+            .select("user_id, enabled, remind_at, rest_days, timezone")
+            .in("user_id", userIds);
+          const settingsByUser = new Map(
+            (settingsRows ?? []).map((r) => [r.user_id, r]),
+          );
 
-          if (userIds.length > 0) {
-            const { data: sessionsToday } = await supabaseAdmin
+          // Janela de disparo: o cron roda a cada ~10min.
+          const WINDOW_MIN = 10;
+          const candidates: { userId: string; localDate: string }[] = [];
+
+          for (const uid of userIds) {
+            const s = settingsByUser.get(uid);
+            const enabled = s ? s.enabled : true;
+            if (!enabled) continue;
+            const tz = s?.timezone || "America/Sao_Paulo";
+            const remindAt = String(s?.remind_at ?? "09:00").slice(0, 5);
+            const restDays = (s?.rest_days ?? []) as number[];
+
+            let parts: Intl.DateTimeFormatPart[];
+            try {
+              parts = new Intl.DateTimeFormat("en-CA", {
+                timeZone: tz,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                weekday: "short",
+                hour12: false,
+              }).formatToParts(now);
+            } catch {
+              continue;
+            }
+            const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+            const localDate = `${get("year")}-${get("month")}-${get("day")}`;
+            const localMinutes = Number(get("hour")) * 60 + Number(get("minute"));
+            const weekdayMap: Record<string, number> = {
+              Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+            };
+            const weekday = weekdayMap[get("weekday")];
+            if (restDays.includes(weekday)) continue;
+
+            const [hh, mm] = remindAt.split(":").map(Number);
+            const target = hh * 60 + mm;
+            const diff = localMinutes - target;
+            if (diff < 0 || diff >= WINDOW_MIN) continue;
+
+            candidates.push({ userId: uid, localDate });
+          }
+
+          if (candidates.length > 0) {
+            // Não avisa quem já registrou treino hoje (últimas 24h cobre o dia local).
+            const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            const { data: recentSessions } = await supabaseAdmin
               .from("sessions")
-              .select("user_id")
-              .in("user_id", userIds)
-              .gte("started_at", startUtc);
-            const trained = new Set((sessionsToday ?? []).map((s) => s.user_id));
-            for (const uid of userIds) {
-              if (trained.has(uid)) continue;
+              .select("user_id, started_at")
+              .in("user_id", candidates.map((c) => c.userId))
+              .gte("started_at", since);
+            const trained = new Set((recentSessions ?? []).map((s) => s.user_id));
+
+            for (const c of candidates) {
+              if (trained.has(c.userId)) continue;
               rows.push({
-                user_id: uid,
-                title: "💪 Hora do treino",
-                body: "Você ainda não registrou treino hoje. Bora?",
+                user_id: c.userId,
+                title: "💪 Lembrete de treino",
+                body: "Seu treino de hoje está esperando por você!",
                 url: "/app",
-                tag: `workout-reminder:${spDate}`,
+                tag: `workout-reminder:${c.localDate}`,
                 fire_at: nowIso,
               });
             }

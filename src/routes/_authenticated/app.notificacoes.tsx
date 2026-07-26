@@ -11,6 +11,7 @@ import {
   isPushSupported,
 } from "@/lib/web-push-client";
 import { needsIOSInstallForPush } from "@/lib/pwa-env";
+import { WorkoutReminderSettings } from "@/components/WorkoutReminderSettings";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/notificacoes")({
@@ -51,7 +52,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Treino",
     items: [
-      { key: "workoutReminder", label: "Lembrete diário de treino", description: "Aviso à noite se ainda não treinou hoje." },
       { key: "restTimer", label: "Fim do descanso entre séries", description: "Notifica quando o timer chegar ao fim." },
     ],
   },
@@ -164,6 +164,8 @@ function NotificationPreferencesPage() {
           />
         </div>
       </section>
+
+      <WorkoutReminderSettings />
 
       {GROUPS.map((group) => (
         <section key={group.title} className="card-soft p-5 mb-4">

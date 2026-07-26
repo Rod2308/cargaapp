@@ -833,6 +833,36 @@ export type Database = {
           },
         ]
       }
+      workout_reminder_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          remind_at: string
+          rest_days: number[]
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          remind_at?: string
+          rest_days?: number[]
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          remind_at?: string
+          rest_days?: number[]
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workouts: {
         Row: {
           client_mutation_id: string | null
