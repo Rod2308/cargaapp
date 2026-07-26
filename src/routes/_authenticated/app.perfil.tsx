@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +39,6 @@ export const Route = createFileRoute("/_authenticated/app/perfil")({
 function PerfilPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
-  const navigate = useNavigate();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user.id],
