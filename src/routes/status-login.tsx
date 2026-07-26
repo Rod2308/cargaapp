@@ -5,11 +5,13 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
+  LogOut,
   RefreshCw,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { performLogout } from "@/lib/logout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -293,6 +295,10 @@ function StatusLoginPage() {
           )}
 
           <div className="flex flex-wrap gap-2 pt-1">
+            <Button size="sm" variant="outline" onClick={() => void performLogout(undefined, { unsubscribePush: true })}>
+              <LogOut className="mr-2 size-4" aria-hidden />
+              Sair e limpar a sessão desta origem
+            </Button>
             <Button
               size="sm"
               variant="ghost"

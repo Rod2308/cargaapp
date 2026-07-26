@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
 import { StravaConnect } from "@/components/StravaConnect";
 import { Skeleton } from "@/components/ui/skeleton";
+import { performLogout } from "@/lib/logout";
 
 
 function calcAge(birth?: string | null) {
@@ -38,7 +39,6 @@ export const Route = createFileRoute("/_authenticated/app/perfil")({
 function PerfilPage() {
   const { user, isTrainer } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
-  const navigate = useNavigate();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user.id],
@@ -70,11 +70,17 @@ function PerfilPage() {
     },
   });
 
+  const [signingOut, setSigningOut] = useState(false);
+
   async function signOut() {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", search: { next: "" }, replace: true });
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await performLogout(qc, { unsubscribePush: true });
+    } catch (e: any) {
+      setSigningOut(false);
+      toast.error(e?.message ?? "Não foi possível sair. Tente novamente.");
+    }
   }
 
   if (!profile) {
@@ -120,8 +126,8 @@ function PerfilPage() {
 
       <InstallInstructions />
 
-      <Button variant="outline" onClick={signOut} className="mt-6 w-full">
-        <LogOut className="size-4" /> Sair da conta
+      <Button variant="outline" onClick={signOut} disabled={signingOut} className="mt-6 w-full">
+        <LogOut className="size-4" /> {signingOut ? "Saindo…" : "Sair da conta"}
       </Button>
     </div>
   );
