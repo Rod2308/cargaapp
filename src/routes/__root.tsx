@@ -19,6 +19,8 @@ import { setupQueryPersister } from "@/lib/query-persister";
 import { prefetchOfflineEssentials } from "@/lib/offline-prefetch";
 import { SyncStatus } from "@/components/SyncStatus";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { attachSessionPersistence } from "@/lib/remember-me";
+
 
 function NotFoundComponent() {
   return (
