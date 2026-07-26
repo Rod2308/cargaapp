@@ -187,7 +187,7 @@ function PasswordChecklist({ password }: { password: string }) {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; bridge?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
     // Origem espelho que pediu a ponte de login (validada contra a allow-list).
     bridge: isAllowedBridgeOrigin(typeof s.bridge === "string" ? s.bridge : null)
@@ -380,7 +380,15 @@ function AuthPage() {
       setBusy(false);
       return;
     }
-        // Descobre se estamos rodando dentro da plataforma Lovable
+    // Origem espelho (ex.: Vercel): o provedor de OAuth só aceita redirecionar
+    // para a origem canônica. Então o clique no Google manda o usuário para a
+    // tela de login canônica com ?bridge=, e a sessão volta pela ponte.
+    if (!bridge && isBridgeOrigin()) {
+      redirectToCanonicalLogin(redirectTo);
+      return;
+    }
+
+    // Descobre se estamos rodando dentro da plataforma Lovable
     const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
 
     const nativeParam = new URLSearchParams(window.location.search).get("native");
