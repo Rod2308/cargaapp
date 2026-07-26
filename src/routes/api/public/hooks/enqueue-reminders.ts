@@ -99,7 +99,7 @@ export const Route = createFileRoute("/api/public/hooks/enqueue-reminders")({
             if (!enabled) continue;
             const tz = s?.timezone || "America/Sao_Paulo";
             const remindAt = String(s?.remind_at ?? "09:00").slice(0, 5);
-            const restDays = ((s?.rest_days ?? []) as number[]) ?? [];
+            const restDays = (s?.rest_days ?? []) as number[];
 
             let parts: Intl.DateTimeFormatPart[];
             try {
