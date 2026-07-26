@@ -13,6 +13,7 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as AuthBridgeRouteImport } from './routes/auth-bridge'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -64,6 +65,11 @@ const PrivacidadeRoute = PrivacidadeRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthBridgeRoute = AuthBridgeRouteImport.update({
+  id: '/auth-bridge',
+  path: '/auth-bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -251,6 +257,7 @@ const AuthenticatedAppGruposIdClassificacaoRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-bridge': typeof AuthBridgeRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -288,6 +295,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-bridge': typeof AuthBridgeRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/auth-bridge': typeof AuthBridgeRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -365,6 +374,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/auth-bridge'
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/auth-bridge'
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/auth-bridge'
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
@@ -478,6 +490,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  AuthBridgeRoute: typeof AuthBridgeRoute
   McpRoute: typeof McpRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-bridge': {
+      id: '/auth-bridge'
+      path: '/auth-bridge'
+      fullPath: '/auth-bridge'
+      preLoaderRoute: typeof AuthBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -835,6 +855,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  AuthBridgeRoute: AuthBridgeRoute,
   McpRoute: McpRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
