@@ -488,6 +488,49 @@ function Dashboard() {
     },
   });
 
+  // Por que este treino? — grupo(s), recuperação e origem da sugestão
+  const nextWorkoutReason = useMemo(() => {
+    if (!nextWorkout) return null;
+    const usouSugestao = !!workoutSugeridoId && workoutSugeridoId === nextWorkout.id;
+
+    const hay = `${nextWorkout.label ?? ""} ${nextWorkout.name ?? ""}`
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const inferidos: MuscleGroup[] = [];
+    if (/peito|chest/.test(hay)) inferidos.push("peito");
+    if (/costa|dorsal|back|puxada/.test(hay)) inferidos.push("costas");
+    if (/perna|quad|leg|posterior|panturr/.test(hay)) inferidos.push("pernas");
+    if (/ombro|shoulder|delto/.test(hay)) inferidos.push("ombro");
+    if (/bicep/.test(hay)) inferidos.push("biceps");
+    if (/tricep/.test(hay)) inferidos.push("triceps");
+    if (/gluteo/.test(hay)) inferidos.push("gluteo");
+    if (/abdom|core|abs/.test(hay)) inferidos.push("abdomen");
+
+    const grupos = (usouSugestao && suggestion?.grupos?.length ? suggestion.grupos : inferidos)
+      .filter((g, i, arr) => arr.indexOf(g) === i)
+      .map((g) => MUSCLE_LABEL[g as MuscleGroup] ?? String(g));
+
+    const origem = usouSugestao
+      ? "Sugestão do dia (plano + recuperação)"
+      : lastPlanSession?.workout_id
+        ? "Rotação do plano após o último treino"
+        : "Primeiro treino da sua rotina";
+
+    const recuperacao = suggestion
+      ? `Score ${suggestion.score.toFixed(1)}/10 · intensidade ${suggestion.intensidade}`
+      : null;
+
+    return {
+      grupos,
+      origem,
+      recuperacao,
+      scoreDetalhe: suggestion?.scoreDetalhe ?? null,
+      motivo: usouSugestao ? suggestion?.motivo ?? null : null,
+    };
+  }, [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession]);
+
+
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
 
 
