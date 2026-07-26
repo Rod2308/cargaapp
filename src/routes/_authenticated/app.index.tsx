@@ -29,6 +29,8 @@ import {
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
+  MUSCLE_LABEL,
+  type MuscleGroup,
   type WorkoutSession,
   type ExtraActivity,
 } from "@/lib/daily-suggestion";
@@ -486,6 +488,49 @@ function Dashboard() {
     },
   });
 
+  // Por que este treino? — grupo(s), recuperação e origem da sugestão
+  const nextWorkoutReason = useMemo(() => {
+    if (!nextWorkout) return null;
+    const usouSugestao = !!workoutSugeridoId && workoutSugeridoId === nextWorkout.id;
+
+    const hay = `${nextWorkout.label ?? ""} ${nextWorkout.name ?? ""}`
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const inferidos: MuscleGroup[] = [];
+    if (/peito|chest/.test(hay)) inferidos.push("peito");
+    if (/costa|dorsal|back|puxada/.test(hay)) inferidos.push("costas");
+    if (/perna|quad|leg|posterior|panturr/.test(hay)) inferidos.push("pernas");
+    if (/ombro|shoulder|delto/.test(hay)) inferidos.push("ombro");
+    if (/bicep/.test(hay)) inferidos.push("biceps");
+    if (/tricep/.test(hay)) inferidos.push("triceps");
+    if (/gluteo/.test(hay)) inferidos.push("gluteo");
+    if (/abdom|core|abs/.test(hay)) inferidos.push("abdomen");
+
+    const grupos = (usouSugestao && suggestion?.grupos?.length ? suggestion.grupos : inferidos)
+      .filter((g, i, arr) => arr.indexOf(g) === i)
+      .map((g) => MUSCLE_LABEL[g as MuscleGroup] ?? String(g));
+
+    const origem = usouSugestao
+      ? "Sugestão do dia (plano + recuperação)"
+      : lastPlanSession?.workout_id
+        ? "Rotação do plano após o último treino"
+        : "Primeiro treino da sua rotina";
+
+    const recuperacao = suggestion
+      ? `Score ${suggestion.score.toFixed(1)}/10 · intensidade ${suggestion.intensidade}`
+      : null;
+
+    return {
+      grupos,
+      origem,
+      recuperacao,
+      scoreDetalhe: suggestion?.scoreDetalhe ?? null,
+      motivo: usouSugestao ? suggestion?.motivo ?? null : null,
+    };
+  }, [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession]);
+
+
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
 
 
@@ -607,6 +652,35 @@ function Dashboard() {
                     .filter(Boolean)
                     .join(" · ")}
             </span>
+
+            {/* Motivo da escolha */}
+            {nextWorkoutReason ? (
+              <div className="mt-4 w-full rounded-2xl bg-white/5 p-3">
+                <span className="text-eyebrow text-white/50">Por que este treino?</span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {nextWorkoutReason.grupos.length > 0 ? (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      Grupo: {nextWorkoutReason.grupos.join(", ")}
+                    </span>
+                  ) : null}
+                  {nextWorkoutReason.recuperacao ? (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      Recuperação: {nextWorkoutReason.recuperacao}
+                    </span>
+                  ) : null}
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                    Sugestão: {nextWorkoutReason.origem}
+                  </span>
+                </div>
+                {nextWorkoutReason.motivo ? (
+                  <p className="mt-2 text-[11px] leading-snug text-white/60">{nextWorkoutReason.motivo}</p>
+                ) : null}
+                {nextWorkoutReason.scoreDetalhe ? (
+                  <p className="mt-1 text-[11px] leading-snug text-white/40">{nextWorkoutReason.scoreDetalhe}</p>
+                ) : null}
+              </div>
+            ) : null}
+
             <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
               <Play className="size-4 fill-current" /> Iniciar treino
             </span>
