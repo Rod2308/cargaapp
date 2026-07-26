@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap, Download } from "lucide-react";
+import { Loader2, Link as LinkIcon, LinkIcon as LinkOff, RefreshCw, Zap, Download, History } from "lucide-react";
 import {
   getStravaStatus,
   getStravaAuthorizeUrl,
@@ -12,11 +12,19 @@ import {
   ensureStravaWebhook,
   syncStravaLatest,
 } from "@/lib/strava.functions";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { isAutoSyncEnabled, setAutoSyncEnabled } from "@/lib/strava-autosync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export function StravaConnect() {
   const qc = useQueryClient();
+  const [autoSync, setAutoSync] = useState(true);
+
+  useEffect(() => {
+    setAutoSync(isAutoSyncEnabled());
+  }, []);
   const statusFn = useServerFn(getStravaStatus);
   const authUrlFn = useServerFn(getStravaAuthorizeUrl);
   const disconnectFn = useServerFn(disconnectStrava);
@@ -78,7 +86,7 @@ export function StravaConnect() {
   });
 
   const sync = useMutation({
-    mutationFn: () => backfillFn({ data: { count: 30 } }),
+    mutationFn: (count: number) => backfillFn({ data: { count } }),
     onSuccess: (r) => {
       toast.success(`Sincronização: ${r.inserted} novo(s), ${r.updated} atualizado(s)`);
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
@@ -165,9 +173,21 @@ export function StravaConnect() {
             </Button>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" className="flex-1" onClick={() => sync.mutate()} disabled={sync.isPending}>
-              {sync.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            <Button variant="outline" className="flex-1" onClick={() => sync.mutate(30)} disabled={sync.isPending}>
+              {sync.isPending && sync.variables === 30 ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
               Sincronizar últimas 30
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={() => sync.mutate(100)} disabled={sync.isPending}>
+              {sync.isPending && sync.variables === 100 ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <History className="size-4" />
+              )}
+              Histórico completo
             </Button>
             <Button
               variant="ghost"
@@ -179,6 +199,28 @@ export function StravaConnect() {
               Desconectar
             </Button>
           </div>
+        </div>
+      )}
+
+      {!isLoading && data?.connected && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 p-3">
+          <div className="min-w-0">
+            <Label htmlFor="strava-autosync" className="text-sm font-medium">
+              Sincronização automática
+            </Label>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Atualiza seus treinos e histórico ao abrir o app e a cada 15 minutos.
+            </p>
+          </div>
+          <Switch
+            id="strava-autosync"
+            checked={autoSync}
+            onCheckedChange={(v) => {
+              setAutoSync(v);
+              setAutoSyncEnabled(v);
+              toast.success(v ? "Sincronização automática ativada" : "Sincronização automática desativada");
+            }}
+          />
         </div>
       )}
 
