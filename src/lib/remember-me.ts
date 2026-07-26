@@ -50,6 +50,36 @@ export function applyRememberMe(remember: boolean) {
 }
 
 /**
+ * Mantém a cópia em sessionStorage em sincronia com o token atual.
+ *
+ * Sem isso, um token renovado (refresh) só era copiado no `pagehide`. Em mobile
+ * o `pagehide` costuma não disparar, então o reload restaurava um refresh_token
+ * já rotacionado ("refresh_token_already_used") e o usuário caía no login —
+ * inclusive quando havia entrado com Google.
+ */
+export function syncTempSession() {
+  if (!isBrowser()) return;
+  try {
+    if (sessionStorage.getItem(TEMP_FLAG) !== "1") return;
+    const cur = localStorage.getItem(AUTH_KEY);
+    if (cur) sessionStorage.setItem(AUTH_KEY, cur);
+  } catch {
+    /* storage indisponível */
+  }
+}
+
+/** Limpa qualquer resíduo de sessão temporária (usado no logout). */
+export function clearTempSession() {
+  if (!isBrowser()) return;
+  try {
+    sessionStorage.removeItem(TEMP_FLAG);
+    sessionStorage.removeItem(AUTH_KEY);
+  } catch {
+    /* storage indisponível */
+  }
+}
+
+/**
  * Roda no boot do client, ANTES do Supabase client inicializar.
  * - Se existir uma sessão temporária em sessionStorage, hidrata o localStorage
  *   para o Supabase client conseguir carregá-la.
@@ -76,7 +106,54 @@ export function initRememberMe() {
     };
     window.addEventListener("beforeunload", cleanup);
     window.addEventListener("pagehide", cleanup);
+    // Espelha o token a cada vez que a aba sai de foco (pagehide não é confiável
+    // em iOS/Android) e sempre que outra aba grava um token novo.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") syncTempSession();
+    });
+    window.addEventListener("storage", (e) => {
+      if (e.key === AUTH_KEY) syncTempSession();
+    });
   } catch {
     // storage indisponível (modo privado, iframe restrito) — ignora
   }
 }
+
+/**
+ * Liga a persistência do token aos eventos do Supabase Auth.
+ *
+ * Cobre TODOS os caminhos de entrada (email/senha, Google, ponte /auth-bridge),
+ * porque o Supabase emite `SIGNED_IN`/`TOKEN_REFRESHED` depois de gravar o token
+ * em localStorage — inclusive no retorno do OAuth, onde não há clique de botão
+ * para chamar `applyRememberMe`.
+ *
+ * Retorna a função de cleanup.
+ */
+export function attachSessionPersistence(auth: {
+  onAuthStateChange: (
+    cb: (event: string, session: unknown) => void,
+  ) => { data: { subscription: { unsubscribe: () => void } } };
+}): () => void {
+  if (!isBrowser()) return () => {};
+  const { data } = auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") {
+      clearTempSession();
+      return;
+    }
+    if (
+      event === "INITIAL_SESSION" ||
+      event === "SIGNED_IN" ||
+      event === "TOKEN_REFRESHED" ||
+      event === "USER_UPDATED"
+    ) {
+      // Se o usuário pediu sessão permanente, garante que o token esteja em
+      // localStorage (e não preso numa cópia temporária antiga).
+      if (getRememberMePreference()) clearTempSession();
+      else syncTempSession();
+    }
+  });
+  // Espelha imediatamente o estado atual.
+  syncTempSession();
+  return () => data.subscription.unsubscribe();
+}
+
