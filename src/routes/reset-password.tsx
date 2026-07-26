@@ -135,10 +135,11 @@ function ResetPasswordPage() {
           </div>
         ) : !hasSession ? (
           <div className="mt-8 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
-            <p className="font-medium">Link inválido ou expirado</p>
+            <p className="font-medium">{linkError ? "Não foi possível redefinir" : "Link inválido ou expirado"}</p>
             <p className="mt-1 text-muted-foreground">
-              Solicite um novo link de redefinição na página de login.
+              {linkError ?? "Solicite um novo link de redefinição na página de login."}
             </p>
+
             <Link to="/auth" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
               Voltar para o login
             </Link>
