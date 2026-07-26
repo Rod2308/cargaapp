@@ -182,14 +182,19 @@ function PasswordChecklist({ password }: { password: string }) {
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+    // Origem espelho que pediu a ponte de login (validada contra a allow-list).
+    bridge: isAllowedBridgeOrigin(typeof s.bridge === "string" ? s.bridge : null)
+      ? (s.bridge as string)
+      : "",
   }),
   component: AuthPage,
 });
 
 function AuthPage() {
-  const { next } = Route.useSearch();
+  const { next, bridge } = Route.useSearch();
 
   const redirectTo = next || "/app";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
