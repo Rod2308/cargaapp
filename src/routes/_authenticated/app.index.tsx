@@ -29,6 +29,8 @@ import {
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
+  MUSCLE_LABEL,
+  type MuscleGroup,
   type WorkoutSession,
   type ExtraActivity,
 } from "@/lib/daily-suggestion";
