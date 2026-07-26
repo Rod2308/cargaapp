@@ -10,6 +10,13 @@ import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
+import {
+  handOffSessionToBridge,
+  isAllowedBridgeOrigin,
+  isBridgeOrigin,
+  redirectToCanonicalLogin,
+} from "@/lib/auth-bridge";
+
 
 
 
@@ -182,14 +189,19 @@ function PasswordChecklist({ password }: { password: string }) {
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+    // Origem espelho que pediu a ponte de login (validada contra a allow-list).
+    bridge: isAllowedBridgeOrigin(typeof s.bridge === "string" ? s.bridge : null)
+      ? (s.bridge as string)
+      : "",
   }),
   component: AuthPage,
 });
 
 function AuthPage() {
-  const { next } = Route.useSearch();
+  const { next, bridge } = Route.useSearch();
 
   const redirectTo = next || "/app";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -219,11 +231,33 @@ function AuthPage() {
     setForgotOpen(false);
   }
 
+  // Conclui o login: na origem canônica com ?bridge=, devolve a sessão para a
+  // origem espelho; caso contrário segue para o destino normal.
+  async function finishLogin() {
+    if (bridge) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session && handOffSessionToBridge(bridge, data.session, redirectTo)) return;
+    }
+    window.location.href = redirectTo;
+  }
+
   useEffect(() => {
+    // Origem espelho (ex.: Vercel): o provedor não pode redirecionar para cá,
+    // então o login acontece na origem canônica e volta pela ponte.
+    if (!bridge && isBridgeOrigin()) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) window.location.href = redirectTo;
+        else redirectToCanonicalLogin(redirectTo);
+      });
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = redirectTo;
+      if (!data.session) return;
+      if (bridge && handOffSessionToBridge(bridge, data.session, redirectTo)) return;
+      window.location.href = redirectTo;
     });
-  }, [redirectTo]);
+  }, [redirectTo, bridge]);
+
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -272,7 +306,8 @@ function AuthPage() {
       return toast.error(translateAuthError(error));
     }
     applyRememberMe(remember);
-    window.location.href = redirectTo;
+    await finishLogin();
+
   }
 
 
@@ -290,7 +325,10 @@ function AuthPage() {
       email: parsedEmail.data,
       password: parsedPassword.data,
       options: {
-        emailRedirectTo: `${window.location.origin}${redirectTo}`,
+        emailRedirectTo: bridge
+          ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
+          : `${window.location.origin}${redirectTo}`,
+
         data: { display_name: parsedName.data, role },
       },
     });
@@ -308,7 +346,8 @@ function AuthPage() {
       return;
     }
     toast.success("Conta criada com sucesso!");
-    window.location.href = redirectTo;
+    await finishLogin();
+
   }
 
 
@@ -331,9 +370,14 @@ function AuthPage() {
     const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
 
     const nativeParam = new URLSearchParams(window.location.search).get("native");
-    const myRedirectUri = nativeParam === "1" 
-      ? `${window.location.origin}/?native=1` 
-      : `${window.location.origin}${redirectTo}`;
+    // Com ?bridge=, o retorno do Google volta para esta mesma tela canônica
+    // mantendo o parâmetro, e o efeito acima devolve a sessão para a origem espelho.
+    const bridgeReturn = bridge
+      ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
+      : null;
+    const myRedirectUri = nativeParam === "1"
+      ? `${window.location.origin}/?native=1`
+      : bridgeReturn ?? `${window.location.origin}${redirectTo}`;
 
     if (isLovable) {
       // Usa o atalho original da Lovable se estivermos lá dentro
@@ -347,7 +391,7 @@ function AuthPage() {
       }
       if (result.redirected) return;
       setBusy(false);
-      window.location.href = redirectTo;
+      await finishLogin();
     } else {
       // Usa o Supabase oficial se estivermos na Vercel ou no seu domínio próprio
       const { error } = await supabase.auth.signInWithOAuth({
@@ -360,6 +404,7 @@ function AuthPage() {
         return;
       }
     }
+
   }
 
   return (
