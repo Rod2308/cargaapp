@@ -52,13 +52,31 @@ function Dashboard() {
     },
   });
 
-  const { data: workouts = [] } = useQuery({
+  const { data: workouts = [], isLoading: workoutsLoading } = useQuery({
     queryKey: ["workouts", user.id],
     queryFn: async () => {
       const { data } = await supabase.from("workouts").select("*").eq("user_id", user.id).order("order_idx");
       return data ?? [];
     },
   });
+
+  // Último treino do plano efetivamente concluído (independe de check-in diário).
+  // Prefixo "recent-sessions" para ser invalidado junto com as demais telas.
+  const { data: lastPlanSession, isLoading: lastPlanLoading } = useQuery({
+    queryKey: ["recent-sessions", user.id, "last-plan"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("workout_id, started_at, ended_at")
+        .eq("user_id", user.id)
+        .not("workout_id", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(1);
+      return data?.[0] ?? null;
+    },
+  });
+
+
 
   const { data: recent = [] } = useQuery({
     queryKey: ["recent-sessions", user.id],
