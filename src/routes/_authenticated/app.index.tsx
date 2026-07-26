@@ -455,17 +455,39 @@ function Dashboard() {
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
-  // "Próximo treino" segue a mesma sugestão inteligente (rotação do plano +
-   // recuperação muscular). Só cai no primeiro treino da lista se não houver
-   // sugestão específica (ex: dia de descanso ou catálogo vazio).
-   const nextWorkout = useMemo(() => {
-     if (workoutSugeridoId) {
-       const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
-       if (w) return w;
-     }
-     return workouts[0];
-   }, [workouts, workoutSugeridoId]);
+  // "Próximo treino":
+  // 1) sugestão inteligente (rotação do plano + recuperação muscular), quando há check-in;
+  // 2) senão, rotação pura pelo último treino concluído (A → B → C → A);
+  // 3) senão, primeiro treino da rotina.
+  const nextWorkout = useMemo(() => {
+    if (workoutSugeridoId) {
+      const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
+      if (w) return w;
+    }
+    return (
+      proximoNaRotina(workouts as any[], lastPlanSession?.workout_id ?? null) ??
+      (workouts[0] as any)
+    );
+  }, [workouts, workoutSugeridoId, lastPlanSession]);
+
+  const nextWorkoutLoading = workoutsLoading || lastPlanLoading;
+  const isRestDay = suggestion?.intensidade === "descanso";
+
+  // Contagem de exercícios do próximo treino (informação de apoio no card)
+  const { data: nextWorkoutExerciseCount } = useQuery({
+    queryKey: ["workout-exercise-count", nextWorkout?.id],
+    enabled: !!nextWorkout?.id,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("workout_exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("workout_id", nextWorkout.id);
+      return count ?? 0;
+    },
+  });
+
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
+
 
   return (
     <div className="app-container pt-8 sm:pt-12">
