@@ -231,11 +231,33 @@ function AuthPage() {
     setForgotOpen(false);
   }
 
+  // Conclui o login: na origem canônica com ?bridge=, devolve a sessão para a
+  // origem espelho; caso contrário segue para o destino normal.
+  async function finishLogin() {
+    if (bridge) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session && handOffSessionToBridge(bridge, data.session, redirectTo)) return;
+    }
+    window.location.href = redirectTo;
+  }
+
   useEffect(() => {
+    // Origem espelho (ex.: Vercel): o provedor não pode redirecionar para cá,
+    // então o login acontece na origem canônica e volta pela ponte.
+    if (!bridge && isBridgeOrigin()) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) window.location.href = redirectTo;
+        else redirectToCanonicalLogin(redirectTo);
+      });
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = redirectTo;
+      if (!data.session) return;
+      if (bridge && handOffSessionToBridge(bridge, data.session, redirectTo)) return;
+      window.location.href = redirectTo;
     });
-  }, [redirectTo]);
+  }, [redirectTo, bridge]);
+
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
