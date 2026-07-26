@@ -27,31 +27,81 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // Supabase envia tokens no hash (#access_token=...&type=recovery). O client detecta e cria a sessão.
-    const check = async () => {
-      const { data } = await supabase.auth.getSession();
-      setHasSession(!!data.session);
+    let cancelled = false;
+
+    // O provedor pode devolver o link de recuperação de duas formas:
+    //  - hash implícito:  #access_token=...&type=recovery
+    //  - fluxo PKCE:      ?code=<uuid>   (precisa de exchangeCodeForSession)
+    // e, quando o link expira, devolve #error=...&error_description=...
+    const hashParams = new URLSearchParams(
+      window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
+    );
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorDescription =
+      hashParams.get("error_description") || searchParams.get("error_description");
+
+    const finish = (session: unknown) => {
+      if (cancelled) return;
+      setHasSession(!!session);
       setReady(true);
     };
-    // Aguarda um tick para o detectSessionInUrl processar
-    const t = setTimeout(check, 300);
+
+    async function boot() {
+      if (errorDescription) {
+        if (cancelled) return;
+        setLinkError(
+          /expired/i.test(errorDescription)
+            ? "Este link de redefinição expirou. Solicite um novo."
+            : "Não foi possível validar o link de redefinição. Solicite um novo.",
+        );
+        setReady(true);
+        window.history.replaceState(null, "", window.location.pathname);
+        return;
+      }
+
+      const code = searchParams.get("code");
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState(null, "", window.location.pathname);
+        if (error) {
+          if (cancelled) return;
+          setLinkError("Link inválido ou já utilizado. Solicite um novo.");
+          setReady(true);
+          return;
+        }
+        finish(data.session);
+        return;
+      }
+
+      // Hash implícito: o client processa via detectSessionInUrl; damos um tick.
+      await new Promise((r) => setTimeout(r, 300));
+      const { data } = await supabase.auth.getSession();
+      finish(data.session);
+    }
+
+    void boot();
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        if (cancelled) return;
+        setLinkError(null);
         setHasSession(!!session);
         setReady(true);
       }
     });
     return () => {
-      clearTimeout(t);
+      cancelled = true;
       sub.subscription.unsubscribe();
     };
   }, []);
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
