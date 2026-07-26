@@ -327,21 +327,39 @@ function AuthPage() {
       setBusy(false);
       return;
     }
-    const nativeParam = new URLSearchParams(window.location.search).get("native");
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: nativeParam === "1"
-        ? `${window.location.origin}/?native=1`
-        : `${window.location.origin}${redirectTo}`,
-    });
-    if (result.error) {
-      setBusy(false);
-      toast.error("Erro ao entrar com Google");
-      return;
-    }
-    if (result.redirected) return;
-    setBusy(false);
-    window.location.href = redirectTo;
+        // Descobre se estamos rodando dentro da plataforma Lovable
+    const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
 
+    const nativeParam = new URLSearchParams(window.location.search).get("native");
+    const myRedirectUri = nativeParam === "1" 
+      ? `${window.location.origin}/?native=1` 
+      : `${window.location.origin}${redirectTo}`;
+
+    if (isLovable) {
+      // Usa o atalho original da Lovable se estivermos lá dentro
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: myRedirectUri,
+      });
+      if (result.error) {
+        setBusy(false);
+        toast.error("Erro ao entrar com Google");
+        return;
+      }
+      if (result.redirected) return;
+      setBusy(false);
+      window.location.href = redirectTo;
+    } else {
+      // Usa o Supabase oficial se estivermos na Vercel ou no seu domínio próprio
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: myRedirectUri },
+      });
+      if (error) {
+        setBusy(false);
+        toast.error("Erro ao entrar com Google");
+        return;
+      }
+    }
   }
 
   return (
