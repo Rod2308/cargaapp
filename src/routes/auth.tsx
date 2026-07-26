@@ -325,7 +325,10 @@ function AuthPage() {
       email: parsedEmail.data,
       password: parsedPassword.data,
       options: {
-        emailRedirectTo: `${window.location.origin}${redirectTo}`,
+        emailRedirectTo: bridge
+          ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
+          : `${window.location.origin}${redirectTo}`,
+
         data: { display_name: parsedName.data, role },
       },
     });
