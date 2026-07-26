@@ -343,7 +343,8 @@ function AuthPage() {
       return;
     }
     toast.success("Conta criada com sucesso!");
-    window.location.href = redirectTo;
+    await finishLogin();
+
   }
 
 
