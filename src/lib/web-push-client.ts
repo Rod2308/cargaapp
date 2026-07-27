@@ -6,6 +6,24 @@ import {
   savePushSubscription,
   deletePushSubscription,
 } from "./push.functions";
+import {
+  fetchVapidPublicKeyClient,
+  savePushSubscriptionClient,
+  deletePushSubscriptionClient,
+} from "./push-client-fallback";
+
+// No domínio espelho (site estático) as server functions não existem e a
+// chamada falha com erro de rede/404/HTML. Nesses casos repetimos a mesma
+// operação direto pelo cliente do backend, para o comportamento ficar
+// idêntico nos dois domínios.
+async function withFallback<T>(primary: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+  try {
+    return await primary();
+  } catch (err) {
+    console.warn("[push] server function indisponível, usando fallback do cliente", err);
+    return await fallback();
+  }
+}
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -47,7 +65,10 @@ export async function subscribeToWebPush(): Promise<PushSubscription> {
   }
 
   const reg = await ensureRegistration();
-  const { publicKey } = await getVapidPublicKey();
+  const { publicKey } = await withFallback(
+    () => getVapidPublicKey(),
+    async () => ({ publicKey: await fetchVapidPublicKeyClient() }),
+  );
 
   const existing = await reg.pushManager.getSubscription();
   const sub =
@@ -57,14 +78,16 @@ export async function subscribeToWebPush(): Promise<PushSubscription> {
       applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
     }));
 
-  await savePushSubscription({
-    data: {
-      endpoint: sub.endpoint,
-      p256dh: arrayBufferToBase64(sub.getKey("p256dh")),
-      auth: arrayBufferToBase64(sub.getKey("auth")),
-      userAgent: navigator.userAgent.slice(0, 500),
-    },
-  });
+  const payload = {
+    endpoint: sub.endpoint,
+    p256dh: arrayBufferToBase64(sub.getKey("p256dh")),
+    auth: arrayBufferToBase64(sub.getKey("auth")),
+    userAgent: navigator.userAgent.slice(0, 500),
+  };
+  await withFallback(
+    () => savePushSubscription({ data: payload }).then(() => undefined),
+    () => savePushSubscriptionClient(payload).then(() => undefined),
+  );
 
   return sub;
 }
@@ -81,7 +104,10 @@ export async function unsubscribeFromWebPush(): Promise<void> {
     await sub.unsubscribe();
   } catch {}
   try {
-    await deletePushSubscription({ data: { endpoint } });
+    await withFallback(
+      () => deletePushSubscription({ data: { endpoint } }).then(() => undefined),
+      () => deletePushSubscriptionClient(endpoint).then(() => undefined),
+    );
   } catch {}
 }
 
@@ -100,14 +126,16 @@ export async function ensureWebPushSubscribed(): Promise<void> {
     // Se já existe, apenas re-salva no backend (upsert) para garantir persistência.
     // Se não existe (ou foi limpa), cria uma nova.
     if (existing) {
-      await savePushSubscription({
-        data: {
-          endpoint: existing.endpoint,
-          p256dh: arrayBufferToBase64(existing.getKey("p256dh")),
-          auth: arrayBufferToBase64(existing.getKey("auth")),
-          userAgent: navigator.userAgent.slice(0, 500),
-        },
-      });
+      const payload = {
+        endpoint: existing.endpoint,
+        p256dh: arrayBufferToBase64(existing.getKey("p256dh")),
+        auth: arrayBufferToBase64(existing.getKey("auth")),
+        userAgent: navigator.userAgent.slice(0, 500),
+      };
+      await withFallback(
+        () => savePushSubscription({ data: payload }).then(() => undefined),
+        () => savePushSubscriptionClient(payload).then(() => undefined),
+      );
     } else {
       await subscribeToWebPush();
     }
