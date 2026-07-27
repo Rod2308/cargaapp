@@ -147,6 +147,44 @@ function NotificationPreferencesPage() {
         </Link>
       )}
 
+      {embedded && permission !== "granted" && !iosInstallNeeded && (
+        <div className="card-soft mb-4 flex items-start gap-3 p-5 border-amber-500/40 bg-amber-500/5">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600">
+            <BellOff className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Por que aparece “bloqueado”?</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              O app está aberto dentro de outra página (visualização embutida). Nesse modo o navegador
+              recusa o pedido de permissão automaticamente. Abra o Carga em uma aba própria e ative de novo.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3"
+              onClick={() => window.open(`${window.location.origin}/app/notificacoes`, "_blank", "noopener")}
+            >
+              <ExternalLink className="h-4 w-4" /> Abrir em nova aba
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!embedded && permission === "denied" && !iosInstallNeeded && (
+        <div className="card-soft mb-4 p-5 border-amber-500/40 bg-amber-500/5">
+          <p className="font-semibold text-sm">Permissão bloqueada neste navegador</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            O bloqueio fica salvo no navegador e o app não consegue perguntar de novo. Para liberar:
+          </p>
+          <ol className="mt-2 list-decimal pl-5 text-xs text-muted-foreground space-y-1">
+            <li>Toque no cadeado (ou no ícone ao lado do endereço do site).</li>
+            <li>Abra “Configurações do site” / “Permissões”.</li>
+            <li>Mude “Notificações” de Bloquear para Permitir.</li>
+            <li>Recarregue esta página e ative o botão abaixo.</li>
+          </ol>
+        </div>
+      )}
+
       <section className="card-soft p-5 mb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -168,11 +206,12 @@ function NotificationPreferencesPage() {
           <Switch
             id="pref-web"
             checked={prefs.webPush && permission === "granted"}
-            disabled={busy || permission === "unsupported" || iosInstallNeeded}
+            disabled={busy || permission === "unsupported" || iosInstallNeeded || (embedded && permission !== "granted")}
             onCheckedChange={handleWebPush}
           />
         </div>
       </section>
+
 
       <WorkoutReminderSettings />
 
