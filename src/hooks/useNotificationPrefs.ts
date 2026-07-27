@@ -51,6 +51,20 @@ export function useNotificationPrefs() {
     setPrefs(read());
   }, []);
 
+  // Reavalia a permissão ao voltar para a aba (o usuário pode ter desbloqueado
+  // nas configurações do navegador sem recarregar a página).
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const sync = () => setPermission(Notification.permission);
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
+
+
   const update = useCallback((patch: Partial<NotificationPrefs>) => {
     setPrefs((prev) => {
       const next = { ...prev, ...patch };
