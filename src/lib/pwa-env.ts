@@ -31,3 +31,15 @@ export function isAndroid(): boolean {
 export function needsIOSInstallForPush(): boolean {
   return isIOS() && !isStandalonePWA();
 }
+
+// Dentro de um iframe (preview do editor, webviews embutidas) o navegador
+// normalmente nega a permissão de notificação sem sequer mostrar o pedido.
+export function isEmbedded(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
