@@ -418,7 +418,7 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
   if (!longInactive && untrainedDaysInWindow >= Math.ceil(windowDays * 0.7)) {
     reasonBits.push(`${untrainedDaysInWindow}/${windowDays}d sem treino`);
   }
-  const reason = reasonBits.join(" · ");
+  const reason = reasonBits.join(" · ") + ".";
 
   const recommendation =
     (longInactive ? "Retome com um treino leve pra reativar o corpo. " : "") +
