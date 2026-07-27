@@ -12,6 +12,10 @@ import {
   DEFAULT_REMINDER_SETTINGS,
   type ReminderSettings,
 } from "@/lib/reminder-settings.functions";
+import {
+  loadReminderSettingsClient,
+  saveReminderSettingsClient,
+} from "@/lib/reminder-settings-client";
 
 const DAYS = [
   { value: 1, label: "Seg" },
@@ -30,7 +34,15 @@ export function WorkoutReminderSettings() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["reminder-settings"],
-    queryFn: () => fetchSettings(),
+    queryFn: async () => {
+      try {
+        return await fetchSettings();
+      } catch (err) {
+        // Domínio espelho (site estático): sem server functions, lê direto do backend.
+        console.warn("[lembretes] usando fallback do cliente", err);
+        return await loadReminderSettingsClient();
+      }
+    },
   });
 
   const [local, setLocal] = useState<ReminderSettings>(DEFAULT_REMINDER_SETTINGS);
@@ -41,7 +53,14 @@ export function WorkoutReminderSettings() {
   }, [data]);
 
   const mutation = useMutation({
-    mutationFn: (next: ReminderSettings) => save({ data: next }),
+    mutationFn: async (next: ReminderSettings) => {
+      try {
+        return await save({ data: next });
+      } catch (err) {
+        console.warn("[lembretes] usando fallback do cliente ao salvar", err);
+        return await saveReminderSettingsClient(next);
+      }
+    },
     onSuccess: () => {
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ["reminder-settings"] });
