@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, Smartphone, ChevronRight } from "lucide-react";
+import { ArrowLeft, Bell, Smartphone, ChevronRight, ExternalLink, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,8 @@ import {
   unsubscribeFromWebPush,
   isPushSupported,
 } from "@/lib/web-push-client";
-import { needsIOSInstallForPush } from "@/lib/pwa-env";
+import { needsIOSInstallForPush, isEmbedded } from "@/lib/pwa-env";
+
 import { WorkoutReminderSettings } from "@/components/WorkoutReminderSettings";
 import { toast } from "sonner";
 
