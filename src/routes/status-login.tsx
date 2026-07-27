@@ -230,7 +230,7 @@ function StatusLoginPage() {
           <div>
             <h1 className="text-xl font-bold leading-tight sm:text-2xl">Status do login</h1>
             <p className="text-sm text-muted-foreground">
-              Diagnóstico automático da sessão nesta origem, mais o checklist de testes do fluxo completo.
+              preciso que o .vercel fique identico ao lovable, as notificaçoes nao estao chegando igual etc, deixe eles exatamente igual, mesmas funções etc
             </p>
           </div>
         </div>

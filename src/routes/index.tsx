@@ -81,7 +81,7 @@ function Landing() {
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
                 to="/auth"
-                search={{ next: "." }}
+                search={{ next: "" }}
                 className="btn-primary inline-flex items-center gap-2 text-sm"
               >
                 Começar grátis <ArrowRight className="size-4" />
