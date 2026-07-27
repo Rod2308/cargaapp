@@ -62,14 +62,20 @@ function NotificationPreferencesPage() {
   const { prefs, update, permission, requestPermission } = useNotificationPrefs();
   const [busy, setBusy] = useState(false);
   const [iosInstallNeeded, setIosInstallNeeded] = useState(false);
+  const [embedded, setEmbedded] = useState(false);
 
   useEffect(() => {
     setIosInstallNeeded(needsIOSInstallForPush());
+    setEmbedded(isEmbedded());
   }, []);
 
   const handleWebPush = async (checked: boolean) => {
     if (iosInstallNeeded) {
       toast.error("No iPhone, adicione o Carga à Tela de Início para receber notificações.");
+      return;
+    }
+    if (embedded && permission !== "granted") {
+      toast.error("Abra o app em uma aba própria para autorizar as notificações.");
       return;
     }
     if (!isPushSupported()) {
@@ -103,9 +109,11 @@ function NotificationPreferencesPage() {
 
   const permissionLabel =
     permission === "unsupported" ? "Não suportado neste navegador."
+    : embedded && permission !== "granted" ? "Bloqueado porque o app está sendo exibido dentro de outra página."
     : permission === "denied" ? "Bloqueado — ajuste nas configurações do navegador."
     : permission === "granted" ? "Permissão concedida."
     : "Precisa autorizar o navegador.";
+
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
