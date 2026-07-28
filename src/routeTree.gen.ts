@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as StatusLoginRouteImport } from './routes/status-login'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -57,6 +58,11 @@ const TermosRoute = TermosRouteImport.update({
 const StatusLoginRoute = StatusLoginRouteImport.update({
   id: '/status-login',
   path: '/status-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -313,6 +320,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -354,6 +362,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status-login': typeof StatusLoginRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -396,6 +405,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/privacidade'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/status-login'
     | '/termos'
     | '/.mcp/list-tools'
@@ -518,6 +530,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StatusLoginRoute: typeof StatusLoginRoute
   TermosRoute: typeof TermosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -548,6 +561,13 @@ declare module '@tanstack/react-router' {
       path: '/status-login'
       fullPath: '/status-login'
       preLoaderRoute: typeof StatusLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -899,6 +919,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   StatusLoginRoute: StatusLoginRoute,
   TermosRoute: TermosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
