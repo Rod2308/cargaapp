@@ -1,3 +1,4 @@
+import { callServer } from "@/lib/server-bridge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,10 +29,10 @@ import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
 
 function scheduleServerPush(seconds: number, exerciseName?: string) {
   if (seconds <= 0) return;
-  void scheduleRestPush({ data: { seconds: Math.round(seconds), exerciseName } }).catch(() => {});
+  void callServer("rest.schedule", scheduleRestPush, { seconds: Math.round(seconds), exerciseName }).catch(() => {});
 }
 function cancelServerPush() {
-  void cancelRestPush().catch(() => {});
+  void callServer("rest.cancel", cancelRestPush).catch(() => {});
 }
 
 type Prefs = {

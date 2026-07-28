@@ -1,6 +1,6 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { getStudentDetails } from "@/lib/trainer.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
@@ -26,7 +26,7 @@ function AlunoDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const getDetails = useServerFn(getStudentDetails);
+  const getDetails = bridged("trainer.getStudentDetails", getStudentDetails);
   const [manualOpen, setManualOpen] = useState(false);
 
   const { data, isLoading } = useQuery({

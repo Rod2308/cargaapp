@@ -1,6 +1,6 @@
+import { bridged } from "@/lib/server-bridge";
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { syncStravaLatest, getStravaStatus } from "@/lib/strava.functions";
 import {
   AUTO_SYNC_MIN_INTERVAL_MS,
@@ -17,8 +17,8 @@ import {
  */
 export function useStravaAutoSync() {
   const qc = useQueryClient();
-  const statusFn = useServerFn(getStravaStatus);
-  const syncFn = useServerFn(syncStravaLatest);
+  const statusFn = bridged("strava.status", getStravaStatus);
+  const syncFn = bridged("strava.sync", syncStravaLatest);
   const running = useRef(false);
 
   useEffect(() => {

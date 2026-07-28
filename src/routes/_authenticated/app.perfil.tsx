@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -12,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
@@ -520,7 +520,7 @@ function TrainerProfile({ profile, update, userId }: { profile: any; update: any
 function LinkStudentCard({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const [code, setCode] = useState("");
-  const linkFn = useServerFn(linkStudentByCode);
+  const linkFn = bridged("trainer.linkStudentByCode", linkStudentByCode);
 
   const link = useMutation({
     mutationFn: (invite_code: string) => linkFn({ data: { invite_code } }),
@@ -574,9 +574,9 @@ function MyTrainerCard() {
   const [code, setCode] = useState("");
   const [confirmingUnlink, setConfirmingUnlink] = useState(false);
 
-  const getFn = useServerFn(getMyTrainer);
-  const linkFn = useServerFn(linkTrainerByCode);
-  const unlinkFn = useServerFn(unlinkMyTrainer);
+  const getFn = bridged("trainer.getMyTrainer", getMyTrainer);
+  const linkFn = bridged("trainer.linkTrainerByCode", linkTrainerByCode);
+  const unlinkFn = bridged("trainer.unlinkMyTrainer", unlinkMyTrainer);
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-trainer"],

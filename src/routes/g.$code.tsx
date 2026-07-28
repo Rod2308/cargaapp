@@ -1,3 +1,4 @@
+import { callServer } from "@/lib/server-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ function sanitize(code: string) {
 async function fetchPublicInvite(code: string): Promise<PublicInvite> {
   if (!code || code.length < 4) return null;
   try {
-    return await getPublicInvite({ data: { code } });
+    return await callServer<PublicInvite>("invites.getPublicInvite", getPublicInvite, { code });
   } catch {
     return null;
   }

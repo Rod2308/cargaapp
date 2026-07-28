@@ -1,6 +1,6 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
@@ -164,7 +164,7 @@ function Dashboard() {
   // Recuperação — inclui o dia atual na chave para que, se o usuário não
   // treinar hoje, o score recalcule considerando o dia corrido como
   // "não treinado".
-  const fetchRecovery = useServerFn(getRecoveryAdvice);
+  const fetchRecovery = bridged("recovery.get", getRecoveryAdvice);
   const {
     data: recovery,
     isFetching: recoveryLoading,

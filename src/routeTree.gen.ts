@@ -25,6 +25,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as ApiPublicVapidRouteImport } from './routes/api/public/vapid'
+import { Route as ApiPublicBridgeRouteImport } from './routes/api/public/bridge'
 import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authenticated/app.progresso'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
@@ -129,6 +130,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
 const ApiPublicVapidRoute = ApiPublicVapidRouteImport.update({
   id: '/api/public/vapid',
   path: '/api/public/vapid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBridgeRoute = ApiPublicBridgeRouteImport.update({
+  id: '/api/public/bridge',
+  path: '/api/public/bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppProgressoRoute =
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
@@ -421,6 +430,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app/'
     | '/app/alunos/$id'
@@ -461,6 +471,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app'
     | '/app/alunos/$id'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/notificacoes'
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/progresso'
+    | '/api/public/bridge'
     | '/api/public/vapid'
     | '/_authenticated/app/'
     | '/_authenticated/app/alunos/$id'
@@ -538,6 +550,7 @@ export interface RootRouteChildren {
   GCodeRoute: typeof GCodeRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicBridgeRoute: typeof ApiPublicBridgeRoute
   ApiPublicVapidRoute: typeof ApiPublicVapidRoute
   ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
@@ -659,6 +672,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/vapid'
       fullPath: '/api/public/vapid'
       preLoaderRoute: typeof ApiPublicVapidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bridge': {
+      id: '/api/public/bridge'
+      path: '/api/public/bridge'
+      fullPath: '/api/public/bridge'
+      preLoaderRoute: typeof ApiPublicBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/progresso': {
@@ -928,6 +948,7 @@ const rootRouteChildren: RootRouteChildren = {
   GCodeRoute: GCodeRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicBridgeRoute: ApiPublicBridgeRoute,
   ApiPublicVapidRoute: ApiPublicVapidRoute,
   ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
