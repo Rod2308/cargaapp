@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { isAutoSyncEnabled, setAutoSyncEnabled } from "@/lib/strava-autosync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { bridged } from "@/lib/server-bridge";
 
 export function StravaConnect() {
   const qc = useQueryClient();
@@ -25,12 +25,12 @@ export function StravaConnect() {
   useEffect(() => {
     setAutoSync(isAutoSyncEnabled());
   }, []);
-  const statusFn = useServerFn(getStravaStatus);
-  const authUrlFn = useServerFn(getStravaAuthorizeUrl);
-  const disconnectFn = useServerFn(disconnectStrava);
-  const backfillFn = useServerFn(backfillStrava);
-  const ensureHookFn = useServerFn(ensureStravaWebhook);
-  const syncLatestFn = useServerFn(syncStravaLatest);
+  const statusFn = bridged("strava.status", getStravaStatus);
+  const authUrlFn = bridged("strava.authorizeUrl", getStravaAuthorizeUrl);
+  const disconnectFn = bridged("strava.disconnect", disconnectStrava);
+  const backfillFn = bridged("strava.backfill", backfillStrava);
+  const ensureHookFn = bridged("strava.ensureWebhook", ensureStravaWebhook);
+  const syncLatestFn = bridged("strava.sync", syncStravaLatest);
 
   const { data, isLoading } = useQuery({
     queryKey: ["strava-status"],

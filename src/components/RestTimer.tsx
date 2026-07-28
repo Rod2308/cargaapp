@@ -25,13 +25,14 @@ import {
   ensureRestChannel,
 } from "@/lib/local-notifications";
 import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
+import { callServer } from "@/lib/server-bridge";
 
 function scheduleServerPush(seconds: number, exerciseName?: string) {
   if (seconds <= 0) return;
-  void scheduleRestPush({ data: { seconds: Math.round(seconds), exerciseName } }).catch(() => {});
+  void callServer("rest.schedule", scheduleRestPush, { seconds: Math.round(seconds), exerciseName }).catch(() => {});
 }
 function cancelServerPush() {
-  void cancelRestPush().catch(() => {});
+  void callServer("rest.cancel", cancelRestPush).catch(() => {});
 }
 
 type Prefs = {

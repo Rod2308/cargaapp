@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { listStudents, linkStudentByCode, unlinkStudent } from "@/lib/trainer.functions";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
 import { EmptyState } from "@/components/EmptyState";
 import { ListSkeleton } from "@/components/LoadingState";
+import { bridged } from "@/lib/server-bridge";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/")({
   beforeLoad: ({ context }) => {
@@ -24,9 +24,9 @@ export const Route = createFileRoute("/_authenticated/app/alunos/")({
 function AlunosList() {
   const { isTrainer } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
-  const list = useServerFn(listStudents);
-  const link = useServerFn(linkStudentByCode);
-  const unlink = useServerFn(unlinkStudent);
+  const list = bridged("trainer.listStudents", listStudents);
+  const link = bridged("trainer.linkStudentByCode", linkStudentByCode);
+  const unlink = bridged("trainer.unlinkStudent", unlinkStudent);
 
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");

@@ -1,6 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { getStudentDetails } from "@/lib/trainer.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
@@ -13,6 +12,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ListSkeleton } from "@/components/LoadingState";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
+import { bridged } from "@/lib/server-bridge";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/$id")({
   beforeLoad: ({ context }) => {
@@ -26,7 +26,7 @@ function AlunoDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const getDetails = useServerFn(getStudentDetails);
+  const getDetails = bridged("trainer.getStudentDetails", getStudentDetails);
   const [manualOpen, setManualOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
