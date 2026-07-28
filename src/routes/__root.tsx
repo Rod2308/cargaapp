@@ -61,6 +61,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "google-site-verification", content: "rYAiSBnx8yEawrRz6FSyglkG1Svb3x6eg-p07FQmdio" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Carga — seu treino de academia, do seu jeito" },
       { name: "description", content: "Monte seus treinos A, B, C, registre carga e repetições e receba sugestões inteligentes de descanso e progressão." },
