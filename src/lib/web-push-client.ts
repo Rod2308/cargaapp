@@ -7,6 +7,7 @@ import {
   deletePushSubscription,
 } from "./push.functions";
 import {
+import { callServer } from "@/lib/server-bridge";
   fetchVapidPublicKeyClient,
   savePushSubscriptionClient,
   deletePushSubscriptionClient,
@@ -66,7 +67,7 @@ export async function subscribeToWebPush(): Promise<PushSubscription> {
 
   const reg = await ensureRegistration();
   const { publicKey } = await withFallback(
-    () => getVapidPublicKey(),
+    () => callServer<{ publicKey: string }>("push.vapid", getVapidPublicKey),
     async () => ({ publicKey: await fetchVapidPublicKeyClient() }),
   );
 
@@ -85,7 +86,7 @@ export async function subscribeToWebPush(): Promise<PushSubscription> {
     userAgent: navigator.userAgent.slice(0, 500),
   };
   await withFallback(
-    () => savePushSubscription({ data: payload }).then(() => undefined),
+    () => callServer("push.save", savePushSubscription, payload).then(() => undefined),
     () => savePushSubscriptionClient(payload).then(() => undefined),
   );
 
@@ -105,7 +106,7 @@ export async function unsubscribeFromWebPush(): Promise<void> {
   } catch {}
   try {
     await withFallback(
-      () => deletePushSubscription({ data: { endpoint } }).then(() => undefined),
+      () => callServer("push.delete", deletePushSubscription, { endpoint }).then(() => undefined),
       () => deletePushSubscriptionClient(endpoint).then(() => undefined),
     );
   } catch {}
@@ -133,7 +134,7 @@ export async function ensureWebPushSubscribed(): Promise<void> {
         userAgent: navigator.userAgent.slice(0, 500),
       };
       await withFallback(
-        () => savePushSubscription({ data: payload }).then(() => undefined),
+        () => callServer("push.save", savePushSubscription, payload).then(() => undefined),
         () => savePushSubscriptionClient(payload).then(() => undefined),
       );
     } else {

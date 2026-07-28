@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,7 @@ import {
   type ReminderSettings,
 } from "@/lib/reminder-settings.functions";
 import {
+import { bridged } from "@/lib/server-bridge";
   loadReminderSettingsClient,
   saveReminderSettingsClient,
 } from "@/lib/reminder-settings-client";
@@ -28,8 +28,8 @@ const DAYS = [
 ];
 
 export function WorkoutReminderSettings() {
-  const fetchSettings = useServerFn(getReminderSettings);
-  const save = useServerFn(saveReminderSettings);
+  const fetchSettings = bridged("reminders.get", getReminderSettings);
+  const save = bridged("reminders.save", saveReminderSettings);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
