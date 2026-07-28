@@ -60,3 +60,12 @@ export async function callServer<T>(
     throw err;
   }
 }
+
+/**
+ * Envolve uma server function preservando a assinatura original
+ * (`fn()` ou `fn({ data })`) e adicionando o fallback pela ponte.
+ * Substitui `useServerFn` nos pontos de chamada.
+ */
+export function bridged<F extends (...args: any[]) => Promise<any>>(action: string, localFn: F): F {
+  return ((args?: any) => callServer(action, localFn as any, args?.data)) as F;
+}
