@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { isAutoSyncEnabled, setAutoSyncEnabled } from "@/lib/strava-autosync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { bridged } from "@/lib/server-bridge";
 
 export function StravaConnect() {
   const qc = useQueryClient();

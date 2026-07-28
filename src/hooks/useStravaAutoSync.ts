@@ -1,8 +1,8 @@
+import { bridged } from "@/lib/server-bridge";
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { syncStravaLatest, getStravaStatus } from "@/lib/strava.functions";
 import {
-import { bridged } from "@/lib/server-bridge";
   AUTO_SYNC_MIN_INTERVAL_MS,
   markAutoSyncNow,
   shouldAutoSync,

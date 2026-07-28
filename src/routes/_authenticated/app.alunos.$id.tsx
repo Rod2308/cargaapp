@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getStudentDetails } from "@/lib/trainer.functions";
@@ -12,7 +13,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ListSkeleton } from "@/components/LoadingState";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
-import { bridged } from "@/lib/server-bridge";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/$id")({
   beforeLoad: ({ context }) => {

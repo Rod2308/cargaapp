@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listStudents, linkStudentByCode, unlinkStudent } from "@/lib/trainer.functions";
@@ -12,7 +13,6 @@ import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
 import { EmptyState } from "@/components/EmptyState";
 import { ListSkeleton } from "@/components/LoadingState";
-import { bridged } from "@/lib/server-bridge";
 
 export const Route = createFileRoute("/_authenticated/app/alunos/")({
   beforeLoad: ({ context }) => {

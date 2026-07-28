@@ -1,3 +1,4 @@
+import { callServer } from "@/lib/server-bridge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,6 @@ import {
   ensureRestChannel,
 } from "@/lib/local-notifications";
 import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
-import { callServer } from "@/lib/server-bridge";
 
 function scheduleServerPush(seconds: number, exerciseName?: string) {
   if (seconds <= 0) return;

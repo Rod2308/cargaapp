@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,7 +13,6 @@ import {
   type ReminderSettings,
 } from "@/lib/reminder-settings.functions";
 import {
-import { bridged } from "@/lib/server-bridge";
   loadReminderSettingsClient,
   saveReminderSettingsClient,
 } from "@/lib/reminder-settings-client";

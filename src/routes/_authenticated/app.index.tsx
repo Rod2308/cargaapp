@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +25,6 @@ import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import {
-import { bridged } from "@/lib/server-bridge";
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,

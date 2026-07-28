@@ -1,3 +1,4 @@
+import { callServer } from "@/lib/server-bridge";
 // Utilitários de cliente para inscrever / desinscrever o navegador
 // em Web Push (VAPID) e enviar a assinatura ao backend.
 
@@ -7,7 +8,6 @@ import {
   deletePushSubscription,
 } from "./push.functions";
 import {
-import { callServer } from "@/lib/server-bridge";
   fetchVapidPublicKeyClient,
   savePushSubscriptionClient,
   deletePushSubscriptionClient,

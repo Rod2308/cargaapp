@@ -1,3 +1,4 @@
+import { bridged } from "@/lib/server-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -18,7 +19,6 @@ import { DataManagement } from "@/components/DataManagement";
 import { StravaConnect } from "@/components/StravaConnect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { performLogout } from "@/lib/logout";
-import { bridged } from "@/lib/server-bridge";
 
 
 function calcAge(birth?: string | null) {

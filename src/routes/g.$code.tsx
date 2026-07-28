@@ -1,9 +1,9 @@
+import { callServer } from "@/lib/server-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Trophy, Users } from "lucide-react";
 import { getPublicInvite, type PublicInvite } from "@/lib/invites.functions";
-import { callServer } from "@/lib/server-bridge";
 
 const SITE_URL = "https://cargaapp.lovable.app";
 const DEFAULT_OG_IMAGE =
