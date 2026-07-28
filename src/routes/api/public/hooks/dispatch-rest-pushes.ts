@@ -5,7 +5,10 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/hooks/dispatch-rest-pushes")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const webpush = (await import("web-push")).default;
 
