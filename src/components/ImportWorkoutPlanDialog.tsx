@@ -1392,24 +1392,40 @@ export function ImportWorkoutPlanDialog({
         )}
 
 
-        {text && blocks.length === 0 && (
+        {step === "review" && text && blocks.length === 0 && (
           <p className="text-xs text-destructive">
-            Nenhum exercício reconhecido. Cada linha precisa ter o formato <code>Nome NxR</code>.
+            Nenhum exercício reconhecido. Volte e ajuste o texto — cada linha precisa ter o formato{" "}
+            <code>Nome NxR</code>.
           </p>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={save.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => save.mutate()}
-            disabled={blocks.length === 0 || save.isPending}
-          >
-            {save.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : blocks.length > 1 ? (
-              `Importar ${blocks.length} treinos`
+          {step === "input" ? (
+            <>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => setStep("review")}
+                disabled={!text.trim() || extracting}
+              >
+                Revisar {blocks.length > 0 ? `(${blocks.length} treino${blocks.length > 1 ? "s" : ""})` : ""}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setStep("input")} disabled={save.isPending}>
+                Voltar
+              </Button>
+              <Button
+                onClick={() => save.mutate()}
+                disabled={blocks.length === 0 || save.isPending}
+              >
+                {save.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : blocks.length > 1 ? (
+                  `Importar ${blocks.length} treinos`
+
             ) : (
               "Importar treino"
             )}
