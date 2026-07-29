@@ -345,7 +345,7 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
       currentGroup = groupMaybe;
       continue;
     }
-    if (exMaybe) {
+    const ensureBlock = () => {
       if (!current) {
         current = {
           label: String.fromCharCode(65 + autoIdx),
@@ -354,11 +354,35 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
         };
         autoIdx++;
       }
+      return current;
+    };
+
+    if (exMaybe) {
+      const blk = ensureBlock();
       const guessed = inferGroupFromText(exMaybe.name) ?? currentGroup;
       if (guessed) exMaybe.muscle_group = guessed;
-      current.exercises.push(exMaybe);
+      blk.exercises.push(exMaybe);
+      continue;
+    }
+
+    // Linha com cara de exercício mas sem padrão numérico reconhecido:
+    // entra como "não reconhecido" para o usuário resolver na revisão.
+    const looksLikeExercise =
+      /[a-zà-ÿ]{3,}/i.test(line) && line.length <= 60 && !/^(obs|observa|aquecimento|alongamento)/i.test(line);
+    if (looksLikeExercise) {
+      const blk = ensureBlock();
+      blk.exercises.push({
+        name: line.replace(/[:\-–—]+\s*$/, "").slice(0, 80),
+        sets: 3,
+        reps: "10",
+        weight_kg: null,
+        rest_seconds: 90,
+        muscle_group: inferGroupFromText(line) ?? currentGroup,
+        unrecognized: true,
+      });
     }
   }
+
   pushCurrent();
   return blocks;
 }
