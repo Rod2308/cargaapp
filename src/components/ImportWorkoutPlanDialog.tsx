@@ -174,9 +174,28 @@ function parseLine(raw: string): ParsedExercise | null {
     };
   }
 
+  // "Supino 3 séries de 12 repetições", "Supino: 3 series x 12 reps"
+  const verboseMatch = line.match(
+    /^(.+?)\s*[:\-–—]?\s*(\d{1,2})\s*s[eé]ries?\s*(?:de|x|×)?\s*(\d{1,2}(?:\s*[-–—]\s*\d{1,2})?)\s*(?:rep(?:s|eti[cç][oõ]es)?)?/i,
+  );
+  if (verboseMatch && verboseMatch[1].trim()) {
+    const vName = verboseMatch[1].trim().replace(/[:\-–—]+\s*$/, "").slice(0, 80);
+    const tail = line.slice((verboseMatch.index ?? 0) + verboseMatch[0].length);
+    const wm = tail.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i) || line.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i);
+    return {
+      name: vName,
+      sets: Math.min(20, Math.max(1, parseInt(verboseMatch[2], 10))),
+      reps: normalizeRepRange(verboseMatch[3]),
+      weight_kg: wm ? parseFloat(wm[1].replace(",", ".")) : null,
+      rest_seconds: 90,
+      muscle_group: inferGroupFromText(vName),
+    };
+  }
+
   // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
   const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
+
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
   const reps = normalizeRepRange(setsRepsMatch[2]);
 
