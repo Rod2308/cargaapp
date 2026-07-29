@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check, HeartPulse } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { toastUndo, stripGenerated } from "@/lib/undo";
+
 import { z } from "zod";
 import { suggestAdjustment, hasChange, type Suggestion, type CardioLoad } from "@/lib/progression";
 
