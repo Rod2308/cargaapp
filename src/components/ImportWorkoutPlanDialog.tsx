@@ -1425,11 +1425,12 @@ export function ImportWorkoutPlanDialog({
                   <Loader2 className="size-4 animate-spin" />
                 ) : blocks.length > 1 ? (
                   `Importar ${blocks.length} treinos`
-
-            ) : (
-              "Importar treino"
-            )}
-          </Button>
+                ) : (
+                  "Importar treino"
+                )}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
