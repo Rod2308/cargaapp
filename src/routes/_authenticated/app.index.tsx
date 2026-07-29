@@ -267,7 +267,17 @@ function Dashboard() {
         });
       }
     }
+    return { sessoes, extras };
+  }, [last7Sessions]);
 
+  const timeline = useMemo(
+    () => combineTimeline(atividades.sessoes, atividades.extras, new Date()),
+    [atividades],
+  );
+
+  const planoOuGeral = useMemo(() => {
+    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+    const { sessoes, extras } = atividades;
 
     // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
     // com base no último realmente feito.
