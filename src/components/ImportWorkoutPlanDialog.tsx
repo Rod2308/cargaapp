@@ -1213,64 +1213,145 @@ export function ImportWorkoutPlanDialog({
             {dryRun.map((b, bi) => (
               <div key={bi} className="rounded-xl border border-border">
                 <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/40 px-3 py-2 text-xs">
-                  <span className="rounded bg-primary/15 px-1.5 py-0.5 font-bold text-primary">
-                    {b.block.label}
-                  </span>
-                  <span className="font-semibold">{b.block.name}</span>
-                  <span className="text-muted-foreground">· {b.rows.length} exercícios</span>
+                  <Input
+                    value={b.block.label}
+                    onChange={(e) => updateBlockMeta(bi, { label: e.target.value.slice(0, 4) })}
+                    className="h-7 w-12 text-center text-xs font-bold"
+                    aria-label="Letra do treino"
+                  />
+                  <Input
+                    value={b.block.name}
+                    onChange={(e) => updateBlockMeta(bi, { name: e.target.value.slice(0, 60) })}
+                    className="h-7 flex-1 min-w-32 text-xs font-semibold"
+                    aria-label="Nome do treino"
+                  />
+                  <span className="text-muted-foreground">{b.rows.length} ex.</span>
                   {b.conflict && (
                     <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-semibold text-amber-600 dark:text-amber-400">
                       letra já existe
                     </span>
                   )}
                 </div>
-                <div className="max-h-48 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <tbody>
-                      {b.rows.map((row, i) => {
-                        const p = row.parsed;
-                        const badge =
-                          row.status === "matched"
-                            ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
-                            : row.status === "duplicate"
+                <div className="max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-border">
+                    {b.rows.map((row, i) => {
+                      const p = row.parsed;
+                      const badge =
+                        row.status === "matched"
+                          ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
+                          : row.status === "duplicate"
                             ? { text: "Duplicado", cls: "bg-muted text-muted-foreground" }
-                            : { text: "Novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
-                        return (
-                          <tr key={i} className="border-t border-border">
-                            <td className="px-2 py-1.5">
-                              <div className="font-medium">{p.name}</div>
-                              {row.match && stripAccents(row.match.name) !== stripAccents(p.name) && (
-                                <div className="text-[10px] text-muted-foreground">
-                                  → {row.match.name}
-                                </div>
-                              )}
-                              {row.matchGroup && (
-                                <div className="text-[10px] text-muted-foreground">{row.matchGroup}</div>
-                              )}
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                                {badge.text}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">
-                              {p.sets}×{p.reps}
-                              {p.weight_kg ? ` · ${p.weight_kg}kg` : ""} · {p.rest_seconds}s
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            : row.status === "unrecognized"
+                              ? { text: "Revisar", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" }
+                              : { text: "Novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
+                      return (
+                        <div key={i} className="space-y-1.5 px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={p.name}
+                              onChange={(e) => updateRow(bi, i, { name: e.target.value.slice(0, 80) })}
+                              className="h-7 flex-1 text-xs"
+                              aria-label="Nome do exercício"
+                            />
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                              {badge.text}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 shrink-0"
+                              onClick={() => removeRow(bi, i)}
+                              aria-label="Remover exercício"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <label className="flex items-center gap-1">
+                              Séries
+                              <Input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={p.sets}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    sets: Math.min(20, Math.max(1, parseInt(e.target.value || "1", 10))),
+                                  })
+                                }
+                                className="h-7 w-14 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Reps
+                              <Input
+                                value={p.reps}
+                                onChange={(e) => updateRow(bi, i, { reps: e.target.value.slice(0, 12) })}
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Kg
+                              <Input
+                                type="number"
+                                step="0.5"
+                                value={p.weight_kg ?? ""}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    weight_kg: e.target.value === "" ? null : parseFloat(e.target.value),
+                                  })
+                                }
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Desc.
+                              <Input
+                                type="number"
+                                step="15"
+                                value={p.rest_seconds}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    rest_seconds: Math.min(600, Math.max(0, parseInt(e.target.value || "0", 10))),
+                                  })
+                                }
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                          </div>
+                          <select
+                            value={manualMatch[`${bi}:${i}`] ?? (row.match?.id ?? "")}
+                            onChange={(e) =>
+                              setManualMatch((m) => ({ ...m, [`${bi}:${i}`]: e.target.value }))
+                            }
+                            className="h-7 w-full rounded-md border border-input bg-background px-2 text-[11px]"
+                            aria-label="Vincular ao exercício do catálogo"
+                          >
+                            <option value="">
+                              {row.match ? "Criar novo exercício" : "Não vinculado — criar novo"}
+                            </option>
+                            {catalogSorted.map((c: any) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                                {c.muscle_group ? ` · ${c.muscle_group}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground">
-              Nada é salvo até você clicar em <b>Importar</b>. Exercícios novos usam o grupo muscular detectado
-              e recebem uma imagem padrão quando houver contexto suficiente.
+              Nada é salvo até você clicar em <b>Importar</b>. Ajuste os nomes, séries e o vínculo com o
+              catálogo antes de salvar — os itens marcados como <b>Revisar</b> não foram reconhecidos
+              automaticamente.
             </p>
           </div>
         )}
+
 
         {text && blocks.length === 0 && (
           <p className="text-xs text-destructive">
