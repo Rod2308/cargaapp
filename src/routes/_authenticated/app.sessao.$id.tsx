@@ -38,6 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, Minus as MinusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { toastUndo, stripGenerated } from "@/lib/undo";
 import { RestTimer } from "@/components/RestTimer";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
@@ -284,9 +285,9 @@ function SessionPage() {
         description: itemSnap?.exercises?.name ?? undefined,
         onUndo: async () => {
           if (!itemSnap) throw new Error("Não há dados para restaurar");
-          await enqueueOp({ kind: "insert", table: "workout_exercises", values: stripGenerated(itemSnap) });
+          await enqueueOp({ kind: "insert", table: "workout_exercises", row: stripGenerated(itemSnap) });
           for (const s of setsSnap) {
-            await enqueueOp({ kind: "insert", table: "session_sets", values: stripGenerated(s) });
+            await enqueueOp({ kind: "insert", table: "session_sets", row: stripGenerated(s) });
           }
         },
         onRestored: () => {
