@@ -98,7 +98,11 @@ describe("UI · Seu próximo treino", () => {
   it("segue a rotação normal quando todos os grupos estão recuperados", () => {
     renderDashboardCard({
       lastWorkoutId: "a",
-      sessoes: [sessao(3, "A", ["Peito", "Tríceps"]), sessao(4, "B", ["Costas", "Bíceps"])],
+      sessoes: [
+        sessao(3, "A", ["Peito", "Tríceps"]),
+        sessao(4, "B", ["Costas", "Bíceps"]),
+        sessao(2, "C", ["Pernas", "Glúteo"]),
+      ],
     });
     expect(screen.getByTestId("next-workout-label").textContent).toBe("B");
   });
