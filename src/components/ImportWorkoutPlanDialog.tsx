@@ -1116,15 +1116,41 @@ export function ImportWorkoutPlanDialog({
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Importar treino completo</DialogTitle>
+          <DialogTitle>
+            {step === "input" ? "Importar treino completo" : "Revisar exercícios extraídos"}
+          </DialogTitle>
           <DialogDescription>
-            Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
-            A leitura da imagem é feita no próprio aparelho (OCR), sem IA. Revise tudo antes de salvar.
+            {step === "input" ? (
+              <>
+                Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
+                A leitura da imagem é feita no próprio aparelho (OCR), sem IA.
+              </>
+            ) : (
+              <>
+                Confira e corrija o que o OCR/leitor entendeu. Nada é salvo até você clicar em{" "}
+                <b>Importar</b>.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex items-center gap-2 text-[11px] font-medium">
+          <span
+            className={`rounded-full px-2 py-0.5 ${step === "input" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+          >
+            1. Texto / Foto
+          </span>
+          <span className="h-px flex-1 bg-border" />
+          <span
+            className={`rounded-full px-2 py-0.5 ${step === "review" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+          >
+            2. Revisão
+          </span>
+        </div>
+
         <OfflineNotice feature="Importação de treino" />
 
+        {step === "input" && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label>Plano completo</Label>
