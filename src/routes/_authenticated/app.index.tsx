@@ -488,11 +488,18 @@ function Dashboard() {
       const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
       if (w) return w;
     }
+    // Sem check-in do dia: rotação considerando a recuperação real dos grupos
+    // (não repete um treino cujos músculos ainda estão descansando).
     return (
+      proximoNaRotinaComRecuperacao(
+        workouts as any[],
+        lastPlanSession?.workout_id ?? null,
+        timeline,
+      ) ??
       proximoNaRotina(workouts as any[], lastPlanSession?.workout_id ?? null) ??
       (workouts[0] as any)
     );
-  }, [workouts, workoutSugeridoId, lastPlanSession]);
+  }, [workouts, workoutSugeridoId, lastPlanSession, timeline]);
 
   const nextWorkoutLoading = workoutsLoading || lastPlanLoading;
   const isRestDay = suggestion?.intensidade === "descanso";
