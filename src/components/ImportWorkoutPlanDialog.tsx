@@ -422,6 +422,7 @@ export function ImportWorkoutPlanDialog({
   const navigate = useNavigate();
   const online = useOnline();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"input" | "review">("input");
   const [text, setText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [ocrPct, setOcrPct] = useState<number | null>(null);
@@ -481,7 +482,9 @@ export function ImportWorkoutPlanDialog({
       if (parts.length) {
         setText((cur) => (cur ? cur + "\n\n" + parts.join("\n\n") : parts.join("\n\n")));
         toast.success(`${parts.length} arquivo(s) importado(s)`);
+        setStep("review");
       }
+
     } finally {
       setExtracting(false);
       setOcrPct(null);
@@ -926,6 +929,9 @@ export function ImportWorkoutPlanDialog({
 
   function reset() {
     setText("");
+    setStep("input");
+    setEdited(null);
+    setManualMatch({});
   }
 
   const save = useMutation({
@@ -1110,15 +1116,41 @@ export function ImportWorkoutPlanDialog({
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Importar treino completo</DialogTitle>
+          <DialogTitle>
+            {step === "input" ? "Importar treino completo" : "Revisar exercícios extraídos"}
+          </DialogTitle>
           <DialogDescription>
-            Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
-            A leitura da imagem é feita no próprio aparelho (OCR), sem IA. Revise tudo antes de salvar.
+            {step === "input" ? (
+              <>
+                Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
+                A leitura da imagem é feita no próprio aparelho (OCR), sem IA.
+              </>
+            ) : (
+              <>
+                Confira e corrija o que o OCR/leitor entendeu. Nada é salvo até você clicar em{" "}
+                <b>Importar</b>.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex items-center gap-2 text-[11px] font-medium">
+          <span
+            className={`rounded-full px-2 py-0.5 ${step === "input" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+          >
+            1. Texto / Foto
+          </span>
+          <span className="h-px flex-1 bg-border" />
+          <span
+            className={`rounded-full px-2 py-0.5 ${step === "review" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+          >
+            2. Revisão
+          </span>
+        </div>
+
         <OfflineNotice feature="Importação de treino" />
 
+        {step === "input" && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label>Plano completo</Label>
@@ -1198,8 +1230,9 @@ export function ImportWorkoutPlanDialog({
             <code>B - Costas</code>. Uma linha em branco entre blocos ajuda na leitura.
           </p>
         </div>
+        )}
 
-        {blocks.length > 0 && (
+        {step === "review" && blocks.length > 0 && (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs">
               <span className="font-semibold">
@@ -1359,28 +1392,45 @@ export function ImportWorkoutPlanDialog({
         )}
 
 
-        {text && blocks.length === 0 && (
+        {step === "review" && text && blocks.length === 0 && (
           <p className="text-xs text-destructive">
-            Nenhum exercício reconhecido. Cada linha precisa ter o formato <code>Nome NxR</code>.
+            Nenhum exercício reconhecido. Volte e ajuste o texto — cada linha precisa ter o formato{" "}
+            <code>Nome NxR</code>.
           </p>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={save.isPending}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => save.mutate()}
-            disabled={blocks.length === 0 || save.isPending}
-          >
-            {save.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : blocks.length > 1 ? (
-              `Importar ${blocks.length} treinos`
-            ) : (
-              "Importar treino"
-            )}
-          </Button>
+          {step === "input" ? (
+            <>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => setStep("review")}
+                disabled={!text.trim() || extracting}
+              >
+                Revisar {blocks.length > 0 ? `(${blocks.length} treino${blocks.length > 1 ? "s" : ""})` : ""}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setStep("input")} disabled={save.isPending}>
+                Voltar
+              </Button>
+              <Button
+                onClick={() => save.mutate()}
+                disabled={blocks.length === 0 || save.isPending}
+              >
+                {save.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : blocks.length > 1 ? (
+                  `Importar ${blocks.length} treinos`
+                ) : (
+                  "Importar treino"
+                )}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
