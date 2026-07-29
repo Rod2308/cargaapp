@@ -856,19 +856,35 @@ export function ImportWorkoutPlanDialog({
 
 
   const dryRun = useMemo(() => {
-    return blocks.map((b) => {
+    return blocks.map((b, bi) => {
       const seenLocal = new Set<string>();
-      const rows = b.exercises.map((p) => {
+      const rows = b.exercises.map((p, ri) => {
         const key = stripAccents(p.name);
         const ctxGroup = p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null;
-        const match = matchExercise(p.name, ctxGroup, p.preferred_match);
+        const manualId = manualMatch[`${bi}:${ri}`];
+        const manual = manualId ? catalogIndex.find((c) => c.id === manualId) : null;
+        const match = manual
+          ? {
+              id: manual.id,
+              name: manual.name,
+              muscle_group: manual.muscle_group,
+              image_url: manual.image_url,
+              equipment: manual.equipment,
+            }
+          : matchExercise(p.name, ctxGroup, p.preferred_match);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
         const matchGroup = match?.muscle_group && match.muscle_group !== "Outros" ? match.muscle_group : ctxGroup;
         return {
           parsed: p,
           match,
-          status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
+          status: (p.unrecognized && !manual
+            ? "unrecognized"
+            : match
+              ? "matched"
+              : duplicate
+                ? "duplicate"
+                : "new") as "matched" | "new" | "duplicate" | "unrecognized",
           matchGroup,
         };
       });
@@ -878,7 +894,8 @@ export function ImportWorkoutPlanDialog({
       return { block: b, rows, conflict };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, catalogIndex, catalogByName, userWorkouts]);
+  }, [blocks, catalogIndex, catalogByName, userWorkouts, manualMatch, fuse]);
+
 
   const totals = useMemo(() => {
     let matched = 0;
