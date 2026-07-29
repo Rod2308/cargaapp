@@ -816,16 +816,31 @@ export function ImportWorkoutPlanDialog({
       if (c.is_default) score += 5;
       if (!best || score > best.score) best = { entry: c, score };
     }
-    return best && best.score >= 55
-      ? {
-          id: best.entry.id,
-          name: best.entry.name,
-          muscle_group: best.entry.muscle_group,
-          image_url: best.entry.image_url,
-          equipment: best.entry.equipment,
-        }
-      : null;
+    if (best && best.score >= 55) {
+      return {
+        id: best.entry.id,
+        name: best.entry.name,
+        muscle_group: best.entry.muscle_group,
+        image_url: best.entry.image_url,
+        equipment: best.entry.equipment,
+      };
+    }
+
+    // 3) último recurso: fuzzy (Fuse.js) tolerante a erro de digitação/OCR.
+    const fz = fuse?.search(stripAccents(parsedName), { limit: 1 })[0];
+    if (fz && (fz.score ?? 1) <= 0.42) {
+      const e = fz.item;
+      return {
+        id: e.id,
+        name: e.name,
+        muscle_group: e.muscle_group,
+        image_url: e.image_url,
+        equipment: e.equipment,
+      };
+    }
+    return null;
   };
+
 
 
   const dryRun = useMemo(() => {
