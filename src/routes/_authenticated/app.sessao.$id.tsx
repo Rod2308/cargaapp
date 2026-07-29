@@ -260,6 +260,13 @@ function SessionPage() {
 
   const removeExerciseItem = useMutation({
     mutationFn: async (item: { id: string; exercise_id: string }) => {
+      // Snapshots para permitir "Desfazer" (exercício do plano + séries feitas).
+      const itemSnap = ((qc.getQueryData<any[]>(["session-items", id]) ?? []) as any[]).find(
+        (it) => it.id === item.id,
+      );
+      const setsSnap = ((qc.getQueryData<any[]>(["session-sets", id]) ?? []) as any[]).filter(
+        (s) => s.workout_exercise_id === item.id,
+      );
       qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
         prev.filter((s) => s.workout_exercise_id !== item.id),
       );
@@ -272,7 +279,21 @@ function SessionPage() {
         match: { session_id: id, workout_exercise_id: item.id },
       });
       await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
-      toast.success("Exercício removido");
+      toastUndo({
+        message: "Exercício removido",
+        description: itemSnap?.exercises?.name ?? undefined,
+        onUndo: async () => {
+          if (!itemSnap) throw new Error("Não há dados para restaurar");
+          await enqueueOp({ kind: "insert", table: "workout_exercises", values: stripGenerated(itemSnap) });
+          for (const s of setsSnap) {
+            await enqueueOp({ kind: "insert", table: "session_sets", values: stripGenerated(s) });
+          }
+        },
+        onRestored: () => {
+          qc.invalidateQueries({ queryKey: ["session-items", id] });
+          qc.invalidateQueries({ queryKey: ["session-sets", id] });
+        },
+      });
     },
     onError: (e: any) => toast.error(e.message),
     onSettled: () => {
@@ -280,6 +301,7 @@ function SessionPage() {
       qc.invalidateQueries({ queryKey: ["session-sets", id] });
     },
   });
+
 
 
   const finish = useMutation({
