@@ -128,6 +128,16 @@ function EditSessionPage() {
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
           qc.invalidateQueries({ queryKey: ["history-sessions"] });
         },
+        onRedo: async () => {
+          const { error } = await supabase.from("session_sets").delete().eq("id", snapshot.id);
+          if (error) throw error;
+        },
+        onRedone: () => {
+          qc.invalidateQueries({ queryKey: ["session-sets-edit", id] });
+          qc.invalidateQueries({ queryKey: ["session-sets", id] });
+          qc.invalidateQueries({ queryKey: ["history-sessions"] });
+        },
+
       });
     },
     onError: (e: any) => toast.error(e.message),

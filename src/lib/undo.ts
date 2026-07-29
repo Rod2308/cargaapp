@@ -9,6 +9,10 @@ type UndoOptions = {
   onUndo: () => Promise<void> | void;
   /** Executado após a restauração bem-sucedida (invalidar queries, etc.). */
   onRestored?: () => void;
+  /** Executado quando o usuário toca em "Refazer". Deve remover o item de novo. */
+  onRedo?: () => Promise<void> | void;
+  /** Executado após o "Refazer" bem-sucedido. */
+  onRedone?: () => void;
   /** Tempo em que o botão fica disponível (ms). Padrão: 8s. */
   duration?: number;
 };
@@ -16,8 +20,12 @@ type UndoOptions = {
 /**
  * Mostra um toast com botão "Desfazer" para ações destrutivas.
  * A exclusão já aconteceu; `onUndo` é responsável por recriar o registro.
+ * Se `onRedo` for informado, após desfazer aparece um toast com "Refazer",
+ * e o ciclo pode ser repetido quantas vezes o usuário quiser.
  */
-export function toastUndo({ message, description, onUndo, onRestored, duration = 8000 }: UndoOptions) {
+export function toastUndo(options: UndoOptions) {
+  const { message, description, onUndo, onRestored, onRedo, onRedone, duration = 8000 } = options;
+
   toast.success(message, {
     description,
     duration,
@@ -29,8 +37,12 @@ export function toastUndo({ message, description, onUndo, onRestored, duration =
           try {
             await onUndo();
             toast.dismiss(loading);
-            toast.success("Restaurado");
             onRestored?.();
+            if (onRedo) {
+              toastRedo(options);
+            } else {
+              toast.success("Restaurado");
+            }
           } catch (e: any) {
             toast.dismiss(loading);
             toast.error(e?.message ?? "Não foi possível restaurar");
@@ -40,6 +52,34 @@ export function toastUndo({ message, description, onUndo, onRestored, duration =
     },
   });
 }
+
+/** Toast exibido depois de um "Desfazer", oferecendo "Refazer" (repetir a exclusão). */
+function toastRedo(options: UndoOptions) {
+  const { description, onRedo, onRedone, duration = 8000 } = options;
+  toast.success("Restaurado", {
+    description,
+    duration,
+    action: {
+      label: "Refazer",
+      onClick: () => {
+        void (async () => {
+          const loading = toast.loading("Refazendo...");
+          try {
+            await onRedo?.();
+            toast.dismiss(loading);
+            onRedone?.();
+            // Permite desfazer novamente o que acabou de ser refeito.
+            toastUndo(options);
+          } catch (e: any) {
+            toast.dismiss(loading);
+            toast.error(e?.message ?? "Não foi possível refazer");
+          }
+        })();
+      },
+    },
+  });
+}
+
 
 /** Remove campos gerados pelo banco antes de reinserir um registro. */
 export function stripGenerated<T extends Record<string, any>>(row: T, extra: string[] = []): Record<string, any> {

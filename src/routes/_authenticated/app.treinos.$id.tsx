@@ -245,6 +245,12 @@ function WorkoutEditor() {
           await writeInsert("workout_exercises", stripGenerated(snapshot));
         },
         onRestored: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
+        onRedo: async () => {
+          const { writeDelete } = await import("@/lib/offline-writes");
+          await writeDelete("workout_exercises", { id: snapshot.id });
+        },
+        onRedone: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
+
       });
     },
   });

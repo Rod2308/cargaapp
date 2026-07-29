@@ -294,6 +294,19 @@ function SessionPage() {
           qc.invalidateQueries({ queryKey: ["session-items", id] });
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
         },
+        onRedo: async () => {
+          await enqueueOp({
+            kind: "delete",
+            table: "session_sets",
+            match: { session_id: id, workout_exercise_id: item.id },
+          });
+          await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
+        },
+        onRedone: () => {
+          qc.invalidateQueries({ queryKey: ["session-items", id] });
+          qc.invalidateQueries({ queryKey: ["session-sets", id] });
+        },
+
       });
     },
     onError: (e: any) => toast.error(e.message),
