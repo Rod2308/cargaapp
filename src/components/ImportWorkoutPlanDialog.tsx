@@ -482,7 +482,9 @@ export function ImportWorkoutPlanDialog({
       if (parts.length) {
         setText((cur) => (cur ? cur + "\n\n" + parts.join("\n\n") : parts.join("\n\n")));
         toast.success(`${parts.length} arquivo(s) importado(s)`);
+        setStep("review");
       }
+
     } finally {
       setExtracting(false);
       setOcrPct(null);
