@@ -29,7 +29,10 @@ export type ParsedExercise = {
   notes?: string | null;
   muscle_group?: string | null;
   preferred_match?: string | null;
+  /** Linha que não bateu com nenhum padrão numérico — precisa de revisão manual. */
+  unrecognized?: boolean;
 };
+
 
 export type ParsedWorkoutBlock = {
   label: string;
