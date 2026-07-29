@@ -91,6 +91,12 @@ function TreinosList() {
           }
         },
         onRestored: () => qc.invalidateQueries({ queryKey: ["workouts"] }),
+        onRedo: async () => {
+          const { writeDelete } = await import("@/lib/offline-writes");
+          await writeDelete("workouts", { id: snap.workout.id });
+        },
+        onRedone: () => qc.invalidateQueries({ queryKey: ["workouts"] }),
+
       });
     },
   });
