@@ -31,16 +31,30 @@ Em **Settings → Git**, mantenha **Production Branch = main** e
 já dispara um deploy.
 
 ### 3. Variáveis de ambiente no Vercel
-Copie para **Settings → Environment Variables** (Production e Preview):
+
+O app usa apenas três variáveis no navegador, e elas precisam ser **idênticas**
+às do Lovable. Os valores estão versionados em `.env.example`:
 
 ```
-VITE_SUPABASE_URL
-VITE_SUPABASE_PUBLISHABLE_KEY
-VITE_SUPABASE_PROJECT_ID
+VITE_SUPABASE_URL="https://lgxwvmhaaxiymhjqmglk.supabase.co"
+VITE_SUPABASE_PROJECT_ID="lgxwvmhaaxiymhjqmglk"
+VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_Wn25jk_uxUmXuuBNBSS7LA_TPuCdCCU"
 ```
 
-Os valores são os mesmos do arquivo `.env` do projeto. Sem eles, o app no
-Vercel não conecta no backend e as funções ficam diferentes do Lovable.
+No Vercel: **Settings → Environment Variables** → adicione as três marcando
+**Production**, **Preview** e **Development**. Depois de salvar, refaça o deploy
+(**Deployments → … → Redeploy**), porque variáveis `VITE_*` entram no bundle no
+momento do build.
+
+Como conferir: abra `/status-login` no domínio do Vercel — o card
+**Variáveis de ambiente** mostra se cada chave está presente e igual à esperada.
+
+Os segredos de servidor (VAPID, Strava, service role, etc.) **não** vão para o
+Vercel. O domínio espelho é estático e chama as funções pela ponte
+(`/api/public/bridge`) hospedada no domínio principal, então esses segredos
+continuam apenas no Lovable — é isso que mantém o comportamento igual sem
+duplicar credenciais.
+
 
 ### 4. (Opcional) Deploy Hook redundante
 Se você quiser forçar o deploy mesmo quando o Vercel não detectar o push:
