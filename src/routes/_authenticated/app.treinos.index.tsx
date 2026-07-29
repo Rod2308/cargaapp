@@ -56,8 +56,12 @@ function TreinosList() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Snapshot do treino + exercícios para permitir "Desfazer".
+      const workout = ((qc.getQueryData<any[]>(["workouts", user.id]) ?? []) as any[]).find((w) => w.id === id);
+      const { data: items } = await supabase.from("workout_exercises").select("*").eq("workout_id", id);
       const { writeDelete } = await import("@/lib/offline-writes");
       await writeDelete("workouts", { id });
+      return { workout: workout ?? null, items: items ?? [] };
     },
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: ["workouts", user.id] });
@@ -68,8 +72,27 @@ function TreinosList() {
     onError: (_e, _id, ctx: any) => {
       if (ctx?.prev) qc.setQueryData(["workouts", user.id], ctx.prev);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["workouts"] }),
+    onSuccess: (snap: any) => {
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      toastUndo({
+        message: "Treino excluído",
+        description: snap?.workout ? `${snap.workout.label} · ${snap.workout.name}` : undefined,
+        onUndo: async () => {
+          if (!snap?.workout) throw new Error("Não há dados para restaurar");
+          const { error } = await supabase.from("workouts").insert(stripGenerated(snap.workout) as any);
+          if (error) throw error;
+          if (snap.items.length) {
+            const { error: e2 } = await supabase
+              .from("workout_exercises")
+              .insert(snap.items.map((it: any) => stripGenerated(it)) as any);
+            if (e2) throw e2;
+          }
+        },
+        onRestored: () => qc.invalidateQueries({ queryKey: ["workouts"] }),
+      });
+    },
   });
+
 
   return (
     <div className="app-container pt-8">
