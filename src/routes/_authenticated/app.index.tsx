@@ -29,6 +29,8 @@ import {
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
+  proximoNaRotinaComRecuperacao,
+  combineTimeline,
   MUSCLE_LABEL,
   type MuscleGroup,
   type WorkoutSession,
@@ -217,8 +219,7 @@ function Dashboard() {
     },
   });
 
-  const planoOuGeral = useMemo(() => {
-    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+  const atividades = useMemo(() => {
     const sessoes: WorkoutSession[] = [];
     const extras: ExtraActivity[] = [];
     for (const s of last7Sessions as any[]) {
@@ -268,7 +269,17 @@ function Dashboard() {
         });
       }
     }
+    return { sessoes, extras };
+  }, [last7Sessions]);
 
+  const timeline = useMemo(
+    () => combineTimeline(atividades.sessoes, atividades.extras, new Date()),
+    [atividades],
+  );
+
+  const planoOuGeral = useMemo(() => {
+    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+    const { sessoes, extras } = atividades;
 
     // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
     // com base no último realmente feito.
@@ -327,7 +338,7 @@ function Dashboard() {
     }
     return { suggestion: ajustada, workoutId: wid };
 
-  }, [todayCheckin, last7Sessions, workouts]);
+  }, [todayCheckin, atividades, workouts]);
 
   const suggestion = planoOuGeral.suggestion;
   const workoutSugeridoId = planoOuGeral.workoutId;
@@ -477,11 +488,18 @@ function Dashboard() {
       const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
       if (w) return w;
     }
+    // Sem check-in do dia: rotação considerando a recuperação real dos grupos
+    // (não repete um treino cujos músculos ainda estão descansando).
     return (
+      proximoNaRotinaComRecuperacao(
+        workouts as any[],
+        lastPlanSession?.workout_id ?? null,
+        timeline,
+      ) ??
       proximoNaRotina(workouts as any[], lastPlanSession?.workout_id ?? null) ??
       (workouts[0] as any)
     );
-  }, [workouts, workoutSugeridoId, lastPlanSession]);
+  }, [workouts, workoutSugeridoId, lastPlanSession, timeline]);
 
   const nextWorkoutLoading = workoutsLoading || lastPlanLoading;
   const isRestDay = suggestion?.intensidade === "descanso";
