@@ -113,3 +113,109 @@ describe("próximo treino nunca repete músculo recente", () => {
     expect(prox?.id).toBe("c");
   });
 });
+
+describe("bordas: histórico insuficiente", () => {
+  it("rotina vazia retorna null em ambas as funções", () => {
+    expect(proximoNaRotina([], null)).toBeNull();
+    expect(proximoNaRotinaComRecuperacao([], null, [], NOW)).toBeNull();
+  });
+
+  it("usuário novo (sem histórico) recebe o primeiro treino da rotina", () => {
+    expect(proximoNaRotina(ROTINA, null)?.id).toBe("a");
+    expect(proximoNaRotinaComRecuperacao(ROTINA, null, [], NOW)?.id).toBe("a");
+  });
+
+  it("último treino desconhecido (id inválido) não quebra a rotação", () => {
+    expect(proximoNaRotina(ROTINA, "id-inexistente")?.id).toBe("a");
+    const tl = combineTimeline([sessao(5, "A", ["Peito", "Tríceps"])], [], NOW);
+    const prox = proximoNaRotinaComRecuperacao(ROTINA, "id-inexistente", tl, NOW);
+    // com histórico, prefere o treino mais descansado (B/C nunca treinados)
+    expect(prox).not.toBeNull();
+    for (const g of gruposDoWorkoutNome(String(prox!.label ?? ""), prox!.name)) {
+      expect(diasDesdeUltimoEsforco(tl, g, NOW)).toBeGreaterThanOrEqual(MUSCLE_RECOVERY_DAYS[g]);
+    }
+  });
+
+  it("rotina com um único treino sempre devolve esse treino, mesmo treinado hoje", () => {
+    const unica: RotinaWorkout[] = [{ id: "u", label: "A", name: "Full Body" }];
+    const tl = combineTimeline([sessao(0, "A", ["Peito", "Costas", "Pernas"])], [], NOW);
+    expect(proximoNaRotina(unica, "u")?.id).toBe("u");
+    expect(proximoNaRotinaComRecuperacao(unica, "u", tl, NOW)?.id).toBe("u");
+  });
+
+  it("histórico só com atividade extra leve não bloqueia a rotação", () => {
+    const tl = combineTimeline(
+      [],
+      [{ started_at: diasAtras(1), ended_at: null, activity_name: "Caminhada leve", duration_min: 30 }],
+      NOW,
+    );
+    expect(tl.length).toBe(1);
+    expect(proximoNaRotinaComRecuperacao(ROTINA, "a", tl, NOW)?.id).toBe("b");
+  });
+
+  it("sessões com mais de 7 dias são ignoradas na timeline", () => {
+    const tl = combineTimeline([sessao(9, "B", ["Costas", "Bíceps"])], [], NOW);
+    expect(tl).toHaveLength(0);
+    expect(diasDesdeUltimoEsforco(tl, "biceps", NOW)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("labels sem letra (rotina livre) mantêm a ordem original", () => {
+    const livre: RotinaWorkout[] = [
+      { id: "x", label: null, name: "Treino Superior" },
+      { id: "y", label: null, name: "Treino Inferior" },
+    ];
+    expect(ordenarRotina(livre).map((w) => w.id)).toEqual(["x", "y"]);
+    expect(proximoNaRotina(livre, "x")?.id).toBe("y");
+  });
+});
+
+describe("bordas: múltiplos treinos na mesma semana", () => {
+  it("respeita o treino mais recente quando o mesmo grupo aparece duas vezes", () => {
+    const tl = combineTimeline(
+      [sessao(4, "B", ["Costas", "Bíceps"]), sessao(1, "B", ["Costas", "Bíceps"])],
+      [],
+      NOW,
+    );
+    expect(diasDesdeUltimoEsforco(tl, "biceps", NOW)).toBe(1);
+    expect(proximoNaRotinaComRecuperacao(ROTINA, "b", tl, NOW)?.id).not.toBe("b");
+  });
+
+  it("dois treinos no mesmo dia: escolhe o treino com grupos ainda intocados", () => {
+    const tl = combineTimeline(
+      [sessao(0, "A", ["Peito", "Tríceps"]), sessao(0, "B", ["Costas", "Bíceps"])],
+      [],
+      NOW,
+    );
+    expect(proximoNaRotinaComRecuperacao(ROTINA, "b", tl, NOW)?.id).toBe("c");
+  });
+
+  it("semana cheia (6 sessões) nunca sugere grupo fora do prazo se houver opção válida", () => {
+    const tl = combineTimeline(
+      [
+        sessao(5, "A", ["Peito", "Tríceps"]),
+        sessao(4, "B", ["Costas", "Bíceps"]),
+        sessao(3, "C", ["Pernas", "Glúteo"]),
+        sessao(2, "A", ["Peito", "Tríceps"]),
+        sessao(1, "B", ["Costas", "Bíceps"]),
+        sessao(0, "C", ["Pernas", "Glúteo"]),
+      ],
+      [],
+      NOW,
+    );
+    const prox = proximoNaRotinaComRecuperacao(ROTINA, "c", tl, NOW);
+    expect(prox?.id).toBe("a");
+    for (const g of gruposDoWorkoutNome(String(prox!.label ?? ""), prox!.name)) {
+      expect(diasDesdeUltimoEsforco(tl, g, NOW)).toBeGreaterThanOrEqual(MUSCLE_RECOVERY_DAYS[g]);
+    }
+  });
+
+  it("cardio intenso recente não impede a sugestão de treino de membros superiores", () => {
+    const tl = combineTimeline(
+      [sessao(0, "C", ["Pernas", "Glúteo"])],
+      [{ started_at: diasAtras(0), ended_at: null, activity_name: "Corrida", duration_min: 45 }],
+      NOW,
+    );
+    const prox = proximoNaRotinaComRecuperacao(ROTINA, "c", tl, NOW);
+    expect(["a", "b"]).toContain(prox?.id);
+  });
+});
