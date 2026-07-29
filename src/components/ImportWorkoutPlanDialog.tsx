@@ -1104,9 +1104,8 @@ export function ImportWorkoutPlanDialog({
         <DialogHeader>
           <DialogTitle>Importar treino completo</DialogTitle>
           <DialogDescription>
-            Cole o plano ou envie um arquivo (.pdf, .txt, .md, .csv, .json). Cada bloco "Treino A/B/C" vira
-            um treino separado. Arquivos .fit/.gpx/.tcx são treinos executados — use "Importar treino" no
-            histórico.
+            Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
+            A leitura da imagem é feita no próprio aparelho (OCR), sem IA. Revise tudo antes de salvar.
           </DialogDescription>
         </DialogHeader>
 
@@ -1133,6 +1132,27 @@ export function ImportWorkoutPlanDialog({
                   }}
                 />
               </label>
+              <label
+                className={`inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium hover:bg-accent ${extracting ? "pointer-events-none opacity-60" : ""}`}
+                title="Importar treino por foto (OCR local, sem IA)"
+              >
+                {extracting && ocrPct !== null ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-3.5" />
+                )}
+                {extracting && ocrPct !== null ? `Lendo ${ocrPct}%` : "Foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) void handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
               <Button type="button" size="sm" variant="ghost" onClick={pasteFromClipboard} className="h-7 gap-1 text-xs">
                 <ClipboardPaste className="size-3.5" /> Colar
               </Button>
