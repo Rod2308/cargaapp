@@ -94,6 +94,16 @@ function HistoryPage() {
           qc.invalidateQueries({ queryKey: ["recent-sessions"] });
           qc.invalidateQueries({ queryKey: ["month-sessions"] });
         },
+        onRedo: async () => {
+          const { error } = await supabase.from("sessions").delete().eq("id", snap.session.id);
+          if (error) throw error;
+        },
+        onRedone: () => {
+          qc.invalidateQueries({ queryKey: ["history-sessions"] });
+          qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+          qc.invalidateQueries({ queryKey: ["month-sessions"] });
+        },
+
       });
     },
     onError: (e: any) => toast.error(e.message),
