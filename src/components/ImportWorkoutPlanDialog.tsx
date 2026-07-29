@@ -480,7 +480,9 @@ export function ImportWorkoutPlanDialog({
       }
     } finally {
       setExtracting(false);
+      setOcrPct(null);
     }
+
   }
 
   const { data: catalog = [] } = useQuery({
