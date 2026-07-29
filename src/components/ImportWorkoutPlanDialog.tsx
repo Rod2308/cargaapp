@@ -741,7 +741,13 @@ export function ImportWorkoutPlanDialog({
     }));
   }, [catalog]);
 
+  const catalogSorted = useMemo(
+    () => [...(catalog as any[])].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "pt-BR")),
+    [catalog],
+  );
+
   // Fuzzy matching local (sem IA): Fuse.js sobre os nomes sem acento.
+
   const fuse = useMemo(
     () =>
       catalogIndex.length
