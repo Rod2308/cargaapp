@@ -38,8 +38,8 @@ export const MUSCLE_RECOVERY_DAYS: Record<MuscleGroup, number> = {
   costas: 2,
   pernas: 3,
   ombro: 2,
-  biceps: 1,
-  triceps: 1,
+  biceps: 2,
+  triceps: 2,
   gluteo: 2,
   abdomen: 1,
 };
