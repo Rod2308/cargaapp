@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, FileUp, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ClipboardPaste, FileUp, Image as ImageIcon, Loader2, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
