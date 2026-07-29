@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,11 +14,15 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardPaste, FileUp, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+import { ClipboardPaste, FileUp, Image as ImageIcon, Loader2, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
 import { extractTextFromFile } from "@/lib/plan-file-extractor";
+import Fuse from "fuse.js";
+
 
 export type ParsedExercise = {
   name: string;
@@ -29,7 +33,10 @@ export type ParsedExercise = {
   notes?: string | null;
   muscle_group?: string | null;
   preferred_match?: string | null;
+  /** Linha que não bateu com nenhum padrão numérico — precisa de revisão manual. */
+  unrecognized?: boolean;
 };
+
 
 export type ParsedWorkoutBlock = {
   label: string;
@@ -171,9 +178,28 @@ function parseLine(raw: string): ParsedExercise | null {
     };
   }
 
+  // "Supino 3 séries de 12 repetições", "Supino: 3 series x 12 reps"
+  const verboseMatch = line.match(
+    /^(.+?)\s*[:\-–—]?\s*(\d{1,2})\s*s[eé]ries?\s*(?:de|x|×)?\s*(\d{1,2}(?:\s*[-–—]\s*\d{1,2})?)\s*(?:rep(?:s|eti[cç][oõ]es)?)?/i,
+  );
+  if (verboseMatch && verboseMatch[1].trim()) {
+    const vName = verboseMatch[1].trim().replace(/[:\-–—]+\s*$/, "").slice(0, 80);
+    const tail = line.slice((verboseMatch.index ?? 0) + verboseMatch[0].length);
+    const wm = tail.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i) || line.match(/(\d+(?:[.,]\d+)?)\s*kg\b/i);
+    return {
+      name: vName,
+      sets: Math.min(20, Math.max(1, parseInt(verboseMatch[2], 10))),
+      reps: normalizeRepRange(verboseMatch[3]),
+      weight_kg: wm ? parseFloat(wm[1].replace(",", ".")) : null,
+      rest_seconds: 90,
+      muscle_group: inferGroupFromText(vName),
+    };
+  }
+
   // Accept ranges with hyphen, en-dash or em-dash: 6-8, 6–8, 12—15
   const setsRepsMatch = line.match(/(\d{1,2})\s*[x×]\s*([\w\-–—]+)/i);
   if (!setsRepsMatch) return null;
+
   const sets = Math.min(20, Math.max(1, parseInt(setsRepsMatch[1], 10)));
   const reps = normalizeRepRange(setsRepsMatch[2]);
 
@@ -323,20 +349,45 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
       currentGroup = groupMaybe;
       continue;
     }
+    const ensureBlock = (): ParsedWorkoutBlock => {
+      if (current) return current;
+      const blk: ParsedWorkoutBlock = {
+        label: String.fromCharCode(65 + autoIdx),
+        name: `Treino ${String.fromCharCode(65 + autoIdx)}`,
+        exercises: [],
+      };
+      autoIdx++;
+      current = blk;
+      return blk;
+    };
+
+
     if (exMaybe) {
-      if (!current) {
-        current = {
-          label: String.fromCharCode(65 + autoIdx),
-          name: `Treino ${String.fromCharCode(65 + autoIdx)}`,
-          exercises: [],
-        };
-        autoIdx++;
-      }
+      const blk = ensureBlock();
       const guessed = inferGroupFromText(exMaybe.name) ?? currentGroup;
       if (guessed) exMaybe.muscle_group = guessed;
-      current.exercises.push(exMaybe);
+      blk.exercises.push(exMaybe);
+      continue;
+    }
+
+    // Linha com cara de exercício mas sem padrão numérico reconhecido:
+    // entra como "não reconhecido" para o usuário resolver na revisão.
+    const looksLikeExercise =
+      /[a-zà-ÿ]{3,}/i.test(line) && line.length <= 60 && !/^(obs|observa|aquecimento|alongamento)/i.test(line);
+    if (looksLikeExercise) {
+      const blk = ensureBlock();
+      blk.exercises.push({
+        name: line.replace(/[:\-–—]+\s*$/, "").slice(0, 80),
+        sets: 3,
+        reps: "10",
+        weight_kg: null,
+        rest_seconds: 90,
+        muscle_group: inferGroupFromText(line) ?? currentGroup,
+        unrecognized: true,
+      });
     }
   }
+
   pushCurrent();
   return blocks;
 }
@@ -373,8 +424,39 @@ export function ImportWorkoutPlanDialog({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [extracting, setExtracting] = useState(false);
+  const [ocrPct, setOcrPct] = useState<number | null>(null);
+  // Revisão editável: começa como cópia do que o parser leu e o usuário ajusta linha a linha.
+  const [edited, setEdited] = useState<ParsedWorkoutBlock[] | null>(null);
+  // Vínculo manual de exercício por linha: "bi:ri" -> exercise id
+  const [manualMatch, setManualMatch] = useState<Record<string, string>>({});
 
-  const blocks = useMemo(() => parseBlocks(text), [text]);
+  const parsedBlocks = useMemo(() => parseBlocks(text), [text]);
+  useEffect(() => {
+    setEdited(null);
+    setManualMatch({});
+  }, [text]);
+  const blocks = edited ?? parsedBlocks;
+
+  const patchBlocks = (fn: (draft: ParsedWorkoutBlock[]) => ParsedWorkoutBlock[]) =>
+    setEdited(fn(blocks.map((b) => ({ ...b, exercises: b.exercises.map((e) => ({ ...e })) }))));
+
+  const updateRow = (bi: number, ri: number, patch: Partial<ParsedExercise>) =>
+    patchBlocks((d) => {
+      d[bi].exercises[ri] = { ...d[bi].exercises[ri], ...patch, unrecognized: false };
+      return d;
+    });
+
+  const removeRow = (bi: number, ri: number) =>
+    patchBlocks((d) => {
+      d[bi].exercises.splice(ri, 1);
+      return d.filter((b) => b.exercises.length);
+    });
+
+  const updateBlockMeta = (bi: number, patch: Partial<Pick<ParsedWorkoutBlock, "label" | "name">>) =>
+    patchBlocks((d) => {
+      d[bi] = { ...d[bi], ...patch };
+      return d;
+    });
 
   async function handleFiles(files: FileList | File[]) {
     const arr = Array.from(files);
@@ -388,9 +470,11 @@ export function ImportWorkoutPlanDialog({
           continue;
         }
         try {
-          const t = await extractTextFromFile(f);
+          setOcrPct(null);
+          const t = await extractTextFromFile(f, (pct) => setOcrPct(pct));
           if (t.trim()) parts.push(`# ${f.name.replace(/\.[^.]+$/, "")}\n${t}`);
         } catch (e: any) {
+
           toast.error(`${f.name}: ${e.message ?? "falha ao ler"}`);
         }
       }
@@ -400,7 +484,9 @@ export function ImportWorkoutPlanDialog({
       }
     } finally {
       setExtracting(false);
+      setOcrPct(null);
     }
+
   }
 
   const { data: catalog = [] } = useQuery({
@@ -655,7 +741,23 @@ export function ImportWorkoutPlanDialog({
     }));
   }, [catalog]);
 
+  const catalogSorted = useMemo(
+    () => [...(catalog as any[])].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "pt-BR")),
+    [catalog],
+  );
+
+  // Fuzzy matching local (sem IA): Fuse.js sobre os nomes sem acento.
+
+  const fuse = useMemo(
+    () =>
+      catalogIndex.length
+        ? new Fuse(catalogIndex, { keys: ["key"], includeScore: true, threshold: 0.45, ignoreLocation: true })
+        : null,
+    [catalogIndex],
+  );
+
   const catalogByName = useMemo(() => {
+
     const m = new Map<string, { id: string; name: string; muscle_group: string; image_url?: string | null; is_default?: boolean; equipment?: string | null }>();
     (catalog as any[]).forEach((e) => {
       const key = stripAccents(String(e.name));
@@ -734,32 +836,63 @@ export function ImportWorkoutPlanDialog({
       if (c.is_default) score += 5;
       if (!best || score > best.score) best = { entry: c, score };
     }
-    return best && best.score >= 55
-      ? {
-          id: best.entry.id,
-          name: best.entry.name,
-          muscle_group: best.entry.muscle_group,
-          image_url: best.entry.image_url,
-          equipment: best.entry.equipment,
-        }
-      : null;
+    if (best && best.score >= 55) {
+      return {
+        id: best.entry.id,
+        name: best.entry.name,
+        muscle_group: best.entry.muscle_group,
+        image_url: best.entry.image_url,
+        equipment: best.entry.equipment,
+      };
+    }
+
+    // 3) último recurso: fuzzy (Fuse.js) tolerante a erro de digitação/OCR.
+    const fz = fuse?.search(stripAccents(parsedName), { limit: 1 })[0];
+    if (fz && (fz.score ?? 1) <= 0.42) {
+      const e = fz.item;
+      return {
+        id: e.id,
+        name: e.name,
+        muscle_group: e.muscle_group,
+        image_url: e.image_url,
+        equipment: e.equipment,
+      };
+    }
+    return null;
   };
 
 
+
   const dryRun = useMemo(() => {
-    return blocks.map((b) => {
+    return blocks.map((b, bi) => {
       const seenLocal = new Set<string>();
-      const rows = b.exercises.map((p) => {
+      const rows = b.exercises.map((p, ri) => {
         const key = stripAccents(p.name);
         const ctxGroup = p.muscle_group ?? inferGroupFromText(p.name) ?? inferGroupFromText(b.name) ?? null;
-        const match = matchExercise(p.name, ctxGroup, p.preferred_match);
+        const manualId = manualMatch[`${bi}:${ri}`];
+        const manual = manualId ? catalogIndex.find((c) => c.id === manualId) : null;
+        const match = manual
+          ? {
+              id: manual.id,
+              name: manual.name,
+              muscle_group: manual.muscle_group,
+              image_url: manual.image_url,
+              equipment: manual.equipment,
+            }
+          : matchExercise(p.name, ctxGroup, p.preferred_match);
         const duplicate = seenLocal.has(key);
         seenLocal.add(key);
         const matchGroup = match?.muscle_group && match.muscle_group !== "Outros" ? match.muscle_group : ctxGroup;
         return {
           parsed: p,
           match,
-          status: (match ? "matched" : duplicate ? "duplicate" : "new") as "matched" | "new" | "duplicate",
+          status: (p.unrecognized && !manual
+            ? "unrecognized"
+            : match
+              ? "matched"
+              : duplicate
+                ? "duplicate"
+                : "new") as "matched" | "new" | "duplicate" | "unrecognized",
           matchGroup,
         };
       });
@@ -769,7 +902,8 @@ export function ImportWorkoutPlanDialog({
       return { block: b, rows, conflict };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, catalogIndex, catalogByName, userWorkouts]);
+  }, [blocks, catalogIndex, catalogByName, userWorkouts, manualMatch, fuse]);
+
 
   const totals = useMemo(() => {
     let matched = 0;
@@ -978,9 +1112,8 @@ export function ImportWorkoutPlanDialog({
         <DialogHeader>
           <DialogTitle>Importar treino completo</DialogTitle>
           <DialogDescription>
-            Cole o plano ou envie um arquivo (.pdf, .txt, .md, .csv, .json). Cada bloco "Treino A/B/C" vira
-            um treino separado. Arquivos .fit/.gpx/.tcx são treinos executados — use "Importar treino" no
-            histórico.
+            Cole o plano, envie um arquivo (.pdf, .txt, .md, .csv, .json) ou uma <b>foto/print</b> da ficha.
+            A leitura da imagem é feita no próprio aparelho (OCR), sem IA. Revise tudo antes de salvar.
           </DialogDescription>
         </DialogHeader>
 
@@ -1007,6 +1140,27 @@ export function ImportWorkoutPlanDialog({
                   }}
                 />
               </label>
+              <label
+                className={`inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium hover:bg-accent ${extracting ? "pointer-events-none opacity-60" : ""}`}
+                title="Importar treino por foto (OCR local, sem IA)"
+              >
+                {extracting && ocrPct !== null ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-3.5" />
+                )}
+                {extracting && ocrPct !== null ? `Lendo ${ocrPct}%` : "Foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) void handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
               <Button type="button" size="sm" variant="ghost" onClick={pasteFromClipboard} className="h-7 gap-1 text-xs">
                 <ClipboardPaste className="size-3.5" /> Colar
               </Button>
@@ -1065,64 +1219,145 @@ export function ImportWorkoutPlanDialog({
             {dryRun.map((b, bi) => (
               <div key={bi} className="rounded-xl border border-border">
                 <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/40 px-3 py-2 text-xs">
-                  <span className="rounded bg-primary/15 px-1.5 py-0.5 font-bold text-primary">
-                    {b.block.label}
-                  </span>
-                  <span className="font-semibold">{b.block.name}</span>
-                  <span className="text-muted-foreground">· {b.rows.length} exercícios</span>
+                  <Input
+                    value={b.block.label}
+                    onChange={(e) => updateBlockMeta(bi, { label: e.target.value.slice(0, 4) })}
+                    className="h-7 w-12 text-center text-xs font-bold"
+                    aria-label="Letra do treino"
+                  />
+                  <Input
+                    value={b.block.name}
+                    onChange={(e) => updateBlockMeta(bi, { name: e.target.value.slice(0, 60) })}
+                    className="h-7 flex-1 min-w-32 text-xs font-semibold"
+                    aria-label="Nome do treino"
+                  />
+                  <span className="text-muted-foreground">{b.rows.length} ex.</span>
                   {b.conflict && (
                     <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-semibold text-amber-600 dark:text-amber-400">
                       letra já existe
                     </span>
                   )}
                 </div>
-                <div className="max-h-48 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <tbody>
-                      {b.rows.map((row, i) => {
-                        const p = row.parsed;
-                        const badge =
-                          row.status === "matched"
-                            ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
-                            : row.status === "duplicate"
+                <div className="max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-border">
+                    {b.rows.map((row, i) => {
+                      const p = row.parsed;
+                      const badge =
+                        row.status === "matched"
+                          ? { text: "Vinculado", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
+                          : row.status === "duplicate"
                             ? { text: "Duplicado", cls: "bg-muted text-muted-foreground" }
-                            : { text: "Novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
-                        return (
-                          <tr key={i} className="border-t border-border">
-                            <td className="px-2 py-1.5">
-                              <div className="font-medium">{p.name}</div>
-                              {row.match && stripAccents(row.match.name) !== stripAccents(p.name) && (
-                                <div className="text-[10px] text-muted-foreground">
-                                  → {row.match.name}
-                                </div>
-                              )}
-                              {row.matchGroup && (
-                                <div className="text-[10px] text-muted-foreground">{row.matchGroup}</div>
-                              )}
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
-                                {badge.text}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">
-                              {p.sets}×{p.reps}
-                              {p.weight_kg ? ` · ${p.weight_kg}kg` : ""} · {p.rest_seconds}s
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            : row.status === "unrecognized"
+                              ? { text: "Revisar", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" }
+                              : { text: "Novo", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-400" };
+                      return (
+                        <div key={i} className="space-y-1.5 px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={p.name}
+                              onChange={(e) => updateRow(bi, i, { name: e.target.value.slice(0, 80) })}
+                              className="h-7 flex-1 text-xs"
+                              aria-label="Nome do exercício"
+                            />
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                              {badge.text}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 shrink-0"
+                              onClick={() => removeRow(bi, i)}
+                              aria-label="Remover exercício"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <label className="flex items-center gap-1">
+                              Séries
+                              <Input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={p.sets}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    sets: Math.min(20, Math.max(1, parseInt(e.target.value || "1", 10))),
+                                  })
+                                }
+                                className="h-7 w-14 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Reps
+                              <Input
+                                value={p.reps}
+                                onChange={(e) => updateRow(bi, i, { reps: e.target.value.slice(0, 12) })}
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Kg
+                              <Input
+                                type="number"
+                                step="0.5"
+                                value={p.weight_kg ?? ""}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    weight_kg: e.target.value === "" ? null : parseFloat(e.target.value),
+                                  })
+                                }
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1">
+                              Desc.
+                              <Input
+                                type="number"
+                                step="15"
+                                value={p.rest_seconds}
+                                onChange={(e) =>
+                                  updateRow(bi, i, {
+                                    rest_seconds: Math.min(600, Math.max(0, parseInt(e.target.value || "0", 10))),
+                                  })
+                                }
+                                className="h-7 w-16 text-xs"
+                              />
+                            </label>
+                          </div>
+                          <select
+                            value={manualMatch[`${bi}:${i}`] ?? (row.match?.id ?? "")}
+                            onChange={(e) =>
+                              setManualMatch((m) => ({ ...m, [`${bi}:${i}`]: e.target.value }))
+                            }
+                            className="h-7 w-full rounded-md border border-input bg-background px-2 text-[11px]"
+                            aria-label="Vincular ao exercício do catálogo"
+                          >
+                            <option value="">
+                              {row.match ? "Criar novo exercício" : "Não vinculado — criar novo"}
+                            </option>
+                            {catalogSorted.map((c: any) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                                {c.muscle_group ? ` · ${c.muscle_group}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground">
-              Nada é salvo até você clicar em <b>Importar</b>. Exercícios novos usam o grupo muscular detectado
-              e recebem uma imagem padrão quando houver contexto suficiente.
+              Nada é salvo até você clicar em <b>Importar</b>. Ajuste os nomes, séries e o vínculo com o
+              catálogo antes de salvar — os itens marcados como <b>Revisar</b> não foram reconhecidos
+              automaticamente.
             </p>
           </div>
         )}
+
 
         {text && blocks.length === 0 && (
           <p className="text-xs text-destructive">

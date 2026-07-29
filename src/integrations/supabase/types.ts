@@ -992,6 +992,8 @@ export type Database = {
         }
       }
       request_or_join_by_code: { Args: { _code: string }; Returns: Json }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "student" | "trainer" | "admin"
