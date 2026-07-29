@@ -107,17 +107,32 @@ function EditSessionPage() {
 
   const delSet = useMutation({
     mutationFn: async (setId: string) => {
+      const { data: snapshot } = await supabase.from("session_sets").select("*").eq("id", setId).maybeSingle();
       const { error } = await supabase.from("session_sets").delete().eq("id", setId);
       if (error) throw error;
+      return snapshot ?? null;
     },
-    onSuccess: () => {
-      toast.success("Série removida");
+    onSuccess: (snapshot: any) => {
       qc.invalidateQueries({ queryKey: ["session-sets-edit", id] });
       qc.invalidateQueries({ queryKey: ["session-sets", id] });
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      toastUndo({
+        message: "Série removida",
+        onUndo: async () => {
+          if (!snapshot) throw new Error("Não há dados para restaurar");
+          const { error } = await supabase.from("session_sets").insert(stripGenerated(snapshot) as any);
+          if (error) throw error;
+        },
+        onRestored: () => {
+          qc.invalidateQueries({ queryKey: ["session-sets-edit", id] });
+          qc.invalidateQueries({ queryKey: ["session-sets", id] });
+          qc.invalidateQueries({ queryKey: ["history-sessions"] });
+        },
+      });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   const addSet = useMutation({
     mutationFn: async (base: SetRow) => {
