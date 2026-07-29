@@ -422,6 +422,7 @@ export function ImportWorkoutPlanDialog({
   const navigate = useNavigate();
   const online = useOnline();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"input" | "review">("input");
   const [text, setText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [ocrPct, setOcrPct] = useState<number | null>(null);
