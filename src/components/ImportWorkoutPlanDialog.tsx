@@ -929,6 +929,9 @@ export function ImportWorkoutPlanDialog({
 
   function reset() {
     setText("");
+    setStep("input");
+    setEdited(null);
+    setManualMatch({});
   }
 
   const save = useMutation({
