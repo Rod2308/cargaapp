@@ -106,25 +106,33 @@ function collectWords(data: any): OcrWord[] {
   return out;
 }
 
-/** Agrupa palavras em linhas por sobreposição vertical. */
+/** Agrupa palavras em linhas por sobreposição vertical (tolerância pela altura mediana). */
 function groupLines(words: OcrWord[]): OcrWord[][] {
   const sorted = [...words].sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+  const heights = sorted.map((w) => Math.max(6, w.y1 - w.y0)).sort((a, b) => a - b);
+  const medianH = heights.length ? heights[Math.floor(heights.length / 2)] : 12;
   const lines: OcrWord[][] = [];
+  const centers: number[] = [];
   for (const w of sorted) {
-    const h = Math.max(6, w.y1 - w.y0);
-    const line = lines[lines.length - 1];
-    if (line) {
-      const ref = line[0];
-      const center = (w.y0 + w.y1) / 2;
-      const refCenter = (ref.y0 + ref.y1) / 2;
-      if (Math.abs(center - refCenter) <= h * 0.7) {
-        line.push(w);
-        continue;
+    const center = (w.y0 + w.y1) / 2;
+    let placed = false;
+    // procura entre as últimas linhas (colunas desalinhadas podem voltar um pouco)
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 3); i--) {
+      if (Math.abs(center - centers[i]) <= medianH * 0.6) {
+        lines[i].push(w);
+        centers[i] = (centers[i] * (lines[i].length - 1) + center) / lines[i].length;
+        placed = true;
+        break;
       }
     }
-    lines.push([w]);
+    if (!placed) {
+      lines.push([w]);
+      centers.push(center);
+    }
   }
-  return lines.map((l) => l.sort((a, b) => a.x0 - b.x0));
+  return lines
+    .map((l) => l.sort((a, b) => a.x0 - b.x0))
+    .sort((a, b) => (a[0]?.y0 ?? 0) - (b[0]?.y0 ?? 0));
 }
 
 type ColRole = "name" | "sets" | "reps" | "weight" | "rest" | "ignore";
