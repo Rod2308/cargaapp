@@ -24,6 +24,8 @@ import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
+import { NextWorkoutCard } from "@/components/NextWorkoutCard";
+import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
@@ -483,23 +485,16 @@ function Dashboard() {
   // 1) sugestão inteligente (rotação do plano + recuperação muscular), quando há check-in;
   // 2) senão, rotação pura pelo último treino concluído (A → B → C → A);
   // 3) senão, primeiro treino da rotina.
-  const nextWorkout = useMemo(() => {
-    if (workoutSugeridoId) {
-      const w = (workouts as any[]).find((x) => x.id === workoutSugeridoId);
-      if (w) return w;
-    }
-    // Sem check-in do dia: rotação considerando a recuperação real dos grupos
-    // (não repete um treino cujos músculos ainda estão descansando).
-    return (
-      proximoNaRotinaComRecuperacao(
-        workouts as any[],
-        lastPlanSession?.workout_id ?? null,
+  const nextWorkout = useMemo(
+    () =>
+      resolveNextWorkout({
+        workouts: workouts as any[],
+        workoutSugeridoId,
+        lastWorkoutId: lastPlanSession?.workout_id ?? null,
         timeline,
-      ) ??
-      proximoNaRotina(workouts as any[], lastPlanSession?.workout_id ?? null) ??
-      (workouts[0] as any)
-    );
-  }, [workouts, workoutSugeridoId, lastPlanSession, timeline]);
+      }),
+    [workouts, workoutSugeridoId, lastPlanSession, timeline],
+  );
 
   const nextWorkoutLoading = workoutsLoading || lastPlanLoading;
   const isRestDay = suggestion?.intensidade === "descanso";
@@ -512,52 +507,22 @@ function Dashboard() {
       const { count } = await supabase
         .from("workout_exercises")
         .select("id", { count: "exact", head: true })
-        .eq("workout_id", nextWorkout.id);
+        .eq("workout_id", nextWorkout!.id);
       return count ?? 0;
     },
   });
 
   // Por que este treino? — grupo(s), recuperação e origem da sugestão
-  const nextWorkoutReason = useMemo(() => {
-    if (!nextWorkout) return null;
-    const usouSugestao = !!workoutSugeridoId && workoutSugeridoId === nextWorkout.id;
-
-    const hay = `${nextWorkout.label ?? ""} ${nextWorkout.name ?? ""}`
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    const inferidos: MuscleGroup[] = [];
-    if (/peito|chest/.test(hay)) inferidos.push("peito");
-    if (/costa|dorsal|back|puxada/.test(hay)) inferidos.push("costas");
-    if (/perna|quad|leg|posterior|panturr/.test(hay)) inferidos.push("pernas");
-    if (/ombro|shoulder|delto/.test(hay)) inferidos.push("ombro");
-    if (/bicep/.test(hay)) inferidos.push("biceps");
-    if (/tricep/.test(hay)) inferidos.push("triceps");
-    if (/gluteo/.test(hay)) inferidos.push("gluteo");
-    if (/abdom|core|abs/.test(hay)) inferidos.push("abdomen");
-
-    const grupos = (usouSugestao && suggestion?.grupos?.length ? suggestion.grupos : inferidos)
-      .filter((g, i, arr) => arr.indexOf(g) === i)
-      .map((g) => MUSCLE_LABEL[g as MuscleGroup] ?? String(g));
-
-    const origem = usouSugestao
-      ? "Sugestão do dia (plano + recuperação)"
-      : lastPlanSession?.workout_id
-        ? "Rotação do plano após o último treino"
-        : "Primeiro treino da sua rotina";
-
-    const recuperacao = suggestion
-      ? `Score ${suggestion.score.toFixed(1)}/10 · intensidade ${suggestion.intensidade}`
-      : null;
-
-    return {
-      grupos,
-      origem,
-      recuperacao,
-      scoreDetalhe: suggestion?.scoreDetalhe ?? null,
-      motivo: usouSugestao ? suggestion?.motivo ?? null : null,
-    };
-  }, [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession]);
+  const nextWorkoutReason = useMemo(
+    () =>
+      describeNextWorkout({
+        nextWorkout: nextWorkout as any,
+        workoutSugeridoId,
+        suggestion: suggestion as any,
+        lastWorkoutId: lastPlanSession?.workout_id ?? null,
+      }),
+    [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession],
+  );
 
 
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
@@ -647,85 +612,17 @@ function Dashboard() {
       {/* Bento */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {/* Start workout — hero tile */}
-        {nextWorkoutLoading ? (
-          <div className="card-lift col-span-2 row-span-2 flex flex-col items-start gap-4 p-5 sm:p-7 md:col-span-2 md:min-h-[280px]">
-            <div className="h-3 w-28 animate-pulse rounded-full bg-muted" />
-            <div className="h-16 w-40 animate-pulse rounded-2xl bg-muted" />
-            <div className="h-4 w-48 animate-pulse rounded-full bg-muted" />
-            <div className="mt-auto h-10 w-36 animate-pulse rounded-full bg-muted" />
-          </div>
-        ) : nextWorkout ? (
-          <button
-            onClick={() => startSession.mutate({ workoutId: nextWorkout.id })}
-            disabled={startSession.isPending}
-            className="card-ink grid-noise col-span-2 row-span-2 flex flex-col items-start p-5 text-left transition-opacity duration-300 sm:p-7 md:col-span-2 md:min-h-[280px]"
-          >
-            <span className="text-eyebrow text-white/60">Seu próximo treino</span>
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <span className="font-display text-6xl font-black leading-none text-brand sm:text-7xl md:text-8xl">
-                {nextWorkout.label}
-              </span>
-              <span className="mb-1 font-display text-xl leading-tight sm:text-2xl">{nextWorkout.name}</span>
-            </div>
-            <span className="mt-2 text-xs text-white/60">
-              {isRestDay
-                ? "Hoje é dia de descanso — mantenha o foco na recuperação. Se quiser, treine leve."
-                : [
-                    lastPlanSession?.workout_id
-                      ? `Depois do último treino registrado`
-                      : "Primeiro treino da sua rotina",
-                    nextWorkoutExerciseCount
-                      ? `${nextWorkoutExerciseCount} exercício${nextWorkoutExerciseCount > 1 ? "s" : ""}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-            </span>
-
-            {/* Motivo da escolha */}
-            {nextWorkoutReason ? (
-              <div className="mt-4 w-full rounded-2xl bg-white/5 p-3">
-                <span className="text-eyebrow text-white/50">Por que este treino?</span>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {nextWorkoutReason.grupos.length > 0 ? (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
-                      Grupo: {nextWorkoutReason.grupos.join(", ")}
-                    </span>
-                  ) : null}
-                  {nextWorkoutReason.recuperacao ? (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
-                      Recuperação: {nextWorkoutReason.recuperacao}
-                    </span>
-                  ) : null}
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
-                    Sugestão: {nextWorkoutReason.origem}
-                  </span>
-                </div>
-                {nextWorkoutReason.motivo ? (
-                  <p className="mt-2 text-[11px] leading-snug text-white/60">{nextWorkoutReason.motivo}</p>
-                ) : null}
-                {nextWorkoutReason.scoreDetalhe ? (
-                  <p className="mt-1 text-[11px] leading-snug text-white/40">{nextWorkoutReason.scoreDetalhe}</p>
-                ) : null}
-              </div>
-            ) : null}
-
-            <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
-              <Play className="size-4 fill-current" /> Iniciar treino
-            </span>
-          </button>
-        ) : (
-          <div className="card-lift col-span-2 row-span-2 flex flex-col items-start p-5 sm:p-7 md:col-span-2">
-            <span className="text-eyebrow text-muted-foreground">Nenhum treino agendado</span>
-            <p className="mt-2 font-display text-2xl">Crie sua rotina de treinos</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Monte seus treinos (A, B, C…) e o app passa a indicar automaticamente o próximo da sequência.
-            </p>
-            <Button className="mt-4" onClick={() => navigate({ to: "/app/treinos" })}>
-              <Plus className="size-4" /> Criar treino
-            </Button>
-          </div>
-        )}
+        <NextWorkoutCard
+          loading={nextWorkoutLoading}
+          workout={nextWorkout ?? null}
+          reason={nextWorkoutReason}
+          isRestDay={isRestDay}
+          hasLastSession={!!lastPlanSession?.workout_id}
+          exerciseCount={nextWorkoutExerciseCount ?? null}
+          starting={startSession.isPending}
+          onStart={(workoutId) => startSession.mutate({ workoutId })}
+          onCreate={() => navigate({ to: "/app/treinos" })}
+        />
 
 
         {/* Streak / stats */}
