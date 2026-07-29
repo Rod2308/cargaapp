@@ -217,8 +217,7 @@ function Dashboard() {
     },
   });
 
-  const planoOuGeral = useMemo(() => {
-    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+  const atividades = useMemo(() => {
     const sessoes: WorkoutSession[] = [];
     const extras: ExtraActivity[] = [];
     for (const s of last7Sessions as any[]) {
