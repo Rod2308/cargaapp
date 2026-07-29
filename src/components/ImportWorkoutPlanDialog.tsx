@@ -737,7 +737,17 @@ export function ImportWorkoutPlanDialog({
     }));
   }, [catalog]);
 
+  // Fuzzy matching local (sem IA): Fuse.js sobre os nomes sem acento.
+  const fuse = useMemo(
+    () =>
+      catalogIndex.length
+        ? new Fuse(catalogIndex, { keys: ["key"], includeScore: true, threshold: 0.45, ignoreLocation: true })
+        : null,
+    [catalogIndex],
+  );
+
   const catalogByName = useMemo(() => {
+
     const m = new Map<string, { id: string; name: string; muscle_group: string; image_url?: string | null; is_default?: boolean; equipment?: string | null }>();
     (catalog as any[]).forEach((e) => {
       const key = stripAccents(String(e.name));
