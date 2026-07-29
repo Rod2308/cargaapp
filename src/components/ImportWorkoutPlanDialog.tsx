@@ -420,8 +420,39 @@ export function ImportWorkoutPlanDialog({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [extracting, setExtracting] = useState(false);
+  const [ocrPct, setOcrPct] = useState<number | null>(null);
+  // Revisão editável: começa como cópia do que o parser leu e o usuário ajusta linha a linha.
+  const [edited, setEdited] = useState<ParsedWorkoutBlock[] | null>(null);
+  // Vínculo manual de exercício por linha: "bi:ri" -> exercise id
+  const [manualMatch, setManualMatch] = useState<Record<string, string>>({});
 
-  const blocks = useMemo(() => parseBlocks(text), [text]);
+  const parsedBlocks = useMemo(() => parseBlocks(text), [text]);
+  useEffect(() => {
+    setEdited(null);
+    setManualMatch({});
+  }, [text]);
+  const blocks = edited ?? parsedBlocks;
+
+  const patchBlocks = (fn: (draft: ParsedWorkoutBlock[]) => ParsedWorkoutBlock[]) =>
+    setEdited(fn(blocks.map((b) => ({ ...b, exercises: b.exercises.map((e) => ({ ...e })) }))));
+
+  const updateRow = (bi: number, ri: number, patch: Partial<ParsedExercise>) =>
+    patchBlocks((d) => {
+      d[bi].exercises[ri] = { ...d[bi].exercises[ri], ...patch, unrecognized: false };
+      return d;
+    });
+
+  const removeRow = (bi: number, ri: number) =>
+    patchBlocks((d) => {
+      d[bi].exercises.splice(ri, 1);
+      return d.filter((b) => b.exercises.length);
+    });
+
+  const updateBlockMeta = (bi: number, patch: Partial<Pick<ParsedWorkoutBlock, "label" | "name">>) =>
+    patchBlocks((d) => {
+      d[bi] = { ...d[bi], ...patch };
+      return d;
+    });
 
   async function handleFiles(files: FileList | File[]) {
     const arr = Array.from(files);
@@ -435,9 +466,11 @@ export function ImportWorkoutPlanDialog({
           continue;
         }
         try {
-          const t = await extractTextFromFile(f);
+          setOcrPct(null);
+          const t = await extractTextFromFile(f, (pct) => setOcrPct(pct));
           if (t.trim()) parts.push(`# ${f.name.replace(/\.[^.]+$/, "")}\n${t}`);
         } catch (e: any) {
+
           toast.error(`${f.name}: ${e.message ?? "falha ao ler"}`);
         }
       }
