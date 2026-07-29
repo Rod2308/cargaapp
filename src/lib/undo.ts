@@ -55,7 +55,7 @@ export function toastUndo(options: UndoOptions) {
 
 /** Toast exibido depois de um "Desfazer", oferecendo "Refazer" (repetir a exclusão). */
 function toastRedo(options: UndoOptions) {
-  const { description, onRedo, onRedone, duration = 8000 } = options;
+  const { description, onRedo, onRedone, duration = 30000 } = options;
   toast.success("Restaurado", {
     description,
     duration,
