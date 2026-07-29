@@ -24,6 +24,8 @@ import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
+import { NextWorkoutCard } from "@/components/NextWorkoutCard";
+import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
