@@ -400,7 +400,20 @@ export function cleanOcrText(raw: string): string {
       const fromTable = normalizeSpacedRow(normalized);
       return (fromTable ?? normalized).replace(/\s{2,}/g, " ").trim();
     })
-    .filter((l) => l.length > 1)
+    .filter((l) => l.length > 1 && !isNoiseRow(l))
+    .reduce<string[]>((acc, line) => {
+      // junta nome quebrado em duas linhas ao exercício anterior
+      const prev = acc[acc.length - 1];
+      if (prev && isNameContinuation(line) && /\d+x[\w-]/.test(prev)) {
+        const m = prev.match(/^(.*?)(\s\d{1,2}x[\w-]+.*)$/);
+        if (m) {
+          acc[acc.length - 1] = `${m[1]} ${line}`.replace(/\s{2,}/g, " ") + m[2];
+          return acc;
+        }
+      }
+      acc.push(line);
+      return acc;
+    }, [])
     .join("\n");
 }
 
