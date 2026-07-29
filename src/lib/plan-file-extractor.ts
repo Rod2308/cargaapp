@@ -2,9 +2,20 @@
 // Supports: .txt .md .csv .json .pdf
 // FIT/GPX/TCX are session recordings (not plans) — direct users to the other importer.
 
-export async function extractTextFromFile(file: File): Promise<string> {
+export async function extractTextFromFile(
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
   const name = file.name.toLowerCase();
   const ext = name.slice(name.lastIndexOf(".") + 1);
+
+  const { isImageFile, extractTextFromImage } = await import("@/lib/image-ocr");
+  if (isImageFile(file)) {
+    const text = await extractTextFromImage(file, onProgress);
+    if (!text.trim()) throw new Error("Não consegui ler texto nessa imagem. Tente uma foto mais nítida.");
+    return text;
+  }
+
 
   if (["fit", "gpx", "tcx"].includes(ext)) {
     throw new Error(
