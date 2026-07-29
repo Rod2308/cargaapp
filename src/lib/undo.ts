@@ -13,7 +13,7 @@ type UndoOptions = {
   onRedo?: () => Promise<void> | void;
   /** Executado após o "Refazer" bem-sucedido. */
   onRedone?: () => void;
-  /** Tempo em que o botão fica disponível (ms). Padrão: 8s. */
+  /** Tempo em que o botão fica disponível (ms). Padrão: 30s. */
   duration?: number;
 };
 
@@ -24,7 +24,7 @@ type UndoOptions = {
  * e o ciclo pode ser repetido quantas vezes o usuário quiser.
  */
 export function toastUndo(options: UndoOptions) {
-  const { message, description, onUndo, onRestored, onRedo, onRedone, duration = 8000 } = options;
+  const { message, description, onUndo, onRestored, onRedo, onRedone, duration = 30000 } = options;
 
   toast.success(message, {
     description,
@@ -55,7 +55,7 @@ export function toastUndo(options: UndoOptions) {
 
 /** Toast exibido depois de um "Desfazer", oferecendo "Refazer" (repetir a exclusão). */
 function toastRedo(options: UndoOptions) {
-  const { description, onRedo, onRedone, duration = 8000 } = options;
+  const { description, onRedo, onRedone, duration = 30000 } = options;
   toast.success("Restaurado", {
     description,
     duration,
