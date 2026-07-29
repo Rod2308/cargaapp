@@ -217,8 +217,13 @@ function WorkoutEditor() {
 
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
+      // Guarda uma cópia do registro para permitir "Desfazer".
+      const snapshot = ((qc.getQueryData<any[]>(["workout-exercises", id]) ?? []) as any[]).find(
+        (it) => it.id === itemId,
+      );
       const { writeDelete } = await import("@/lib/offline-writes");
       await writeDelete("workout_exercises", { id: itemId });
+      return snapshot ?? null;
     },
     onMutate: async (itemId: string) => {
       await qc.cancelQueries({ queryKey: ["workout-exercises", id] });
@@ -227,8 +232,21 @@ function WorkoutEditor() {
       return { prev };
     },
     onError: (_e, _id, ctx: any) => { if (ctx?.prev) qc.setQueryData(["workout-exercises", id], ctx.prev); },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
+    onSuccess: (snapshot: any) => {
+      qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
+      toastUndo({
+        message: "Exercício removido",
+        description: snapshot?.exercises?.name ?? undefined,
+        onUndo: async () => {
+          if (!snapshot) throw new Error("Não há dados para restaurar");
+          const { writeInsert } = await import("@/lib/offline-writes");
+          await writeInsert("workout_exercises", stripGenerated(snapshot));
+        },
+        onRestored: () => qc.invalidateQueries({ queryKey: ["workout-exercises", id] }),
+      });
+    },
   });
+
 
   const startSession = useMutation({
     mutationFn: async () => {
