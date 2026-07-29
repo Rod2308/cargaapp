@@ -372,8 +372,30 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
 
     // Linha com cara de exercício mas sem padrão numérico reconhecido:
     // entra como "não reconhecido" para o usuário resolver na revisão.
-    const looksLikeExercise =
-      /[a-zà-ÿ]{3,}/i.test(line) && line.length <= 60 && !/^(obs|observa|aquecimento|alongamento)/i.test(line);
+    // Antes disso, tenta juntar continuações de nome quebrado pelo OCR
+    // ("Puxada alta" / "pegada aberta") ao último exercício lido.
+    const letters = line.replace(/[^a-zà-ÿ]/gi, "").length;
+    const noise =
+      letters < 4 ||
+      letters / line.replace(/\s/g, "").length < 0.45 ||
+      /^(obs|observa|aquecimento|alongamento|nome|aluno|professor|prof|data|ficha|objetivo|assinatura|cref|academia|telefone|s[ée]ries?|repeti|carga|descanso|intervalo|total|semana|m[êe]s|p[áa]gina)\b/i.test(
+        line,
+      );
+
+    const lastEx = current?.exercises[current.exercises.length - 1];
+    const isContinuation =
+      !!lastEx &&
+      !noise &&
+      line.length <= 34 &&
+      !/\d/.test(line) &&
+      /^[(a-zà-ÿ]/.test(line) &&
+      lastEx.name.length + line.length <= 80;
+    if (isContinuation) {
+      lastEx.name = `${lastEx.name} ${line}`.replace(/\s{2,}/g, " ");
+      continue;
+    }
+
+    const looksLikeExercise = !noise && /[a-zà-ÿ]{3,}/i.test(line) && line.length <= 60;
     if (looksLikeExercise) {
       const blk = ensureBlock();
       blk.exercises.push({
