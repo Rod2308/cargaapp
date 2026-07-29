@@ -30,17 +30,21 @@ export const Route = createFileRoute("/api/public/hooks/strava-sync")({
           let skipped = 0;
           const errors: Array<{ user_id: string; message: string }> = [];
 
-          // Janela de fallback: se nunca sincronizou, olha 24h para trás
-          // (o backfill de 30/90 dias é acionado no callback/UI).
+          // O parâmetro `after` do Strava filtra pela DATA DE INÍCIO da atividade,
+          // não pela data de upload. Como o upload costuma acontecer bem depois do
+          // treino (às vezes horas), usar só o cursor last_sync_at faz a atividade
+          // nunca entrar na janela. Por isso olhamos sempre pelo menos 3 dias para trás.
           const nowSec = Math.floor(Date.now() / 1000);
+          const MIN_LOOKBACK_SEC = 3 * 24 * 3600;
 
           for (const c of conns ?? []) {
             const userId = c.user_id as string;
             const lastSyncSec = c.last_sync_at
               ? Math.floor(new Date(c.last_sync_at as string).getTime() / 1000)
-              : nowSec - 24 * 3600;
-            // Volta 5 min do cursor para tolerar atrasos de gravação no Strava.
-            const afterUnix = Math.max(0, lastSyncSec - 5 * 60);
+              : nowSec - MIN_LOOKBACK_SEC;
+            // Cursor com folga de 5 min, mas nunca menor que a janela mínima.
+            const afterUnix = Math.max(0, Math.min(lastSyncSec - 5 * 60, nowSec - MIN_LOOKBACK_SEC));
+
 
             try {
               const token = await getValidAccessTokenForUser(userId);
