@@ -1,0 +1,25 @@
+name: Deploy to Vercel
+
+# Dispara sempre que o Lovable sincroniza a publicação para o GitHub
+# (todo push na branch principal) ou manualmente pela aba Actions.
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  trigger-vercel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar Deploy Hook do Vercel
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "Secret VERCEL_DEPLOY_HOOK nao configurado. Veja DEPLOY.md"
+            exit 1
+          fi
+          curl -sS -X POST "$VERCEL_DEPLOY_HOOK" -o response.json -w "HTTP %{http_code}\n"
+          cat response.json
