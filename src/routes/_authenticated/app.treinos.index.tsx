@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Plus, Trash2, ChevronRight, Dumbbell } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { toastUndo, stripGenerated } from "@/lib/undo";
+
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
 import { EmptyState } from "@/components/EmptyState";
