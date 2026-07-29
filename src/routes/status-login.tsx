@@ -30,6 +30,8 @@ import {
   targetOrigins,
   type LoginMarker,
 } from "@/lib/login-check";
+import { checkPublicEnv } from "@/lib/env-check";
+
 
 export const Route = createFileRoute("/status-login")({
   ssr: false,
@@ -218,6 +220,9 @@ function StatusLoginPage() {
 
   const done = MANUAL_CHECKLIST.filter((i) => checklist[i.id]).length;
 
+  const envChecks = useMemo(() => checkPublicEnv(), []);
+
+
   const otherOrigins = targetOrigins().filter((o) => o !== origin);
 
   return (
@@ -314,6 +319,36 @@ function StatusLoginPage() {
       </Card>
 
       <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Variáveis de ambiente</CardTitle>
+          <CardDescription>
+            Confere se este domínio usa exatamente as mesmas chaves públicas do domínio principal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {envChecks.map((c) => (
+            <div key={c.name} className="flex items-start gap-3 rounded-lg border border-border/60 p-3">
+              <VerdictIcon verdict={c.status === "ok" ? "ok" : "fail"} />
+              <div className="min-w-0 flex-1">
+                <p className="break-all text-sm font-medium">{c.name}</p>
+                <p className="mt-0.5 break-all text-xs text-muted-foreground">
+                  {c.status === "ok"
+                    ? `Igual ao esperado (${c.masked})`
+                    : c.status === "missing"
+                      ? "Não configurada neste ambiente — adicione no Vercel e refaça o deploy."
+                      : `Valor diferente do esperado (${c.masked}) — corrija no Vercel e refaça o deploy.`}
+                </p>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Os valores de referência estão no arquivo <code>.env.example</code> do repositório.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+
         <CardHeader>
           <CardTitle className="text-base">Checklist de testes</CardTitle>
           <CardDescription>
