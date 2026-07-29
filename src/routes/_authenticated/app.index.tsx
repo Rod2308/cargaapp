@@ -29,6 +29,8 @@ import {
   sugerirTreinoDoPlano,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
+  proximoNaRotinaComRecuperacao,
+  combineTimeline,
   MUSCLE_LABEL,
   type MuscleGroup,
   type WorkoutSession,
