@@ -62,17 +62,41 @@ function HistoryPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // Snapshot completo (sessão + séries) para permitir "Desfazer".
+      const { data: session } = await supabase.from("sessions").select("*").eq("id", id).maybeSingle();
+      const { data: sets } = await supabase.from("session_sets").select("*").eq("session_id", id);
       const { error } = await supabase.from("sessions").delete().eq("id", id);
       if (error) throw error;
+      return { session: session ?? null, sets: sets ?? [] };
     },
-    onSuccess: () => {
-      toast.success("Treino excluído");
+    onSuccess: (snap: any) => {
       qc.invalidateQueries({ queryKey: ["history-sessions"] });
       qc.invalidateQueries({ queryKey: ["recent-sessions"] });
       qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      toastUndo({
+        message: "Treino excluído",
+        description: snap?.session?.title ?? undefined,
+        onUndo: async () => {
+          if (!snap?.session) throw new Error("Não há dados para restaurar");
+          const { error } = await supabase.from("sessions").insert(stripGenerated(snap.session) as any);
+          if (error) throw error;
+          if (snap.sets.length) {
+            const { error: e2 } = await supabase
+              .from("session_sets")
+              .insert(snap.sets.map((s: any) => stripGenerated(s)) as any);
+            if (e2) throw e2;
+          }
+        },
+        onRestored: () => {
+          qc.invalidateQueries({ queryKey: ["history-sessions"] });
+          qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+          qc.invalidateQueries({ queryKey: ["month-sessions"] });
+        },
+      });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   const rename = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string | null }) => {
