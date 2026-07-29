@@ -451,15 +451,15 @@ export async function syncStravaLatestAction(_supabase: SB, userId: string, inpu
 
   let list: Array<{ id: number }> = [];
   if (data.scope === "latest") {
-    list = await listRecentActivities(token, 1);
+    list = await listRecentActivities(token, 5);
   } else {
-    const now = new Date();
-    const saoPauloOffsetMs = -3 * 60 * 60 * 1000;
-    const local = new Date(now.getTime() + saoPauloOffsetMs);
-    const startLocal = new Date(local.getFullYear(), local.getMonth(), local.getDate());
-    const startUtcSec = Math.floor((startLocal.getTime() - saoPauloOffsetMs) / 1000);
-    list = await listActivitiesSince(token, startUtcSec, 2);
+    // `after` do Strava usa a data de INÍCIO da atividade. Como o upload pode
+    // acontecer horas depois (ou no dia seguinte), varremos as últimas 72h em
+    // vez de apenas o dia local. O upsert é idempotente, então repetir é barato.
+    const sinceSec = Math.floor(Date.now() / 1000) - 3 * 24 * 3600;
+    list = await listActivitiesSince(token, sinceSec, 2);
   }
+
   return importActivities(userId, list);
 }
 
