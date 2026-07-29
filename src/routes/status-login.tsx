@@ -220,6 +220,9 @@ function StatusLoginPage() {
 
   const done = MANUAL_CHECKLIST.filter((i) => checklist[i.id]).length;
 
+  const envChecks = useMemo(() => checkPublicEnv(), []);
+
+
   const otherOrigins = targetOrigins().filter((o) => o !== origin);
 
   return (
