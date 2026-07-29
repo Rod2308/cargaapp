@@ -338,7 +338,7 @@ function Dashboard() {
     }
     return { suggestion: ajustada, workoutId: wid };
 
-  }, [todayCheckin, last7Sessions, workouts]);
+  }, [todayCheckin, atividades, workouts]);
 
   const suggestion = planoOuGeral.suggestion;
   const workoutSugeridoId = planoOuGeral.workoutId;
