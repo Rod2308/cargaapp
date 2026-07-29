@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
 import { extractTextFromFile } from "@/lib/plan-file-extractor";
+import Fuse from "fuse.js";
+
 
 export type ParsedExercise = {
   name: string;
