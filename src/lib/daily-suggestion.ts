@@ -490,7 +490,7 @@ export type SugestaoPlano = {
   workoutName: string;
 };
 
-function gruposDoWorkoutNome(label: string, name: string): MuscleGroup[] {
+export function gruposDoWorkoutNome(label: string, name: string): MuscleGroup[] {
   const hay = `${label} ${name}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const out: MuscleGroup[] = [];
   if (/peito|chest/.test(hay)) out.push("peito");
