@@ -684,3 +684,34 @@ export function proximoNaRotina<T extends RotinaWorkout>(
   if (idx < 0) return rotina[0];
   return rotina[(idx + 1) % rotina.length];
 }
+
+/**
+ * Próximo treino da rotina considerando a recuperação muscular real.
+ * Percorre a rotina a partir do último concluído e prefere o treino cujos
+ * grupos estão descansados há mais tempo (evita repetir bíceps treinado há 2d).
+ */
+export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
+  workouts: T[],
+  ultimoWorkoutId: string | null | undefined,
+  timeline: TimelineEntry[],
+  now: Date = new Date(),
+): T | null {
+  const rotina = ordenarRotina(workouts);
+  if (rotina.length === 0) return null;
+  if (timeline.length === 0) return proximoNaRotina(workouts, ultimoWorkoutId);
+  const idx = ultimoWorkoutId ? rotina.findIndex((w) => w.id === ultimoWorkoutId) : -1;
+  let melhor: { w: T; score: number } | null = null;
+  for (let pos = 0; pos < rotina.length; pos++) {
+    const w = rotina[(idx + 1 + pos) % rotina.length];
+    const gs = gruposDoWorkoutNome(String(w.label ?? ""), w.name);
+    const descansos = gs.map((g) => diasDesdeUltimoEsforco(timeline, g, now));
+    const minDescanso = descansos.length ? Math.min(...descansos) : Number.POSITIVE_INFINITY;
+    const recuperado = gs.every((g, i) => descansos[i] >= MUSCLE_RECOVERY_DAYS[g]);
+    const score =
+      (recuperado ? 1000 : 0) +
+      Math.min(Number.isFinite(minDescanso) ? minDescanso : 30, 30) -
+      pos * 0.01;
+    if (!melhor || score > melhor.score) melhor = { w, score };
+  }
+  return melhor?.w ?? rotina[0];
+}
