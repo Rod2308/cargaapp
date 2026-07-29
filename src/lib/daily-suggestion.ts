@@ -548,8 +548,26 @@ export function sugerirTreinoDoPlano(args: {
     }
   }
 
-  const proximoIdx = ultimoIdx < 0 ? 0 : (ultimoIdx + 1) % plano.length;
-  const proximo = plano[proximoIdx];
+  // Ordem de rotação a partir do último feito, mas priorizando o treino
+  // cujos grupos estão descansados há mais tempo — evita repetir (ex: bíceps
+  // treinado há 2 dias) quando existe um treino com mais dias de descanso.
+  const rotacao = plano.map((_, i) =>
+    plano[((ultimoIdx < 0 ? -1 : ultimoIdx) + 1 + i) % plano.length],
+  );
+  let melhor: { w: PlanoWorkout & { label: string }; score: number } | null = null;
+  rotacao.forEach((w, pos) => {
+    const gs = gruposDoWorkoutNome(w.label, w.name);
+    const descansos = gs.map((g) => diasDesdeUltimoEsforco(timeline, g, now));
+    const minDescanso = descansos.length ? Math.min(...descansos) : Number.POSITIVE_INFINITY;
+    const recuperado = gs.every((g, i) => descansos[i] >= MUSCLE_RECOVERY_DAYS[g]);
+    const score =
+      (recuperado ? 1000 : 0) +
+      Math.min(Number.isFinite(minDescanso) ? minDescanso : 30, 30) -
+      pos * 0.01;
+    if (!melhor || score > melhor.score) melhor = { w, score };
+  });
+  const proximo = (melhor as { w: PlanoWorkout & { label: string } } | null)?.w ?? rotacao[0];
+  const proximoIdx = plano.findIndex((p) => p.id === proximo.id);
 
   // Se pernas exigidas por extra intenso recente, pula para o próximo do plano que não seja de pernas
   const pernasImpactadas = timeline.some((e) => {
