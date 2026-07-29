@@ -125,10 +125,15 @@ describe("bordas: histórico insuficiente", () => {
     expect(proximoNaRotinaComRecuperacao(ROTINA, null, [], NOW)?.id).toBe("a");
   });
 
-  it("último treino desconhecido (id inválido) volta para o início da rotina", () => {
+  it("último treino desconhecido (id inválido) não quebra a rotação", () => {
     expect(proximoNaRotina(ROTINA, "id-inexistente")?.id).toBe("a");
     const tl = combineTimeline([sessao(5, "A", ["Peito", "Tríceps"])], [], NOW);
-    expect(proximoNaRotinaComRecuperacao(ROTINA, "id-inexistente", tl, NOW)?.id).toBe("a");
+    const prox = proximoNaRotinaComRecuperacao(ROTINA, "id-inexistente", tl, NOW);
+    // com histórico, prefere o treino mais descansado (B/C nunca treinados)
+    expect(prox).not.toBeNull();
+    for (const g of gruposDoWorkoutNome(String(prox!.label ?? ""), prox!.name)) {
+      expect(diasDesdeUltimoEsforco(tl, g, NOW)).toBeGreaterThanOrEqual(MUSCLE_RECOVERY_DAYS[g]);
+    }
   });
 
   it("rotina com um único treino sempre devolve esse treino, mesmo treinado hoje", () => {
