@@ -345,17 +345,18 @@ function parseBlocks(text: string): ParsedWorkoutBlock[] {
       currentGroup = groupMaybe;
       continue;
     }
-    const ensureBlock = () => {
-      if (!current) {
-        current = {
-          label: String.fromCharCode(65 + autoIdx),
-          name: `Treino ${String.fromCharCode(65 + autoIdx)}`,
-          exercises: [],
-        };
-        autoIdx++;
-      }
-      return current;
+    const ensureBlock = (): ParsedWorkoutBlock => {
+      if (current) return current;
+      const blk: ParsedWorkoutBlock = {
+        label: String.fromCharCode(65 + autoIdx),
+        name: `Treino ${String.fromCharCode(65 + autoIdx)}`,
+        exercises: [],
+      };
+      autoIdx++;
+      current = blk;
+      return blk;
     };
+
 
     if (exMaybe) {
       const blk = ensureBlock();
