@@ -205,6 +205,27 @@ const num = (s: string): number | null => {
   return m ? parseFloat(m[0]) : null;
 };
 
+/** Lixo comum de ficha que não é exercício. */
+const NOISE_RE =
+  /^(nome|aluno|professor|prof|data|ficha|objetivo|obs|observa|assinatura|cref|academia|telefone|whats|p[áa]gina|total|semana|m[êe]s|per[íi]odo|treinador?)\b/i;
+
+function isNoiseRow(text: string): boolean {
+  const letters = text.replace(/[^a-zà-ÿ]/gi, "").length;
+  if (letters < 3) return true;
+  if (NOISE_RE.test(text.trim())) return true;
+  // linha majoritariamente símbolos/números soltos
+  if (letters / Math.max(1, text.replace(/\s/g, "").length) < 0.35) return true;
+  return false;
+}
+
+/** Continuação de nome quebrado em duas linhas ("Puxada alta" / "pegada aberta"). */
+function isNameContinuation(text: string): boolean {
+  const t = text.trim();
+  if (!t || /\d/.test(t)) return false;
+  if (t.length > 34) return false;
+  return /^[(a-zà-ÿ]/.test(t) || /^[-–—]/.test(t);
+}
+
 /**
  * Converte as palavras em texto canônico. Se houver cabeçalho de tabela,
  * cada linha vira "Nome 3x12 40kg desc 90s"; caso contrário devolve o texto
@@ -214,36 +235,60 @@ export function tableTextFromWords(words: OcrWord[]): string | null {
   const lines = groupLines(words);
   if (!lines.length) return null;
   const header = detectHeader(lines);
-  if (!header) return null;
+  const columns = header?.columns ?? inferColumns(lines);
+  if (!columns) return null;
+  const startAt = header ? header.index + 1 : 0;
 
   const out: string[] = [];
   // tudo que vem antes do cabeçalho normalmente é título do treino
-  for (let i = 0; i < header.index; i++) {
+  for (let i = 0; i < startAt; i++) {
     const t = lines[i].map((w) => w.text).join(" ").trim();
-    if (t.length > 1) out.push(t);
+    if (t.length > 1 && !isNoiseRow(t)) out.push(t);
   }
 
-  for (let i = header.index + 1; i < lines.length; i++) {
+  const pushToPreviousName = (extra: string): boolean => {
+    for (let k = out.length - 1; k >= 0; k--) {
+      const m = out[k].match(/^(.*?)(\s\d{1,2}x[\w-]+.*)$/);
+      if (m) {
+        out[k] = `${m[1]} ${extra}`.replace(/\s{2,}/g, " ") + m[2];
+        return true;
+      }
+      break;
+    }
+    return false;
+  };
+
+  for (let i = startAt; i < lines.length; i++) {
     const line = lines[i];
+    const rawText = line.map((w) => w.text).join(" ").trim();
     const buckets = new Map<ColRole, string[]>();
     for (const w of line) {
       const center = (w.x0 + w.x1) / 2;
-      const col = header.columns.find((c) => center >= c.x0 && center < c.x1);
+      const col = columns.find((c) => center >= c.x0 && center < c.x1);
       const role: ColRole = col?.role ?? "name";
       if (!buckets.has(role)) buckets.set(role, []);
       buckets.get(role)!.push(w.text);
     }
     const get = (r: ColRole) => (buckets.get(r) ?? []).join(" ").trim();
     const name = cleanCell(get("name"));
+    const hasNumbers = /\d/.test(get("sets") + get("reps") + get("weight") + get("rest"));
+
     if (!name || name.replace(/[^a-zà-ú]/gi, "").length < 3) {
-      // linha sem nome legível (ex.: subtítulo) — mantém texto cru
-      const raw = line.map((w) => w.text).join(" ").trim();
-      if (raw.length > 1) out.push(raw);
+      if (isNoiseRow(rawText)) continue;
+      out.push(rawText);
       continue;
     }
 
-    let setsCell = cleanCell(get("sets"));
-    let repsCell = cleanCell(get("reps"));
+    if (!hasNumbers) {
+      // possível continuação do nome do exercício anterior
+      if (isNameContinuation(name) && pushToPreviousName(name)) continue;
+      if (isNoiseRow(name)) continue;
+      out.push(name);
+      continue;
+    }
+
+    const setsCell = cleanCell(get("sets"));
+    const repsCell = cleanCell(get("reps"));
     const weightCell = cleanCell(get("weight"));
     const restCell = cleanCell(get("rest"));
 
@@ -272,6 +317,50 @@ export function tableTextFromWords(words: OcrWord[]): string | null {
   // se quase nada virou linha de exercício, deixa o fluxo cair no texto puro
   const exerciseLines = out.filter((l) => /\d+x\d/.test(l)).length;
   return exerciseLines >= 2 ? text : null;
+}
+
+/**
+ * Sem linha de cabeçalho: infere as colunas pelo padrão das linhas de dados —
+ * primeira célula textual = nome, colunas numéricas seguintes = séries, reps,
+ * carga e descanso (nessa ordem, que é a convenção das fichas).
+ */
+function inferColumns(lines: OcrWord[][]): Column[] | null {
+  const dataRows = lines
+    .map((l) => mergeCells(l))
+    .filter((cells) => {
+      if (cells.length < 3) return false;
+      const first = cells[0];
+      const numericTail = cells.slice(1).filter((c) => /^\D{0,3}\d/.test(c.text)).length;
+      return /[a-zà-ÿ]{3}/i.test(first.text) && numericTail >= 2;
+    });
+  if (dataRows.length < 3) return null;
+
+  const colCount = Math.min(5, Math.max(...dataRows.map((r) => r.length)));
+  if (colCount < 3) return null;
+
+  const roles: ColRole[] = ["name", "sets", "reps", "weight", "rest"];
+  const columns: Column[] = [];
+  for (let c = 0; c < colCount; c++) {
+    const xs = dataRows.map((r) => r[c]).filter(Boolean);
+    if (xs.length < Math.ceil(dataRows.length * 0.5)) break;
+    columns.push({
+      role: roles[c],
+      x0: Math.min(...xs.map((x) => x.x0)),
+      x1: Math.max(...xs.map((x) => x.x1)),
+    });
+  }
+  if (columns.length < 3) return null;
+  columns.sort((a, b) => a.x0 - b.x0);
+  for (let c = 0; c < columns.length; c++) {
+    const prev = columns[c - 1];
+    const next = columns[c + 1];
+    columns[c] = {
+      role: columns[c].role,
+      x0: prev ? (prev.x1 + columns[c].x0) / 2 : -Infinity,
+      x1: next ? (columns[c].x1 + next.x0) / 2 : Infinity,
+    };
+  }
+  return columns;
 }
 
 function cleanCell(s: string): string {
