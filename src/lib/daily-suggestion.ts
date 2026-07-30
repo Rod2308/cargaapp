@@ -323,7 +323,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "funcional leve",
         grupos: [grupo],
         intensidade: "leve",
-        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${d}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
+        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${formatDias(d)}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -369,7 +369,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "força",
         grupos,
         intensidade,
-        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${escolhido.diasParado}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
+        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${formatDias(escolhido.diasParado)}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -586,7 +586,7 @@ export function sugerirTreinoDoPlano(args: {
         const dias = Math.min(
           ...pendentes.map((g) => diasDesdeUltimoEsforco(timeline, g, now)),
         );
-        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${dias}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
+        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${formatDias(dias)}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
         escolhido = cand;
         gruposEscolhidoAtual = gs;
         pendentes = [];

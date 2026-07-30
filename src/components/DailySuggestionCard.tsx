@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Sparkles, Play, RefreshCw, ClipboardCheck, HeartPulse, Moon, Flame, Battery, Activity, CalendarDays } from "lucide-react";
 import type { Sugestao, Intensidade } from "@/lib/daily-suggestion";
+import { formatDias } from "@/lib/daily-suggestion";
 import { MUSCLE_LABEL } from "@/lib/daily-suggestion";
 
 const INTENSITY_STYLES: Record<Intensidade, { bar: string; badge: string; label: string }> = {
@@ -160,10 +161,10 @@ export function DailySuggestionCard({
                 <div className="flex flex-wrap gap-1.5">
                   {sugestao.gruposLiberados.map((g) => {
                     const novo = !Number.isFinite(g.diasParado);
-                    const dias = g.diasParado;
+                    const dias = formatDias(g.diasParado);
                     const tone = novo
                       ? "bg-secondary text-foreground"
-                      : dias >= 4
+                      : g.diasParado >= 4
                         ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                         : "bg-amber-500/15 text-amber-600 dark:text-amber-400";
                     return (
