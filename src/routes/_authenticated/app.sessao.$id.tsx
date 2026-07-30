@@ -1027,7 +1027,7 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
         onClick={() => {
           const r = Number(reps);
           const w = weight === "" ? null : Number(weight);
-          if (r > 0) onLog(r, hideWeight ? null : w);
+          if (r > 0) { onLog(r, hideWeight ? null : w); setTouched(false); }
         }}
       >
         <Plus className="size-4" /> {actionLabel}
