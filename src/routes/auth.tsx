@@ -410,9 +410,16 @@ function AuthPage() {
     // para a origem canônica. Então o clique no Google manda o usuário para a
     // tela de login canônica com ?bridge=, e a sessão volta pela ponte.
     if (!bridge && isBridgeOrigin()) {
-      redirectToCanonicalLogin(redirectTo);
+      setBridging(true);
+      const ok = await redirectToCanonicalLogin(redirectTo);
+      if (!ok) {
+        setBridging(false);
+        setBridgeFailed(true);
+        setBusy(false);
+      }
       return;
     }
+
 
     // Descobre se estamos rodando dentro da plataforma Lovable
     const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
