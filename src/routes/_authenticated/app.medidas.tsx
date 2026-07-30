@@ -21,6 +21,8 @@ import {
   Trash2,
   Save,
   ImageOff,
+  Pencil,
+  X,
 } from "lucide-react";
 import {
   LineChart,
