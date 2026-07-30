@@ -9,10 +9,16 @@ import { imagetools } from "vite-imagetools";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Dentro do build do Lovable o preset é forçado para Cloudflare (este override é ignorado).
+// Fora dele — ou seja, na CI do Vercel — usamos o preset "vercel" para que o SSR e as
+// rotas de servidor (/api/public/*) sejam publicados como funções, igual ao Lovable.
+const isVercelBuild = Boolean(process.env.VERCEL);
+
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  ...(isVercelBuild ? { nitro: { preset: "vercel" } as const } : {}),
   vite: {
     // Vite 8/Rolldown can drop declarations from the production server bundle
     // while retaining their references. The build succeeds, but every deployed
