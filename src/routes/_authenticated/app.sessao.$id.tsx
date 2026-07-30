@@ -308,7 +308,7 @@ function SessionPage() {
   const removeExerciseItem = useMutation({
     mutationFn: async (item: { id: string; exercise_id: string }) => {
       // Snapshots para permitir "Desfazer" (exercício do plano + séries feitas).
-      const itemSnap = ((qc.getQueryData<any[]>(["session-items", id]) ?? []) as any[]).find(
+      const itemSnap = ((qc.getQueryData<any[]>(["session-plan", id]) ?? []) as any[]).find(
         (it) => it.id === item.id,
       );
       const setsSnap = ((qc.getQueryData<any[]>(["session-sets", id]) ?? []) as any[]).filter(
@@ -317,7 +317,7 @@ function SessionPage() {
       qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
         prev.filter((s) => s.workout_exercise_id !== item.id),
       );
-      qc.setQueryData(["session-items", id], (prev: any[] = []) =>
+      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
         prev.filter((it) => it.id !== item.id),
       );
       await enqueueOp({
@@ -337,7 +337,7 @@ function SessionPage() {
           }
         },
         onRestored: () => {
-          qc.invalidateQueries({ queryKey: ["session-items", id] });
+          qc.invalidateQueries({ queryKey: ["session-plan", id] });
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
         },
         onRedo: async () => {
@@ -349,7 +349,7 @@ function SessionPage() {
           await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
         },
         onRedone: () => {
-          qc.invalidateQueries({ queryKey: ["session-items", id] });
+          qc.invalidateQueries({ queryKey: ["session-plan", id] });
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
         },
 
@@ -357,7 +357,7 @@ function SessionPage() {
     },
     onError: (e: any) => toast.error(e.message),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["session-items", id] });
+      qc.invalidateQueries({ queryKey: ["session-plan", id] });
       qc.invalidateQueries({ queryKey: ["session-sets", id] });
     },
   });
