@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight } from "lucide-react";
+import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight, Ruler, BarChart3 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
