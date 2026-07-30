@@ -41,11 +41,20 @@ type SetRow = {
   sessions: { started_at: string } | null;
 };
 
+const PERIODS = [
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "90 dias" },
+  { value: "180", label: "6 meses" },
+  { value: "365", label: "1 ano" },
+  { value: "all", label: "Tudo" },
+];
+
 function ProgressPage() {
   const { user } = AuthedRoute.useRouteContext();
   const [selected, setSelected] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>("90");
 
-  const { data: sets = [], isLoading } = useQuery({
+  const { data: allSets = [], isLoading } = useQuery({
     queryKey: ["progress-sets", user.id],
     queryFn: async () => {
       const { data } = await supabase
@@ -58,6 +67,17 @@ function ProgressPage() {
       return (data ?? []) as unknown as SetRow[];
     },
   });
+
+  // Filtro de período aplicado sobre a data do treino (não a do registro).
+  const sets = useMemo(() => {
+    if (period === "all") return allSets;
+    const cutoff = Date.now() - Number(period) * 86400000;
+    return allSets.filter(
+      (s) => new Date(s.sessions?.started_at ?? s.completed_at).getTime() >= cutoff,
+    );
+  }, [allSets, period]);
+
+
 
   const byExercise = useMemo(() => {
     const m = new Map<
