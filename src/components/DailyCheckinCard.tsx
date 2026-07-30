@@ -73,7 +73,9 @@ export function DailyCheckinCard({
     onSuccess: (payload) => {
       // Atualiza cache local para refletir imediatamente (mesmo offline).
       qc.setQueryData(["daily-checkin", userId, todayStr], payload);
-      qc.invalidateQueries({ queryKey: ["daily-checkin"] });
+      // Invalida aqui e avisa as outras abas — Recuperação e Sugestão de hoje
+      // recarregam imediatamente em todas elas.
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       toast.success(initial ? "Check-in atualizado" : "Check-in salvo!");
       onSaved?.();
     },
