@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, Minus as MinusIcon } from "lucide-react";
+import { ArrowLeft, Check, Flag, Pencil, Trash2, X, Plus, Ban, Timer, Dumbbell, Activity, Heart, Flame, Ruler, FileUp, StickyNote, Sparkles, TrendingUp, TrendingDown, History as HistoryIcon, Minus as MinusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
@@ -150,7 +150,7 @@ function SessionPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("session_sets")
-        .select("weight_kg, reps, rpe, session_id, completed_at, exercise_id, sessions!inner(user_id)")
+        .select("weight_kg, reps, rpe, set_number, session_id, completed_at, exercise_id, sessions!inner(user_id)")
         .eq("sessions.user_id", session!.user_id)
         .neq("session_id", id)
         .in("exercise_id", exerciseIds)
@@ -159,6 +159,28 @@ function SessionPage() {
       return (data ?? []) as any[];
     },
   });
+
+  // Histórico de referência: última vez que o usuário fez cada exercício
+  // (sessão mais recente diferente desta), com as séries na ordem registrada.
+  const lastByExercise = useMemo(() => {
+    const map = new Map<string, { date: string; sets: any[] }>();
+    for (const r of prevSets as any[]) {
+      const cur = map.get(r.exercise_id);
+      if (!cur) {
+        map.set(r.exercise_id, { date: r.completed_at, sets: [r] });
+      } else if (cur.sets[0].session_id === r.session_id) {
+        cur.sets.push(r);
+      }
+    }
+    for (const v of map.values()) {
+      v.sets.sort(
+        (a, b) =>
+          (a.set_number ?? 0) - (b.set_number ?? 0) ||
+          String(a.completed_at).localeCompare(String(b.completed_at)),
+      );
+    }
+    return map;
+  }, [prevSets]);
 
   const suggestionsByItem = useMemo(() => {
     const map = new Map<string, Suggestion>();
@@ -184,6 +206,7 @@ function SessionPage() {
     }
     return map;
   }, [items, prevSets]);
+
 
 
 
@@ -655,6 +678,8 @@ function SessionPage() {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
           const suggestion = suggestionsByItem.get(it.id);
           const suggestedWeight = suggestion?.suggested_weight_kg ?? null;
+          const lastRef = lastByExercise.get(it.exercise_id) ?? null;
+
           return (
             <div key={it.id} className="card-soft p-4">
               <div className="flex items-start gap-3">
@@ -713,6 +738,8 @@ function SessionPage() {
                 />
               )}
 
+              {lastRef && <LastTimeHint reference={lastRef} />}
+
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
                   <SetRow
@@ -734,7 +761,9 @@ function SessionPage() {
                   suggestedWeight ??
                   ""
                 }
+                lastSet={lastRef?.sets[done.length] ?? null}
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
+
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
@@ -927,21 +956,60 @@ function EffortPicker({ sessionId, onConfirm, pending }: { sessionId: string; on
 }
 
 
-function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série" }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string }) {
+/** Formata uma série do histórico: "40 kg × 12" (ou só reps, se não houver carga). */
+function formatRefSet(s: any): string {
+  if (!s) return "";
+  const reps = s.reps != null ? `${s.reps}` : "?";
+  return s.weight_kg != null ? `${s.weight_kg} kg × ${reps}` : `${reps} reps`;
+}
+
+/** Mostra, de forma informativa, o que foi feito na última vez neste exercício. */
+function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } }) {
+  const when = new Date(reference.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return (
+    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-secondary/50 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+      <HistoryIcon className="size-3.5 shrink-0" />
+      <span className="font-medium">Última vez ({when}):</span>
+      {reference.sets.map((s, i) => (
+        <span key={i} className="rounded bg-background/70 px-1.5 py-0.5">
+          {i + 1}ª {formatRefSet(s)}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
   const [weight, setWeight] = useState<string>(String(defaultWeight ?? ""));
   return (
     <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
       <label className="block">
         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
-        <Input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="mt-0.5 h-10" />
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={reps}
+          onChange={(e) => setReps(e.target.value)}
+          className="mt-0.5 h-10"
+          placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
+        />
       </label>
       {!hideWeight && (
         <label className="block">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
-          <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
+          <Input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="mt-0.5 h-10"
+            placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
+          />
         </label>
       )}
+
       <Button
         className="mt-4 h-10"
         onClick={() => {
