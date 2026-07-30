@@ -21,6 +21,7 @@ import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
