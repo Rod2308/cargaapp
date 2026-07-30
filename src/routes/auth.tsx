@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff } from "lucide-react";
+import { Dumbbell, Loader2, Check, Circle, Eye, EyeOff, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { displayNameSchema, emailSchema, passwordSchema } from "@/lib/validation";
 import { applyRememberMe, getRememberMePreference } from "@/lib/remember-me";
@@ -218,6 +218,11 @@ function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [remember, setRemember] = useState(() => getRememberMePreference());
+  // Ponte de login entre origens: enquanto redireciona para o domínio canônico
+  // mostramos uma tela própria; se a rede falhar, mostramos "não conseguimos conectar".
+  const [bridging, setBridging] = useState(false);
+  const [bridgeFailed, setBridgeFailed] = useState(false);
+  const [bridgeAttempt, setBridgeAttempt] = useState(0);
 
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
@@ -265,9 +270,17 @@ function AuthPage() {
     // Origem espelho (ex.: Vercel): o provedor não pode redirecionar para cá,
     // então o login acontece na origem canônica e volta pela ponte.
     if (!bridge && isBridgeOrigin()) {
-      validSession().then((session) => {
-        if (session) window.location.href = redirectTo;
-        else redirectToCanonicalLogin(redirectTo);
+      setBridging(true);
+      validSession().then(async (session) => {
+        if (session) {
+          window.location.href = redirectTo;
+          return;
+        }
+        const ok = await redirectToCanonicalLogin(redirectTo);
+        if (!ok) {
+          setBridging(false);
+          setBridgeFailed(true);
+        }
       });
       return;
     }
@@ -276,7 +289,8 @@ function AuthPage() {
       if (bridge && handOffSessionToBridge(bridge, session, redirectTo)) return;
       window.location.href = redirectTo;
     });
-  }, [redirectTo, bridge]);
+  }, [redirectTo, bridge, bridgeAttempt]);
+
 
 
 
@@ -396,9 +410,16 @@ function AuthPage() {
     // para a origem canônica. Então o clique no Google manda o usuário para a
     // tela de login canônica com ?bridge=, e a sessão volta pela ponte.
     if (!bridge && isBridgeOrigin()) {
-      redirectToCanonicalLogin(redirectTo);
+      setBridging(true);
+      const ok = await redirectToCanonicalLogin(redirectTo);
+      if (!ok) {
+        setBridging(false);
+        setBridgeFailed(true);
+        setBusy(false);
+      }
       return;
     }
+
 
     // Descobre se estamos rodando dentro da plataforma Lovable
     const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
@@ -439,6 +460,49 @@ function AuthPage() {
       }
     }
 
+  }
+
+  // Ponte entre origens: falha de rede ao alcançar o domínio canônico.
+  if (bridgeFailed) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <div className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Dumbbell className="size-6" aria-hidden />
+          </div>
+          <WifiOff className="size-5 text-destructive" aria-hidden />
+          <h1 className="text-lg font-bold">Não conseguimos conectar</h1>
+          <p className="text-sm text-muted-foreground">
+            Não foi possível falar com o servidor de login. Verifique sua conexão e tente de novo.
+          </p>
+          <Button
+            onClick={() => {
+              setBridgeFailed(false);
+              setBridgeAttempt((n) => n + 1);
+            }}
+            className="mt-1"
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirecionando para a origem canônica (tela própria, sem erro do navegador).
+  if (bridging) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <div className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Dumbbell className="size-6" aria-hidden />
+          </div>
+          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+          <h1 className="text-lg font-bold">Conectando…</h1>
+          <p className="text-sm text-muted-foreground">Levando você para a tela de login segura.</p>
+        </div>
+      </div>
+    );
   }
 
   return (

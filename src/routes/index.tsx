@@ -9,7 +9,7 @@ import logoPng from "@/assets/logo.png?w=280&imagetools";
 export const Route = createFileRoute("/")({
   head: () => ({
     links: [
-      { rel: "preload", as: "image", href: logoAvif, type: "image/avif", fetchpriority: "high" },
+      { rel: "preload", as: "image", href: logoAvif, type: "image/avif", fetchPriority: "high" },
     ],
   }),
   component: Landing,

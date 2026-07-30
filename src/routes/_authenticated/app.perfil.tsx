@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight, Ruler, BarChart3 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
 import { computeCyclePhase } from "@/lib/cycle";
 import { DataManagement } from "@/components/DataManagement";
@@ -64,8 +65,7 @@ function PerfilPage() {
       toast.error(e.message);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profile"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, [["profile"], ...RECOVERY_SYNC_KEYS]);
       toast.success("Perfil atualizado");
     },
   });

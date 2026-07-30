@@ -1,12 +1,18 @@
 // Offline write queue: persists Supabase mutations in IndexedDB and replays
 // them when the network returns. Reads still hit Supabase directly (React
 // Query caches keep last-known data in memory during the session).
+//
+// Operações que falham por erro permanente (RLS, constraint, validação) NÃO
+// são mais descartadas em silêncio: elas vão para uma lista `failed` separada,
+// persistida, que a UI mostra ("N alterações não sincronizaram") com opção de
+// tentar de novo ou descartar.
 
 import { get, set } from "idb-keyval";
 import { supabase } from "@/integrations/supabase/client";
 import { clearPendingSyncedSessionSnapshots } from "@/lib/session-persist";
 
 const KEY = "carga.sync.queue.v1";
+const FAILED_KEY = "carga.sync.failed.v1";
 
 export type QueueOp = {
   id: string;
@@ -20,12 +26,22 @@ export type QueueOp = {
   createdAt: number;
 };
 
+export type FailedOp = QueueOp & {
+  failedAt: number;
+  error: string;
+  attempts: number;
+};
+
 let queue: QueueOp[] = [];
+let failed: FailedOp[] = [];
 let loaded = false;
 let flushing = false;
 let flushPromise: Promise<void> | null = null;
-let lastFlushHadPermanentFailure = false;
 const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach((l) => l());
+}
 
 async function load() {
   if (loaded) return;
@@ -33,6 +49,11 @@ async function load() {
     queue = (await get<QueueOp[]>(KEY)) ?? [];
   } catch {
     queue = [];
+  }
+  try {
+    failed = (await get<FailedOp[]>(FAILED_KEY)) ?? [];
+  } catch {
+    failed = [];
   }
   loaded = true;
 }
@@ -43,8 +64,22 @@ async function persist() {
   } catch {
     /* storage full or unavailable */
   }
-  listeners.forEach((l) => l());
-  if (queue.length === 0 && !lastFlushHadPermanentFailure) {
+  notify();
+  maybeClearSnapshots();
+}
+
+async function persistFailed() {
+  try {
+    await set(FAILED_KEY, failed);
+  } catch {
+    /* storage full or unavailable */
+  }
+  notify();
+  maybeClearSnapshots();
+}
+
+function maybeClearSnapshots() {
+  if (queue.length === 0 && failed.length === 0) {
     void clearPendingSyncedSessionSnapshots();
   }
 }
@@ -57,6 +92,16 @@ function isNetworkError(err: unknown): boolean {
     msg.includes("NetworkError") ||
     msg.includes("network") ||
     msg.includes("Load failed")
+  );
+}
+
+function errorMessage(err: unknown): string {
+  const e = err as { message?: string; details?: string; code?: string } | null;
+  return (
+    e?.message ||
+    e?.details ||
+    (e?.code ? `Erro ${e.code}` : "") ||
+    String(err ?? "Erro desconhecido")
   );
 }
 
@@ -130,7 +175,6 @@ export async function flush() {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   if (queue.length === 0) return;
   flushing = true;
-  lastFlushHadPermanentFailure = false;
   flushPromise = (async () => {
     while (queue.length > 0) {
       const op = queue[0];
@@ -138,9 +182,16 @@ export async function flush() {
         await execute(op);
       } catch (err) {
         if (isNetworkError(err)) break; // keep queued, retry later
-        // Permanent failure (RLS, constraint, etc.) — drop and move on.
-        lastFlushHadPermanentFailure = true;
-        console.error("[sync] dropping op", op, err);
+        // Falha permanente (RLS, constraint, etc.): move para a lista de
+        // falhas visível ao usuário em vez de descartar em silêncio.
+        console.error("[sync] operação falhou permanentemente", op, err);
+        failed.push({
+          ...op,
+          failedAt: Date.now(),
+          error: errorMessage(err),
+          attempts: ((op as Partial<FailedOp>).attempts ?? 0) + 1,
+        });
+        await persistFailed();
       }
       queue.shift();
       await persist();
@@ -170,15 +221,61 @@ export function getPendingCountSync(): number {
   return queue.length;
 }
 
+/** Operações que falharam por erro permanente e aguardam decisão do usuário. */
+export async function getFailedOps(): Promise<FailedOp[]> {
+  await load();
+  return [...failed];
+}
+
+export function getFailedCountSync(): number {
+  return failed.length;
+}
+
+/** Recoloca uma operação que falhou de volta na fila e tenta sincronizar. */
+export async function retryFailedOp(id: string) {
+  await load();
+  const idx = failed.findIndex((f) => f.id === id);
+  if (idx === -1) return;
+  const [op] = failed.splice(idx, 1);
+  await persistFailed();
+  const { failedAt: _f, error: _e, ...rest } = op;
+  queue.push(rest as QueueOp);
+  await persist();
+  void flush();
+}
+
+/** Recoloca todas as operações falhas na fila. */
+export async function retryAllFailedOps() {
+  await load();
+  if (failed.length === 0) return;
+  const ops = failed.map(({ failedAt: _f, error: _e, ...rest }) => rest as QueueOp);
+  failed = [];
+  await persistFailed();
+  queue.push(...ops);
+  await persist();
+  void flush();
+}
+
+/** Descarta definitivamente uma operação falha (decisão explícita do usuário). */
+export async function discardFailedOp(id: string) {
+  await load();
+  failed = failed.filter((f) => f.id !== id);
+  await persistFailed();
+}
+
+export async function discardAllFailedOps() {
+  await load();
+  failed = [];
+  await persistFailed();
+}
+
 let initialized = false;
 export function initSyncQueue() {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
   void load().then(() => {
-    listeners.forEach((l) => l());
-    if (queue.length === 0 && !lastFlushHadPermanentFailure) {
-      void clearPendingSyncedSessionSnapshots();
-    }
+    notify();
+    maybeClearSnapshots();
     void flush();
   });
   window.addEventListener("online", () => void flush());
