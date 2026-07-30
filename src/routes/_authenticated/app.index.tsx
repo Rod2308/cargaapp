@@ -602,6 +602,14 @@ function Dashboard() {
         <DailySuggestionCard
           sugestao={suggestion}
           workoutSugeridoId={workoutSugeridoId}
+          recuperacao={
+            recovery
+              ? {
+                  score: recovery.score,
+                  statusLabel: RECOVERY_STATUS_LABEL[recovery.status],
+                }
+              : null
+          }
           onEditCheckin={() => setCheckinEditOpen(true)}
           onStart={() => {
             if (suggestion.intensidade === "descanso") {
@@ -922,6 +930,14 @@ function Dashboard() {
   );
 }
 
+/** Rótulo único de status compartilhado pelos cards de Recuperação e Sugestão. */
+const RECOVERY_STATUS_LABEL: Record<RecoveryData["status"], string> = {
+  recuperado: "Excelente",
+  leve: "Boa",
+  cuidado: "Moderada",
+  descanso: "Baixa",
+};
+
 type RecoveryData = {
   status: "recuperado" | "leve" | "cuidado" | "descanso";
   score: number;
@@ -947,10 +963,10 @@ function RecoveryCard({
   onRefresh: () => void;
 }) {
   const styles: Record<RecoveryData["status"], { bar: string; badge: string; label: string }> = {
-    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Excelente" },
-    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Boa" },
-    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Moderada" },
-    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Baixa" },
+    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: RECOVERY_STATUS_LABEL.recuperado },
+    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: RECOVERY_STATUS_LABEL.leve },
+    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: RECOVERY_STATUS_LABEL.cuidado },
+    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: RECOVERY_STATUS_LABEL.descanso },
   };
   const s = recovery ? styles[recovery.status] : styles.leve;
   const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
