@@ -40,6 +40,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
 import { RestTimer } from "@/components/RestTimer";
+import { PlateCalculator } from "@/components/PlateCalculator";
+import { checkPr } from "@/lib/pr";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
 import { format } from "date-fns";
