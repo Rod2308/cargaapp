@@ -1,48 +1,22 @@
 // Sugestão de treino do dia — lógica 100% local, determinística.
 // Zero chamadas externas. Testável.
+//
+// A recuperação muscular (limiares por grupo + cálculo em dias fracionados)
+// vive em `src/lib/muscle-recovery.ts` — fonte única compartilhada com o
+// motor de Recuperação (`recovery-core.ts`).
 
-export type MuscleGroup =
-  | "peito"
-  | "costas"
-  | "pernas"
-  | "ombro"
-  | "biceps"
-  | "triceps"
-  | "gluteo"
-  | "abdomen";
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_LABEL,
+  MUSCLE_RECOVERY_DAYS,
+  fractionalDaysSince,
+  normalizeMuscleGroup,
+  type MuscleGroup,
+} from "./muscle-recovery";
 
-export const MUSCLE_GROUPS: MuscleGroup[] = [
-  "peito",
-  "costas",
-  "pernas",
-  "ombro",
-  "biceps",
-  "triceps",
-  "gluteo",
-  "abdomen",
-];
+export type { MuscleGroup };
+export { MUSCLE_GROUPS, MUSCLE_LABEL, MUSCLE_RECOVERY_DAYS, normalizeMuscleGroup };
 
-export const MUSCLE_LABEL: Record<MuscleGroup, string> = {
-  peito: "Peito",
-  costas: "Costas",
-  pernas: "Pernas",
-  ombro: "Ombro",
-  biceps: "Bíceps",
-  triceps: "Tríceps",
-  gluteo: "Glúteo",
-  abdomen: "Abdômen",
-};
-
-export const MUSCLE_RECOVERY_DAYS: Record<MuscleGroup, number> = {
-  peito: 2,
-  costas: 2,
-  pernas: 3,
-  ombro: 2,
-  biceps: 2,
-  triceps: 2,
-  gluteo: 2,
-  abdomen: 1,
-};
 
 export type Impact = "alto" | "medio" | "baixo";
 
