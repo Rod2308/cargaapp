@@ -105,7 +105,15 @@ type ProfileRow = {
 
 type IgnoredFactor = { key: string; label: string; reason: string };
 
-type MuscleAgg = { group: string; setsRecent: number; volume: number; avgRpe: number | null; lastDaysAgo: number };
+type MuscleAgg = {
+  group: string;
+  key: MuscleGroup;
+  setsRecent: number;
+  volume: number;
+  avgRpe: number | null;
+  lastDaysAgo: number;
+};
+
 
 function ageYears(birth: string | null): number | null {
   if (!birth) return null;
