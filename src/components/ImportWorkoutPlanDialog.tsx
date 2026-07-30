@@ -61,16 +61,78 @@ const MUSCLE_ALIASES: Record<string, string> = {
   panturrilha: "Panturrilha", panturrilhas: "Panturrilha",
   abdomen: "Abdômen", "abdômen": "Abdômen",
   abdominal: "Abdômen", abdominais: "Abdômen", core: "Abdômen",
-  trapezio: "Trapézio", "trapézio": "Trapézio",
+  // "Trapézio" não existe como grupo no catálogo: encolhimento/shrug vive em Ombros.
+  trapezio: "Ombros", "trapézio": "Ombros",
   cardio: "Cardio", aerobico: "Cardio", "aeróbico": "Cardio",
 };
+
+/**
+ * Grupos musculares realmente usados na tabela `exercises`. Qualquer grupo
+ * inferido fora desta lista vira "Outros" em vez de criar um grupo órfão.
+ */
+const CANONICAL_GROUPS = [
+  "Peito",
+  "Costas",
+  "Ombros",
+  "Tríceps",
+  "Bíceps",
+  "Antebraço",
+  "Pernas",
+  "Glúteos",
+  "Panturrilha",
+  "Abdômen",
+  "Cardio",
+  "Esportes",
+  "Outros",
+] as const;
+
+const FALLBACK_GROUP = "Outros";
+
+const GROUP_EQUIVALENTS: Record<string, string> = {
+  panturrilhas: "Panturrilha",
+  core: "Abdômen",
+  "trapezio": "Ombros",
+  "trapézio": "Ombros",
+  abdomen: "Abdômen",
+};
+
+function stripAccentsLower(s: string) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/**
+ * Valida um grupo contra a lista canônica (+ grupos que já existem no catálogo
+ * carregado). Devolve o nome canônico ou "Outros".
+ */
+function normalizeMuscleGroup(
+  group: string | null | undefined,
+  knownGroups?: Set<string>,
+): string {
+  if (!group) return FALLBACK_GROUP;
+  const raw = group.trim();
+  if (!raw) return FALLBACK_GROUP;
+  const key = stripAccentsLower(raw);
+
+  const equivalent = GROUP_EQUIVALENTS[key] ?? GROUP_EQUIVALENTS[raw.toLowerCase()];
+  if (equivalent) return equivalent;
+
+  const canonical = CANONICAL_GROUPS.find((g) => stripAccentsLower(g) === key);
+  if (canonical) return canonical;
+
+  if (knownGroups) {
+    for (const g of knownGroups) if (stripAccentsLower(g) === key) return g;
+  }
+  return FALLBACK_GROUP;
+}
 
 function parseMuscleGroupHeader(raw: string): string | null {
   const key = raw.trim().toLowerCase().replace(/[:\-–—]+$/g, "").trim();
   if (!key || key.length > 30) return null;
   if (/\d/.test(key) || /[x×]/i.test(key)) return null;
-  return MUSCLE_ALIASES[key] ?? null;
+  const alias = MUSCLE_ALIASES[key];
+  return alias ? normalizeMuscleGroup(alias) : null;
 }
+
 
 // Heuristic: given free text (block name or exercise name), guess a muscle group.
 const NAME_GROUP_HINTS: Array<[RegExp, string]> = [
