@@ -1179,20 +1179,39 @@ function SetRow({ index, set, onSave, onDelete, unit = "reps", hideWeight = fals
   }, [set.reps, set.weight_kg]);
 
   if (!editing) {
+    const techLabel =
+      set.technique && set.technique !== "normal"
+        ? (TECHNIQUES.find((t) => t.value === set.technique)?.label ?? set.technique)
+        : null;
     return (
-      <div className="flex items-center gap-2 text-sm">
-        <Check className="size-4 shrink-0 text-success" />
-        <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
-        <span className="font-semibold">{set.reps} {unit}</span>
-        {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
-        <div className="ml-auto flex gap-1">
-          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
-            <Trash2 className="size-3.5" />
-          </Button>
+      <div className="text-sm">
+        <div className="flex items-center gap-2">
+          <Check className="size-4 shrink-0 text-success" />
+          <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
+          <span className="font-semibold">{set.reps} {unit}</span>
+          {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+          {set.rpe != null && (
+            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              RPE {set.rpe}
+            </span>
+          )}
+          {techLabel && (
+            <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand">
+              {techLabel}
+            </span>
+          )}
+          <div className="ml-auto flex gap-1">
+            <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
         </div>
+        {set.notes && (
+          <p className="ml-6 mt-0.5 text-[11px] italic text-muted-foreground">{set.notes}</p>
+        )}
       </div>
     );
   }
