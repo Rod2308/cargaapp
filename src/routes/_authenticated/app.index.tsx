@@ -429,8 +429,7 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Sono registrado!");
-      qc.invalidateQueries({ queryKey: ["sleep-logs"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
     },
   });
 
