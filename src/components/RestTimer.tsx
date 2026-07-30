@@ -27,11 +27,51 @@ import {
 } from "@/lib/local-notifications";
 import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
 
+// Agendamento do push no servidor. Se o app estiver offline (ou a chamada
+// falhar), guardamos o alvo e reenviamos assim que a conexão voltar — antes
+// disso o alarme local no service worker já cobre o aviso.
+let pendingPush: { fireAt: number; exerciseName?: string } | null = null;
+let onlineListenerBound = false;
+
+async function sendSchedule(fireAt: number, exerciseName?: string): Promise<void> {
+  const seconds = Math.round((fireAt - Date.now()) / 1000);
+  if (seconds < 5) return; // servidor exige >= 5s; abaixo disso o alarme local basta
+  await callServer("rest.schedule", scheduleRestPush, { seconds, exerciseName });
+}
+
+function bindOnlineRetry() {
+  if (onlineListenerBound || typeof window === "undefined") return;
+  onlineListenerBound = true;
+  window.addEventListener("online", () => {
+    const p = pendingPush;
+    if (!p) return;
+    if (p.fireAt <= Date.now()) {
+      pendingPush = null;
+      return;
+    }
+    void sendSchedule(p.fireAt, p.exerciseName)
+      .then(() => {
+        pendingPush = null;
+      })
+      .catch(() => {});
+  });
+}
+
 function scheduleServerPush(seconds: number, exerciseName?: string) {
   if (seconds <= 0) return;
-  void callServer("rest.schedule", scheduleRestPush, { seconds: Math.round(seconds), exerciseName }).catch(() => {});
+  bindOnlineRetry();
+  const fireAt = Date.now() + seconds * 1000;
+  pendingPush = { fireAt, exerciseName };
+  void sendSchedule(fireAt, exerciseName)
+    .then(() => {
+      pendingPush = null;
+    })
+    .catch(() => {
+      // offline ou servidor indisponível: retry no evento "online"
+    });
 }
 function cancelServerPush() {
+  pendingPush = null;
   void callServer("rest.cancel", cancelRestPush).catch(() => {});
 }
 
