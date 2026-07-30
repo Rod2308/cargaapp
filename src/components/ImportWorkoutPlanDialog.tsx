@@ -1115,9 +1115,10 @@ export function ImportWorkoutPlanDialog({
             // 2) senão tenta a mesma base pública usada pelo restante do
             //    catálogo (free-exercise-db) para achar uma imagem de verdade;
             // 3) só então cai no fallback genérico por grupo.
-            let image_url = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.image_url ?? null;
-            let equipment = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.equipment ?? null;
-            let group = detectedGroup ?? metadata?.muscle_group ?? null;
+            let image_url: string | null = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.image_url ?? null;
+            let equipment: string | null = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.equipment ?? null;
+            let group: string | null = detectedGroup ?? metadata?.muscle_group ?? null;
+
 
             if (!image_url) {
               try {
