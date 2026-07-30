@@ -449,10 +449,7 @@ function SessionPage() {
       } else {
         void markSessionSnapshotPendingClear(id);
       }
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
