@@ -608,6 +608,9 @@ function Dashboard() {
               ? {
                   score: recovery.score,
                   statusLabel: RECOVERY_STATUS_LABEL[recovery.status],
+                  factors: recovery.factors,
+                  ignoredFactors: recovery.ignoredFactors,
+                  recommendation: recovery.recommendation,
                 }
               : null
           }

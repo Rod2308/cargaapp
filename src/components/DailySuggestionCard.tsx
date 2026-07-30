@@ -89,6 +89,7 @@ export function DailySuggestionCard({
                 {s.label}
               </span>
             </div>
+            <div className="flex shrink-0 items-center gap-1">
             <DecisionExplainer
               title="Por que esta sugestão?"
               decision={sugestao.intensidade === "descanso" ? "descansar" : "treinar"}
@@ -135,6 +136,7 @@ export function DailySuggestionCard({
             >
               <RefreshCw className="size-3.5" strokeWidth={2.5} />
             </button>
+            </div>
           </div>
 
           <p className="mt-2 font-display text-lg leading-snug text-foreground sm:text-xl">
