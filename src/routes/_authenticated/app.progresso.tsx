@@ -309,6 +309,41 @@ function ProgressPage() {
                 </div>
               )}
 
+              {/* Volume por sessão (séries × reps × carga) */}
+              {chart.length > 1 && (
+                <div className="card-lift mb-4 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Volume por treino (kg)
+                  </p>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chart} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="date" fontSize={11} />
+                        <YAxis fontSize={11} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--background))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: 8,
+                            fontSize: 12,
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="Volume"
+                          stroke="hsl(var(--brand, var(--primary)))"
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+
+
               {/* History timeline */}
               <div className="space-y-3">
                 <h2 className="font-display text-lg font-bold">Histórico por dia</h2>
