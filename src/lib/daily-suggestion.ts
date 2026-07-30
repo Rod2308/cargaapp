@@ -685,3 +685,70 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
   }
   return melhor?.w ?? rotina[0];
 }
+
+// ============================================================================
+// Autoridade única para a decisão treinar × descansar.
+//
+// O motor de Recuperação (`recovery-core.ts`) é a AUTORIDADE: considera RPE,
+// lesão, frequência semanal, ciclo, sono e inatividade. A sugestão do dia
+// continua decidindo QUAL treino/grupo, mas a intensidade/descanso é
+// rebaixada aqui para nunca contradizer o card de Recuperação.
+// ============================================================================
+
+export type RecoveryAuthority = {
+  status: "recuperado" | "leve" | "cuidado" | "descanso";
+  score: number; // 0-100
+  intensityLabel?: string;
+};
+
+const INTENSIDADE_RANK: Record<Intensidade, number> = {
+  descanso: 0,
+  leve: 1,
+  moderada: 2,
+  alta: 3,
+};
+
+const TETO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
+  recuperado: "alta",
+  leve: "moderada",
+  cuidado: "leve",
+  descanso: "descanso",
+};
+
+/** Recuperação mandou descansar? Nesse caso nada de treino de força. */
+export function recuperacaoExigeDescanso(rec: RecoveryAuthority | null | undefined): boolean {
+  return !!rec && rec.status === "descanso";
+}
+
+export function alinharComRecuperacao(
+  sugestao: Sugestao,
+  rec: RecoveryAuthority | null | undefined,
+): Sugestao {
+  if (!rec) return sugestao;
+
+  const teto = TETO_POR_STATUS[rec.status];
+  if (INTENSIDADE_RANK[sugestao.intensidade] <= INTENSIDADE_RANK[teto]) return sugestao;
+
+  const nota = ` Ajustado pela Recuperação (${rec.score}/100): ${
+    teto === "descanso"
+      ? "hoje o corpo pede descanso"
+      : `intensidade limitada a ${teto}`
+  }.`;
+
+  if (teto === "descanso") {
+    return {
+      ...sugestao,
+      tipo: "descanso ativo",
+      grupos: [],
+      intensidade: "descanso",
+      motivo: `Hoje é dia de aliviar.${nota} Faça mobilidade, alongamento ou uma caminhada leve.`,
+    };
+  }
+
+  return {
+    ...sugestao,
+    tipo: sugestao.tipo === "força" && teto === "leve" ? "funcional leve" : sugestao.tipo,
+    intensidade: teto,
+    motivo: sugestao.motivo + nota,
+  };
+}
