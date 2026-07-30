@@ -22,6 +22,8 @@ import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
 import { extractTextFromFile } from "@/lib/plan-file-extractor";
 import Fuse from "fuse.js";
+import { lookupExerciseImage } from "@/lib/exercise-image-lookup";
+
 
 
 export type ParsedExercise = {
