@@ -150,7 +150,7 @@ function SessionPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("session_sets")
-        .select("weight_kg, reps, rpe, session_id, completed_at, exercise_id, sessions!inner(user_id)")
+        .select("weight_kg, reps, rpe, set_number, session_id, completed_at, exercise_id, sessions!inner(user_id)")
         .eq("sessions.user_id", session!.user_id)
         .neq("session_id", id)
         .in("exercise_id", exerciseIds)
@@ -159,6 +159,28 @@ function SessionPage() {
       return (data ?? []) as any[];
     },
   });
+
+  // Histórico de referência: última vez que o usuário fez cada exercício
+  // (sessão mais recente diferente desta), com as séries na ordem registrada.
+  const lastByExercise = useMemo(() => {
+    const map = new Map<string, { date: string; sets: any[] }>();
+    for (const r of prevSets as any[]) {
+      const cur = map.get(r.exercise_id);
+      if (!cur) {
+        map.set(r.exercise_id, { date: r.completed_at, sets: [r] });
+      } else if (cur.sets[0].session_id === r.session_id) {
+        cur.sets.push(r);
+      }
+    }
+    for (const v of map.values()) {
+      v.sets.sort(
+        (a, b) =>
+          (a.set_number ?? 0) - (b.set_number ?? 0) ||
+          String(a.completed_at).localeCompare(String(b.completed_at)),
+      );
+    }
+    return map;
+  }, [prevSets]);
 
   const suggestionsByItem = useMemo(() => {
     const map = new Map<string, Suggestion>();
@@ -184,6 +206,7 @@ function SessionPage() {
     }
     return map;
   }, [items, prevSets]);
+
 
 
 
