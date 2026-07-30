@@ -956,21 +956,60 @@ function EffortPicker({ sessionId, onConfirm, pending }: { sessionId: string; on
 }
 
 
-function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série" }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string }) {
+/** Formata uma série do histórico: "40 kg × 12" (ou só reps, se não houver carga). */
+function formatRefSet(s: any): string {
+  if (!s) return "";
+  const reps = s.reps != null ? `${s.reps}` : "?";
+  return s.weight_kg != null ? `${s.weight_kg} kg × ${reps}` : `${reps} reps`;
+}
+
+/** Mostra, de forma informativa, o que foi feito na última vez neste exercício. */
+function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } }) {
+  const when = new Date(reference.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return (
+    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-secondary/50 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+      <History className="size-3.5 shrink-0" />
+      <span className="font-medium">Última vez ({when}):</span>
+      {reference.sets.map((s, i) => (
+        <span key={i} className="rounded bg-background/70 px-1.5 py-0.5">
+          {i + 1}ª {formatRefSet(s)}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
   const [reps, setReps] = useState<string>(String(defaultReps));
   const [weight, setWeight] = useState<string>(String(defaultWeight ?? ""));
   return (
     <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
       <label className="block">
         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
-        <Input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} className="mt-0.5 h-10" />
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={reps}
+          onChange={(e) => setReps(e.target.value)}
+          className="mt-0.5 h-10"
+          placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
+        />
       </label>
       {!hideWeight && (
         <label className="block">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
-          <Input type="number" inputMode="decimal" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} className="mt-0.5 h-10" />
+          <Input
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="mt-0.5 h-10"
+            placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
+          />
         </label>
       )}
+
       <Button
         className="mt-4 h-10"
         onClick={() => {
