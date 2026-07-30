@@ -82,7 +82,7 @@ export function broadcastInvalidate(keys: SyncKey[]) {
   post({
     type: "invalidate",
     keys: keys.map((k) => [...k]),
-    origin: TAB_ID,
+    origin: getTabId(),
     at: Date.now(),
   });
 }
@@ -118,7 +118,7 @@ export function initCrossTabSync(qc: QueryClient): () => void {
 
   const apply = (raw: unknown) => {
     const msg = raw as SyncMessage | null;
-    if (!msg || msg.type !== "invalidate" || msg.origin === TAB_ID) return;
+    if (!msg || msg.type !== "invalidate" || msg.origin === getTabId()) return;
     if (!Array.isArray(msg.keys)) return;
     for (const key of msg.keys) {
       if (!Array.isArray(key) || key.length === 0) continue;
