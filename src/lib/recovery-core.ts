@@ -53,7 +53,7 @@ type Factor = z.infer<typeof FactorSchema>;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
-function scoreToStatus(score: number): RecoveryAdvice["status"] {
+export function scoreToStatus(score: number): RecoveryAdvice["status"] {
   if (score >= 80) return "recuperado";
   if (score >= 60) return "leve";
   if (score >= 40) return "cuidado";
@@ -87,16 +87,38 @@ type SessionRow = {
   }[];
 };
 
-type SleepRow = { log_date: string; hours: number; quality: number | null };
+export type SleepRow = { log_date: string; hours: number; quality: number | null };
 
 /** Check-in diário manual — fallback de sono e fonte de prontidão do dia. */
-type CheckinRow = {
+export type CheckinRow = {
   log_date: string;
   sleep_hours: number;
   sleep_quality: number | null;
   soreness: number | null;
   energy: number | null;
 };
+
+/**
+ * FONTE ÚNICA DE SONO: `sleep_logs` tem prioridade por dia; quando não houver
+ * registro do dia, cai para o check-in diário manual. Nunca as duas em paralelo.
+ * Retorna ordenado do mais recente para o mais antigo.
+ */
+export function unifySleepSources(
+  sleepLogs: SleepRow[] | null | undefined,
+  checkins: CheckinRow[] | null | undefined,
+): SleepRow[] {
+  const byDate = new Map<string, SleepRow>();
+  for (const c of checkins ?? []) {
+    byDate.set(c.log_date, {
+      log_date: c.log_date,
+      hours: Number(c.sleep_hours),
+      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
+    });
+  }
+  for (const r of sleepLogs ?? []) byDate.set(r.log_date, r);
+  return Array.from(byDate.values()).sort((a, b) => (a.log_date < b.log_date ? 1 : -1));
+}
+
 
 type ProfileRow = {
   experience_level: string | null;
@@ -560,24 +582,8 @@ export async function computeRecoveryAdviceFor(
       .order("log_date", { ascending: false }),
   ]);
 
-  // ---- FONTE ÚNICA DE SONO -------------------------------------------------
-  // `sleep_logs` (integração externa / MCP) tem prioridade por dia; quando não
-  // houver registro do dia, cai para o check-in diário manual (`daily_checkins`).
-  // Nunca as duas em paralelo sem hierarquia.
-  const sleepByDate = new Map<string, SleepRow>();
-  for (const c of (checkins ?? []) as CheckinRow[]) {
-    sleepByDate.set(c.log_date, {
-      log_date: c.log_date,
-      hours: Number(c.sleep_hours),
-      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
-    });
-  }
-  for (const r of (sleep ?? []) as SleepRow[]) {
-    sleepByDate.set(r.log_date, r);
-  }
-  const sleepUnified = Array.from(sleepByDate.values()).sort((a, b) =>
-    a.log_date < b.log_date ? 1 : -1,
-  );
+  const sleepUnified = unifySleepSources(sleep as SleepRow[] | null, checkins as CheckinRow[] | null);
+
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 10);
