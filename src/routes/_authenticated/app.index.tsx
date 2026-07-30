@@ -781,6 +781,10 @@ function Dashboard() {
             <Link to="/app/progresso" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Progresso
             </Link>
+            <Link to="/app/medidas" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Medidas
+            </Link>
+
             <Link to="/app/historico" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Histórico
             </Link>
