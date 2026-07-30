@@ -678,6 +678,8 @@ function SessionPage() {
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
           const suggestion = suggestionsByItem.get(it.id);
           const suggestedWeight = suggestion?.suggested_weight_kg ?? null;
+          const lastRef = lastByExercise.get(it.exercise_id) ?? null;
+
           return (
             <div key={it.id} className="card-soft p-4">
               <div className="flex items-start gap-3">
