@@ -87,16 +87,38 @@ type SessionRow = {
   }[];
 };
 
-type SleepRow = { log_date: string; hours: number; quality: number | null };
+export type SleepRow = { log_date: string; hours: number; quality: number | null };
 
 /** Check-in diário manual — fallback de sono e fonte de prontidão do dia. */
-type CheckinRow = {
+export type CheckinRow = {
   log_date: string;
   sleep_hours: number;
   sleep_quality: number | null;
   soreness: number | null;
   energy: number | null;
 };
+
+/**
+ * FONTE ÚNICA DE SONO: `sleep_logs` tem prioridade por dia; quando não houver
+ * registro do dia, cai para o check-in diário manual. Nunca as duas em paralelo.
+ * Retorna ordenado do mais recente para o mais antigo.
+ */
+export function unifySleepSources(
+  sleepLogs: SleepRow[] | null | undefined,
+  checkins: CheckinRow[] | null | undefined,
+): SleepRow[] {
+  const byDate = new Map<string, SleepRow>();
+  for (const c of checkins ?? []) {
+    byDate.set(c.log_date, {
+      log_date: c.log_date,
+      hours: Number(c.sleep_hours),
+      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
+    });
+  }
+  for (const r of sleepLogs ?? []) byDate.set(r.log_date, r);
+  return Array.from(byDate.values()).sort((a, b) => (a.log_date < b.log_date ? 1 : -1));
+}
+
 
 type ProfileRow = {
   experience_level: string | null;
