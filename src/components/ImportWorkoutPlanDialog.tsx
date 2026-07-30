@@ -22,6 +22,8 @@ import { useOnline } from "@/hooks/useOnline";
 import { OfflineNotice } from "@/components/OfflineNotice";
 import { extractTextFromFile } from "@/lib/plan-file-extractor";
 import Fuse from "fuse.js";
+import { lookupExerciseImage } from "@/lib/exercise-image-lookup";
+
 
 
 export type ParsedExercise = {
@@ -61,16 +63,78 @@ const MUSCLE_ALIASES: Record<string, string> = {
   panturrilha: "Panturrilha", panturrilhas: "Panturrilha",
   abdomen: "Abdômen", "abdômen": "Abdômen",
   abdominal: "Abdômen", abdominais: "Abdômen", core: "Abdômen",
-  trapezio: "Trapézio", "trapézio": "Trapézio",
+  // "Trapézio" não existe como grupo no catálogo: encolhimento/shrug vive em Ombros.
+  trapezio: "Ombros", "trapézio": "Ombros",
   cardio: "Cardio", aerobico: "Cardio", "aeróbico": "Cardio",
 };
+
+/**
+ * Grupos musculares realmente usados na tabela `exercises`. Qualquer grupo
+ * inferido fora desta lista vira "Outros" em vez de criar um grupo órfão.
+ */
+const CANONICAL_GROUPS = [
+  "Peito",
+  "Costas",
+  "Ombros",
+  "Tríceps",
+  "Bíceps",
+  "Antebraço",
+  "Pernas",
+  "Glúteos",
+  "Panturrilha",
+  "Abdômen",
+  "Cardio",
+  "Esportes",
+  "Outros",
+] as const;
+
+const FALLBACK_GROUP = "Outros";
+
+const GROUP_EQUIVALENTS: Record<string, string> = {
+  panturrilhas: "Panturrilha",
+  core: "Abdômen",
+  "trapezio": "Ombros",
+  "trapézio": "Ombros",
+  abdomen: "Abdômen",
+};
+
+function stripAccentsLower(s: string) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/**
+ * Valida um grupo contra a lista canônica (+ grupos que já existem no catálogo
+ * carregado). Devolve o nome canônico ou "Outros".
+ */
+function normalizeMuscleGroup(
+  group: string | null | undefined,
+  knownGroups?: Set<string>,
+): string {
+  if (!group) return FALLBACK_GROUP;
+  const raw = group.trim();
+  if (!raw) return FALLBACK_GROUP;
+  const key = stripAccentsLower(raw);
+
+  const equivalent = GROUP_EQUIVALENTS[key] ?? GROUP_EQUIVALENTS[raw.toLowerCase()];
+  if (equivalent) return equivalent;
+
+  const canonical = CANONICAL_GROUPS.find((g) => stripAccentsLower(g) === key);
+  if (canonical) return canonical;
+
+  if (knownGroups) {
+    for (const g of knownGroups) if (stripAccentsLower(g) === key) return g;
+  }
+  return FALLBACK_GROUP;
+}
 
 function parseMuscleGroupHeader(raw: string): string | null {
   const key = raw.trim().toLowerCase().replace(/[:\-–—]+$/g, "").trim();
   if (!key || key.length > 30) return null;
   if (/\d/.test(key) || /[x×]/i.test(key)) return null;
-  return MUSCLE_ALIASES[key] ?? null;
+  const alias = MUSCLE_ALIASES[key];
+  return alias ? normalizeMuscleGroup(alias) : null;
 }
+
 
 // Heuristic: given free text (block name or exercise name), guess a muscle group.
 const NAME_GROUP_HINTS: Array<[RegExp, string]> = [
@@ -96,10 +160,11 @@ function inferGroupFromText(text: string | undefined | null): string | null {
   for (const key of Object.keys(MUSCLE_ALIASES)) {
     // word-boundary match on the alias
     const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    if (re.test(lower)) return MUSCLE_ALIASES[key];
+    if (re.test(lower)) return normalizeMuscleGroup(MUSCLE_ALIASES[key]);
   }
-  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return g;
+  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return normalizeMuscleGroup(g);
   return null;
+
 }
 
 const FALLBACK_IMAGE_BY_GROUP: Record<string, string> = {
@@ -1035,26 +1100,63 @@ export function ImportWorkoutPlanDialog({
         ),
       );
       if (missing.length > 0) {
+        // Grupos que já existem no catálogo carregado — usados para validar
+        // o grupo inferido e evitar criar grupos musculares órfãos.
+        const knownGroups = new Set(
+          (catalogIndex ?? [])
+            .map((e) => e.muscle_group)
+            .filter((g): g is string => Boolean(g && g.trim())),
+        );
+
+        const rowsToCreate = await Promise.all(
+          missing.map(async (n) => {
+            const detectedGroup = groupByParsedKey.get(stripAccents(n));
+            const metadata = getDefaultMetadata(n, detectedGroup);
+
+            // 1) mini-dicionário local só quando é match exato pelo nome;
+            // 2) senão tenta a mesma base pública usada pelo restante do
+            //    catálogo (free-exercise-db) para achar uma imagem de verdade;
+            // 3) só então cai no fallback genérico por grupo.
+            let image_url: string | null = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.image_url ?? null;
+            let equipment: string | null = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.equipment ?? null;
+            let group: string | null = detectedGroup ?? metadata?.muscle_group ?? null;
+
+
+            if (!image_url) {
+              try {
+                const found = await lookupExerciseImage(n);
+                if (found) {
+                  image_url = found.image_url;
+                  equipment = equipment ?? found.equipment;
+                  group = group ?? found.muscle_group;
+                }
+              } catch {
+                /* base indisponível — segue para o fallback genérico */
+              }
+            }
+
+            if (!image_url) image_url = metadata?.image_url || null;
+            if (!equipment) equipment = metadata?.equipment ?? null;
+
+            return {
+              name: n,
+              muscle_group: normalizeMuscleGroup(group ?? metadata?.muscle_group, knownGroups),
+              equipment,
+              image_url: image_url || null,
+              is_default: false,
+              created_by: userId,
+            };
+          }),
+        );
+
         const { data: created, error: cErr } = await supabase
           .from("exercises")
-          .insert(
-            missing.map((n) => {
-              const detectedGroup = groupByParsedKey.get(stripAccents(n));
-              const metadata = getDefaultMetadata(n, detectedGroup);
-              return {
-                name: n,
-                muscle_group: metadata?.muscle_group ?? detectedGroup ?? "Outros",
-                equipment: metadata?.equipment ?? null,
-                image_url: metadata?.image_url || null,
-                is_default: false,
-                created_by: userId,
-              };
-            }),
-          )
+          .insert(rowsToCreate)
           .select("id, name");
         if (cErr) throw cErr;
         (created ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
       }
+
 
       const createdWorkouts: { id: string; name: string }[] = [];
       for (let i = 0; i < blocks.length; i++) {
