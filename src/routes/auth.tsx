@@ -218,6 +218,11 @@ function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [remember, setRemember] = useState(() => getRememberMePreference());
+  // Ponte de login entre origens: enquanto redireciona para o domínio canônico
+  // mostramos uma tela própria; se a rede falhar, mostramos "não conseguimos conectar".
+  const [bridging, setBridging] = useState(false);
+  const [bridgeFailed, setBridgeFailed] = useState(false);
+  const [bridgeAttempt, setBridgeAttempt] = useState(0);
 
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
