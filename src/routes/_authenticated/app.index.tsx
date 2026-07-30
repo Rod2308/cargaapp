@@ -23,6 +23,7 @@ import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
+import { DecisionExplainer } from "@/components/DecisionExplainer";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
@@ -968,6 +969,7 @@ function RecoveryCard({
     cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: RECOVERY_STATUS_LABEL.cuidado },
     descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: RECOVERY_STATUS_LABEL.descanso },
   };
+  const [explainOpen, setExplainOpen] = useState(false);
   const s = recovery ? styles[recovery.status] : styles.leve;
   const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
   const topFactors = allFactors;
@@ -996,6 +998,20 @@ function RecoveryCard({
                   <span className="tabular-nums">{recovery.score}</span>
                   <span className="opacity-60">/100</span>
                 </span>
+              )}
+              {recovery && (
+                <DecisionExplainer
+                  open={explainOpen}
+                  onOpenChange={setExplainOpen}
+                  decision={recovery.status === "descanso" ? "descansar" : "treinar"}
+                  score={recovery.score}
+                  statusLabel={s.label}
+                  intensityLabel={recovery.intensityLabel}
+                  summary={recovery.reason}
+                  factors={recovery.factors}
+                  ignoredFactors={recovery.ignoredFactors}
+                  origin={`Decisão do motor de Recuperação · ${recovery.recommendation}`}
+                />
               )}
               <button
                 onClick={onRefresh}
