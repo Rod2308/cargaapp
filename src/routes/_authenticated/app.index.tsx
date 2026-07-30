@@ -602,6 +602,14 @@ function Dashboard() {
         <DailySuggestionCard
           sugestao={suggestion}
           workoutSugeridoId={workoutSugeridoId}
+          recuperacao={
+            recovery
+              ? {
+                  score: recovery.score,
+                  statusLabel: RECOVERY_STATUS_LABEL[recovery.status],
+                }
+              : null
+          }
           onEditCheckin={() => setCheckinEditOpen(true)}
           onStart={() => {
             if (suggestion.intensidade === "descanso") {
