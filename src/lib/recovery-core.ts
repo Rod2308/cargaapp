@@ -111,13 +111,19 @@ function ageYears(birth: string | null): number | null {
 function aggregateMuscles(sessions: SessionRow[], now: Date): MuscleAgg[] {
   const map = new Map<string, MuscleAgg>();
   for (const s of sessions) {
-    const daysAgo = (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000;
+    const daysAgo = fractionalDaysSince(s.started_at, now);
     if (daysAgo > 5) continue;
     for (const st of s.session_sets ?? []) {
-      const g = st.exercises?.muscle_group;
-      if (!g || g === "Esportes") continue;
+      const raw = st.exercises?.muscle_group;
+      if (!raw || raw === "Esportes") continue;
+      // Fonte única de normalização — "Panturrilha"/"Panturrilhas" viram o
+      // mesmo grupo, "Antebraço" é reconhecido, "Core" vira "Abdômen".
+      const mg = normalizeMuscleGroup(raw);
+      if (!mg) continue;
+      const g = MUSCLE_LABEL[mg];
       const cur =
-        map.get(g) ?? { group: g, setsRecent: 0, volume: 0, avgRpe: null, lastDaysAgo: 999 };
+        map.get(g) ??
+        { group: g, key: mg, setsRecent: 0, volume: 0, avgRpe: null, lastDaysAgo: 999 };
       cur.setsRecent += 1;
       cur.volume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
       if (st.rpe) cur.avgRpe = cur.avgRpe == null ? Number(st.rpe) : (cur.avgRpe + Number(st.rpe)) / 2;
@@ -127,6 +133,7 @@ function aggregateMuscles(sessions: SessionRow[], now: Date): MuscleAgg[] {
   }
   return Array.from(map.values());
 }
+
 
 function computeScore(input: {
   profile: ProfileRow | null;
