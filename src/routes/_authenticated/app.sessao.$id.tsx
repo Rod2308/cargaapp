@@ -739,6 +739,11 @@ function SessionPage() {
                       <span className="text-xs text-muted-foreground">
                         {done.length}/{it.target_sets}
                       </span>
+                      <SwapExerciseButton
+                        current={it.exercises}
+                        catalog={allExercises as any[]}
+                        onSwap={(exerciseId) => swapExercise.mutate({ itemId: it.id, exerciseId })}
+                      />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Remover exercício">
