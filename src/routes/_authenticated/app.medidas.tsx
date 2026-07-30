@@ -34,6 +34,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/app/medidas")({
   component: MeasurementsPage,
+  errorComponent: MeasurementsError,
   head: () => ({
     meta: [
       { title: "Medidas e fotos de progresso · Carga" },
