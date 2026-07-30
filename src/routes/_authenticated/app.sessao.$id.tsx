@@ -362,6 +362,28 @@ function SessionPage() {
     },
   });
 
+  // Troca o exercício do plano por um substituto (quando o aparelho está
+  // ocupado/indisponível), mantendo séries, reps e descanso planejados.
+  const swapExercise = useMutation({
+    mutationFn: async ({ itemId, exerciseId }: { itemId: string; exerciseId: string }) => {
+      const replacement = (allExercises as any[]).find((e) => e.id === exerciseId);
+      if (!replacement) throw new Error("Exercício substituto não encontrado.");
+      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
+        prev.map((it) =>
+          it.id === itemId ? { ...it, exercise_id: exerciseId, exercises: replacement } : it,
+        ),
+      );
+      await enqueueOp({
+        kind: "update",
+        table: "workout_exercises",
+        match: { id: itemId },
+        patch: { exercise_id: exerciseId },
+      });
+      toast.success(`Trocado por ${replacement.name}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não consegui trocar o exercício."),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["session-plan", id] }),
+  });
 
 
   const finish = useMutation({
