@@ -3,6 +3,7 @@ import { Sparkles, Play, RefreshCw, ClipboardCheck, HeartPulse, Moon, Flame, Bat
 import type { Sugestao, Intensidade } from "@/lib/daily-suggestion";
 import { formatDias } from "@/lib/daily-suggestion";
 import { MUSCLE_LABEL } from "@/lib/daily-suggestion";
+import { DecisionExplainer } from "@/components/DecisionExplainer";
 
 const INTENSITY_STYLES: Record<Intensidade, { bar: string; badge: string; label: string }> = {
   leve: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", label: "Leve" },
@@ -41,6 +42,11 @@ export type RecuperacaoResumo = {
   score: number;
   /** Rótulo já exibido no card de Recuperação (Excelente/Boa/Moderada/Baixa). */
   statusLabel: string;
+  /** Fatores que compuseram o score, para exibir a mesma explicação. */
+  factors?: { key: string; label: string; detail: string; impact: number }[];
+  ignoredFactors?: { key: string; label: string; reason: string }[];
+  /** Frase da recomendação do motor de Recuperação. */
+  recommendation?: string | null;
 };
 
 export function DailySuggestionCard({
@@ -83,6 +89,44 @@ export function DailySuggestionCard({
                 {s.label}
               </span>
             </div>
+            <DecisionExplainer
+              title="Por que esta sugestão?"
+              decision={sugestao.intensidade === "descanso" ? "descansar" : "treinar"}
+              score={recuperacao?.score ?? sugestao.score * 10}
+              statusLabel={recuperacao?.statusLabel}
+              intensityLabel={`Intensidade sugerida: ${s.label}${sugestao.grupos.length > 0 ? ` · foco em ${sugestao.grupos.map((g) => MUSCLE_LABEL[g]).join(", ")}` : ""}`}
+              summary={sugestao.motivo}
+              factors={recuperacao?.factors}
+              ignoredFactors={recuperacao?.ignoredFactors}
+              extra={
+                <div className="rounded-lg border border-border/60 bg-secondary/30 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Sinais do dia
+                  </p>
+                  <ul className="mt-1.5 space-y-1 text-[11px] text-muted-foreground">
+                    <li>{sugestao.scoreDetalhe}</li>
+                    <li>
+                      Cardio na semana: {sugestao.cardio.sessoesIntensas} sessão(ões) intensa(s) ·{" "}
+                      {sugestao.cardio.minutos} min
+                    </li>
+                    <li>Dias com esforço nos últimos 7: {sugestao.diasEsforcoSemana}/7</li>
+                    {sugestao.gruposLiberados.length > 0 && (
+                      <li>
+                        Grupos recuperados:{" "}
+                        {sugestao.gruposLiberados
+                          .map((g) => `${MUSCLE_LABEL[g.grupo]} (${Number.isFinite(g.diasParado) ? `${formatDias(g.diasParado)}d` : "novo"})`)
+                          .join(", ")}
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              }
+              origin={
+                recuperacao
+                  ? `Mesma leitura do bloco Recuperação${recuperacao.recommendation ? ` · ${recuperacao.recommendation}` : ""}`
+                  : "Baseado no seu check-in de hoje e no histórico dos últimos 7 dias."
+              }
+            />
             <button
               onClick={onEditCheckin}
               className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
