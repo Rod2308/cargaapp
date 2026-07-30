@@ -980,8 +980,18 @@ function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } 
 }
 
 function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
-  const [reps, setReps] = useState<string>(String(defaultReps));
-  const [weight, setWeight] = useState<string>(String(defaultWeight ?? ""));
+  // Pré-seleciona os valores da última vez que o exercício foi feito (se houver),
+  // caindo para os alvos do treino quando não há histórico. Sempre editável.
+  const prefRepsBase = lastSet?.reps != null ? String(lastSet.reps) : String(defaultReps);
+  const prefWeightBase = lastSet?.weight_kg != null ? String(lastSet.weight_kg) : String(defaultWeight ?? "");
+  const [reps, setReps] = useState<string>(prefRepsBase);
+  const [weight, setWeight] = useState<string>(prefWeightBase);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    if (touched) return;
+    setReps(prefRepsBase);
+    setWeight(prefWeightBase);
+  }, [prefRepsBase, prefWeightBase, touched]);
   return (
     <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
       <label className="block">
@@ -990,11 +1000,12 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
           type="number"
           inputMode="numeric"
           value={reps}
-          onChange={(e) => setReps(e.target.value)}
+          onChange={(e) => { setTouched(true); setReps(e.target.value); }}
           className="mt-0.5 h-10"
           placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
         />
       </label>
+
       {!hideWeight && (
         <label className="block">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
