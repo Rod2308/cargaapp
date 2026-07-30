@@ -211,6 +211,27 @@ function SessionPage() {
 
 
 
+  /**
+   * Compara a série recém-registrada com todo o histórico do exercício
+   * (sessões anteriores + o que já foi feito hoje) e avisa se for recorde.
+   */
+  const announcePr = useCallback(
+    (exerciseId: string, reps: number, weight: number | null) => {
+      if (!weight || weight <= 0 || !reps) return;
+      const history = [
+        ...(prevSets as any[])
+          .filter((r) => r.exercise_id === exerciseId)
+          .map((r) => ({ weight_kg: r.weight_kg, reps: r.reps })),
+        ...(sets as any[])
+          .filter((s) => s.exercise_id === exerciseId)
+          .map((s) => ({ weight_kg: s.weight_kg, reps: s.reps })),
+      ];
+      const pr = checkPr({ weight_kg: weight, reps }, history);
+      if (pr.isPr) toast.success(`🏆 ${pr.message}`, { duration: 6000 });
+    },
+    [prevSets, sets],
+  );
+
 
   const logSet = useMutation({
     mutationFn: async (row: any) => {
