@@ -469,9 +469,7 @@ function SessionPage() {
     },
     onSuccess: () => {
       void clearSessionSnapshot(id);
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       toast.success("Treino cancelado");
       navigate({ to: "/app" });
     },
