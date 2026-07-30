@@ -63,31 +63,15 @@ export function normalizeActivityName(raw: string | null | undefined): string | 
 
 }
 
-// Normaliza grupos livres do banco (ex: "Peitoral", "Quadríceps") para um MuscleGroup.
-export function normalizeMuscleGroup(raw: string | null | undefined): MuscleGroup | null {
-  if (!raw) return null;
-  const s = raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  if (/peito|peitoral|chest/.test(s)) return "peito";
-  if (/costas|dorsal|back|latiss/.test(s)) return "costas";
-  if (/perna|quadr|posterior|panturr|leg|quads|hams/.test(s)) return "pernas";
-  if (/ombro|delto|shoulder/.test(s)) return "ombro";
-  if (/bicep/.test(s)) return "biceps";
-  if (/tricep/.test(s)) return "triceps";
-  if (/gluteo|gluteos|gluteus|butt/.test(s)) return "gluteo";
-  if (/abdom|core|abs/.test(s)) return "abdomen";
-  return null;
-}
-
 export type TimelineEntry = {
   date: string; // yyyy-mm-dd
+  at?: string; // timestamp ISO do início (usado p/ dias fracionados)
   source: "workout" | "extra";
   label: string; // nome do treino ou da atividade extra
   impact: Partial<Record<MuscleGroup, Impact>>;
   cardio: Impact | null;
   durationMin: number;
+
 };
 
 export type WorkoutSession = {
