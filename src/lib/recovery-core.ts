@@ -582,24 +582,8 @@ export async function computeRecoveryAdviceFor(
       .order("log_date", { ascending: false }),
   ]);
 
-  // ---- FONTE ÚNICA DE SONO -------------------------------------------------
-  // `sleep_logs` (integração externa / MCP) tem prioridade por dia; quando não
-  // houver registro do dia, cai para o check-in diário manual (`daily_checkins`).
-  // Nunca as duas em paralelo sem hierarquia.
-  const sleepByDate = new Map<string, SleepRow>();
-  for (const c of (checkins ?? []) as CheckinRow[]) {
-    sleepByDate.set(c.log_date, {
-      log_date: c.log_date,
-      hours: Number(c.sleep_hours),
-      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
-    });
-  }
-  for (const r of (sleep ?? []) as SleepRow[]) {
-    sleepByDate.set(r.log_date, r);
-  }
-  const sleepUnified = Array.from(sleepByDate.values()).sort((a, b) =>
-    a.log_date < b.log_date ? 1 : -1,
-  );
+  const sleepUnified = unifySleepSources(sleep as SleepRow[] | null, checkins as CheckinRow[] | null);
+
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 10);
