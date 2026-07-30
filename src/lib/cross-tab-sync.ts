@@ -24,12 +24,27 @@ type SyncMessage = {
   at: number;
 };
 
-const TAB_ID =
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
+/**
+ * ID da aba gerado sob demanda.
+ *
+ * IMPORTANTE: não pode ser gerado em escopo de módulo. No runtime de produção
+ * (Cloudflare Worker) qualquer geração de valor aleatório em escopo global
+ * lança "Disallowed operation called within global scope" e derruba o SSR
+ * inteiro com HTTP 500 em todas as rotas.
+ */
+let tabId: string | null = null;
+
+function getTabId(): string {
+  if (tabId) return tabId;
+  tabId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return tabId;
+}
 
 let channel: BroadcastChannel | null = null;
+
 
 function getChannel(): BroadcastChannel | null {
   if (typeof window === "undefined") return null;
