@@ -26,6 +26,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as ApiPublicVapidRouteImport } from './routes/api/public/vapid'
 import { Route as ApiPublicBridgeRouteImport } from './routes/api/public/bridge'
+import { Route as AuthenticatedAppVolumeRouteImport } from './routes/_authenticated/app.volume'
 import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authenticated/app.progresso'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
@@ -137,6 +138,11 @@ const ApiPublicBridgeRoute = ApiPublicBridgeRouteImport.update({
   id: '/api/public/bridge',
   path: '/api/public/bridge',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAppVolumeRoute = AuthenticatedAppVolumeRouteImport.update({
+  id: '/volume',
+  path: '/volume',
+  getParentRoute: () => AuthenticatedAppRoute,
 } as any)
 const AuthenticatedAppProgressoRoute =
   AuthenticatedAppProgressoRouteImport.update({
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app/': typeof AuthenticatedAppIndexRoute
@@ -350,6 +357,7 @@ export interface FileRoutesByTo {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app': typeof AuthenticatedAppIndexRoute
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/_authenticated/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
@@ -440,6 +449,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app/'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app'
@@ -526,6 +537,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/notificacoes'
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/progresso'
+    | '/_authenticated/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/_authenticated/app/'
@@ -692,6 +704,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/bridge'
       preLoaderRoute: typeof ApiPublicBridgeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/app/volume': {
+      id: '/_authenticated/app/volume'
+      path: '/volume'
+      fullPath: '/app/volume'
+      preLoaderRoute: typeof AuthenticatedAppVolumeRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/progresso': {
       id: '/_authenticated/app/progresso'
@@ -909,6 +928,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppNotificacoesRoute: typeof AuthenticatedAppNotificacoesRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
   AuthenticatedAppProgressoRoute: typeof AuthenticatedAppProgressoRoute
+  AuthenticatedAppVolumeRoute: typeof AuthenticatedAppVolumeRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
   AuthenticatedAppGruposIdRoute: typeof AuthenticatedAppGruposIdRouteWithChildren
@@ -928,6 +948,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppNotificacoesRoute: AuthenticatedAppNotificacoesRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
   AuthenticatedAppProgressoRoute: AuthenticatedAppProgressoRoute,
+  AuthenticatedAppVolumeRoute: AuthenticatedAppVolumeRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
   AuthenticatedAppGruposIdRoute: AuthenticatedAppGruposIdRouteWithChildren,
