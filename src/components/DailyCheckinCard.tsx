@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ClipboardCheck } from "lucide-react";
 import { z } from "zod";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 
 const checkinSchema = z.object({
   sleep_hours: z.number().min(0).max(24),
