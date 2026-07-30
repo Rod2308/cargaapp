@@ -151,17 +151,41 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
     }
   }, [confirmOpen, needsConfirmation]);
 
-  const apply = useMutation({
-    mutationFn: async (list: AutoAdjustment[]) => applyAutoProgression(list),
+  const restore = useMutation({
+    mutationFn: async (versionId: string) => restorePlanVersion(userId, versionId),
     onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["workout-exercises"] });
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["auto-progression", userId] });
+      qc.invalidateQueries({ queryKey: ["plan-versions", userId] });
+      toast.success(`Plano restaurado: ${n} exercício(s) voltaram aos valores anteriores.`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao restaurar a versão"),
+  });
+
+  const apply = useMutation({
+    mutationFn: async (list: AutoAdjustment[]) =>
+      applyAutoProgression(list, { userId }),
+    onSuccess: ({ applied, versionId }) => {
       markRanToday(userId);
       qc.invalidateQueries({ queryKey: ["workout-exercises"] });
       qc.invalidateQueries({ queryKey: ["workouts"] });
       qc.invalidateQueries({ queryKey: ["auto-progression", userId] });
+      qc.invalidateQueries({ queryKey: ["plan-versions", userId] });
       setOpen(false);
       setConfirmOpen(false);
-      if (n > 0) toast.success(`Plano atualizado: ${n} ajuste${n === 1 ? "" : "s"} aplicado${n === 1 ? "" : "s"}.`);
-      else toast.info("Nenhum ajuste aplicado.");
+      if (applied > 0) {
+        toast.success(
+          `Plano atualizado: ${applied} ajuste${applied === 1 ? "" : "s"} aplicado${applied === 1 ? "" : "s"}.`,
+          versionId
+            ? {
+                duration: 20000,
+                description: "Não gostou? Você pode desfazer esta atualização.",
+                action: { label: "Desfazer", onClick: () => restore.mutate(versionId) },
+              }
+            : undefined,
+        );
+      } else toast.info("Nenhum ajuste aplicado.");
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar o plano"),
   });
