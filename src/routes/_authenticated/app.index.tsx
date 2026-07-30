@@ -565,6 +565,11 @@ function Dashboard() {
         <CardioRecoveryAlert userId={user.id} />
       </div>
 
+      <div className="mt-4">
+        <AutoProgressionCard userId={user.id} />
+      </div>
+
+
       {/* Frase do dia */}
       <div className="card-lift mt-4 flex items-start gap-3 p-4 sm:p-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
