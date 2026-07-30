@@ -41,11 +41,20 @@ type SetRow = {
   sessions: { started_at: string } | null;
 };
 
+const PERIODS = [
+  { value: "30", label: "30 dias" },
+  { value: "90", label: "90 dias" },
+  { value: "180", label: "6 meses" },
+  { value: "365", label: "1 ano" },
+  { value: "all", label: "Tudo" },
+];
+
 function ProgressPage() {
   const { user } = AuthedRoute.useRouteContext();
   const [selected, setSelected] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string>("90");
 
-  const { data: sets = [], isLoading } = useQuery({
+  const { data: allSets = [], isLoading } = useQuery({
     queryKey: ["progress-sets", user.id],
     queryFn: async () => {
       const { data } = await supabase
@@ -58,6 +67,17 @@ function ProgressPage() {
       return (data ?? []) as unknown as SetRow[];
     },
   });
+
+  // Filtro de período aplicado sobre a data do treino (não a do registro).
+  const sets = useMemo(() => {
+    if (period === "all") return allSets;
+    const cutoff = Date.now() - Number(period) * 86400000;
+    return allSets.filter(
+      (s) => new Date(s.sessions?.started_at ?? s.completed_at).getTime() >= cutoff,
+    );
+  }, [allSets, period]);
+
+
 
   const byExercise = useMemo(() => {
     const m = new Map<
@@ -169,13 +189,46 @@ function ProgressPage() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link
+          to="/app/volume"
+          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        >
+          Volume por grupo muscular
+        </Link>
+        <Link
+          to="/app/medidas"
+          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        >
+          Medidas e fotos
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.value}
+            onClick={() => setPeriod(p.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              period === p.value
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="card-lift p-6 text-sm text-muted-foreground">Carregando…</div>
       ) : byExercise.length === 0 ? (
         <div className="card-lift p-6 text-center">
           <Dumbbell className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Registre séries com carga e repetições nas sessões para ver seu progresso aqui.
+            {allSets.length === 0
+              ? "Registre séries com carga e repetições nas sessões para ver seu progresso aqui."
+              : "Nenhuma série registrada nesse período. Escolha um intervalo maior."}
           </p>
         </div>
       ) : (
@@ -198,6 +251,7 @@ function ProgressPage() {
               </SelectContent>
             </Select>
           </div>
+
 
           {current && (
             <>
@@ -254,6 +308,41 @@ function ProgressPage() {
                   </div>
                 </div>
               )}
+
+              {/* Volume por sessão (séries × reps × carga) */}
+              {chart.length > 1 && (
+                <div className="card-lift mb-4 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Volume por treino (kg)
+                  </p>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chart} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="date" fontSize={11} />
+                        <YAxis fontSize={11} />
+                        <Tooltip
+                          contentStyle={{
+                            background: "hsl(var(--background))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: 8,
+                            fontSize: 12,
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="Volume"
+                          stroke="hsl(var(--brand, var(--primary)))"
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+
 
               {/* History timeline */}
               <div className="space-y-3">

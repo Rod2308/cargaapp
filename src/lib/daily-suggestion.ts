@@ -1,48 +1,22 @@
 // Sugestão de treino do dia — lógica 100% local, determinística.
 // Zero chamadas externas. Testável.
+//
+// A recuperação muscular (limiares por grupo + cálculo em dias fracionados)
+// vive em `src/lib/muscle-recovery.ts` — fonte única compartilhada com o
+// motor de Recuperação (`recovery-core.ts`).
 
-export type MuscleGroup =
-  | "peito"
-  | "costas"
-  | "pernas"
-  | "ombro"
-  | "biceps"
-  | "triceps"
-  | "gluteo"
-  | "abdomen";
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_LABEL,
+  MUSCLE_RECOVERY_DAYS,
+  fractionalDaysSince,
+  normalizeMuscleGroup,
+  type MuscleGroup,
+} from "./muscle-recovery";
 
-export const MUSCLE_GROUPS: MuscleGroup[] = [
-  "peito",
-  "costas",
-  "pernas",
-  "ombro",
-  "biceps",
-  "triceps",
-  "gluteo",
-  "abdomen",
-];
+export type { MuscleGroup };
+export { MUSCLE_GROUPS, MUSCLE_LABEL, MUSCLE_RECOVERY_DAYS, normalizeMuscleGroup };
 
-export const MUSCLE_LABEL: Record<MuscleGroup, string> = {
-  peito: "Peito",
-  costas: "Costas",
-  pernas: "Pernas",
-  ombro: "Ombro",
-  biceps: "Bíceps",
-  triceps: "Tríceps",
-  gluteo: "Glúteo",
-  abdomen: "Abdômen",
-};
-
-export const MUSCLE_RECOVERY_DAYS: Record<MuscleGroup, number> = {
-  peito: 2,
-  costas: 2,
-  pernas: 3,
-  ombro: 2,
-  biceps: 2,
-  triceps: 2,
-  gluteo: 2,
-  abdomen: 1,
-};
 
 export type Impact = "alto" | "medio" | "baixo";
 
@@ -89,31 +63,15 @@ export function normalizeActivityName(raw: string | null | undefined): string | 
 
 }
 
-// Normaliza grupos livres do banco (ex: "Peitoral", "Quadríceps") para um MuscleGroup.
-export function normalizeMuscleGroup(raw: string | null | undefined): MuscleGroup | null {
-  if (!raw) return null;
-  const s = raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  if (/peito|peitoral|chest/.test(s)) return "peito";
-  if (/costas|dorsal|back|latiss/.test(s)) return "costas";
-  if (/perna|quadr|posterior|panturr|leg|quads|hams/.test(s)) return "pernas";
-  if (/ombro|delto|shoulder/.test(s)) return "ombro";
-  if (/bicep/.test(s)) return "biceps";
-  if (/tricep/.test(s)) return "triceps";
-  if (/gluteo|gluteos|gluteus|butt/.test(s)) return "gluteo";
-  if (/abdom|core|abs/.test(s)) return "abdomen";
-  return null;
-}
-
 export type TimelineEntry = {
   date: string; // yyyy-mm-dd
+  at?: string; // timestamp ISO do início (usado p/ dias fracionados)
   source: "workout" | "extra";
   label: string; // nome do treino ou da atividade extra
   impact: Partial<Record<MuscleGroup, Impact>>;
   cardio: Impact | null;
   durationMin: number;
+
 };
 
 export type WorkoutSession = {
@@ -168,6 +126,7 @@ export function combineTimeline(
       : 45;
     out.push({
       date: toDateStr(s.started_at),
+      at: s.started_at,
       source: "workout",
       label: s.workout_label ? `Treino ${s.workout_label}` : s.workout_name ?? "Treino",
       impact,
@@ -186,6 +145,7 @@ export function combineTimeline(
       (a.ended_at ? Math.max(0, (new Date(a.ended_at).getTime() - started.getTime()) / 60000) : 30);
     out.push({
       date: toDateStr(a.started_at),
+      at: a.started_at,
       source: "extra",
       label: a.activity_name,
       impact: map?.muscles ?? {},
@@ -198,23 +158,33 @@ export function combineTimeline(
   return out;
 }
 
-// Dias desde o último esforço de impacto médio/alto num grupo (Infinity se nunca).
+/**
+ * Dias (fracionados) desde o último esforço de impacto médio/alto num grupo.
+ * Usa `fractionalDaysSince` — mesma matemática do motor de Recuperação.
+ * Infinity quando nunca houve estímulo na janela.
+ */
 export function diasDesdeUltimoEsforco(
   timeline: TimelineEntry[],
   grupo: MuscleGroup,
   now: Date = new Date(),
 ): number {
-  const today = new Date(now.toISOString().slice(0, 10));
   let best: number | null = null;
   for (const e of timeline) {
     const impact = e.impact[grupo];
     if (impact === "alto" || impact === "medio") {
-      const diff = daysBetween(today, new Date(e.date));
+      const diff = Math.max(0, fractionalDaysSince(e.at ?? `${e.date}T12:00:00.000Z`, now));
       if (best == null || diff < best) best = diff;
     }
   }
   return best == null ? Number.POSITIVE_INFINITY : best;
 }
+
+/** Formata dias fracionados para exibição (ex.: 2.4d → "2,4"). */
+export function formatDias(d: number): string {
+  if (!Number.isFinite(d)) return "—";
+  return d >= 10 ? String(Math.round(d)) : d.toFixed(1).replace(".", ",");
+}
+
 
 export function gruposLiberados(
   timeline: TimelineEntry[],
@@ -353,7 +323,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "funcional leve",
         grupos: [grupo],
         intensidade: "leve",
-        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${d}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
+        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${formatDias(d)}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -399,7 +369,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "força",
         grupos,
         intensidade,
-        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${escolhido.diasParado}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
+        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${formatDias(escolhido.diasParado)}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -616,7 +586,7 @@ export function sugerirTreinoDoPlano(args: {
         const dias = Math.min(
           ...pendentes.map((g) => diasDesdeUltimoEsforco(timeline, g, now)),
         );
-        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${dias}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
+        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${formatDias(dias)}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
         escolhido = cand;
         gruposEscolhidoAtual = gs;
         pendentes = [];
@@ -714,4 +684,71 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
     if (!melhor || score > melhor.score) melhor = { w, score };
   }
   return melhor?.w ?? rotina[0];
+}
+
+// ============================================================================
+// Autoridade única para a decisão treinar × descansar.
+//
+// O motor de Recuperação (`recovery-core.ts`) é a AUTORIDADE: considera RPE,
+// lesão, frequência semanal, ciclo, sono e inatividade. A sugestão do dia
+// continua decidindo QUAL treino/grupo, mas a intensidade/descanso é
+// rebaixada aqui para nunca contradizer o card de Recuperação.
+// ============================================================================
+
+export type RecoveryAuthority = {
+  status: "recuperado" | "leve" | "cuidado" | "descanso";
+  score: number; // 0-100
+  intensityLabel?: string;
+};
+
+const INTENSIDADE_RANK: Record<Intensidade, number> = {
+  descanso: 0,
+  leve: 1,
+  moderada: 2,
+  alta: 3,
+};
+
+const TETO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
+  recuperado: "alta",
+  leve: "moderada",
+  cuidado: "leve",
+  descanso: "descanso",
+};
+
+/** Recuperação mandou descansar? Nesse caso nada de treino de força. */
+export function recuperacaoExigeDescanso(rec: RecoveryAuthority | null | undefined): boolean {
+  return !!rec && rec.status === "descanso";
+}
+
+export function alinharComRecuperacao(
+  sugestao: Sugestao,
+  rec: RecoveryAuthority | null | undefined,
+): Sugestao {
+  if (!rec) return sugestao;
+
+  const teto = TETO_POR_STATUS[rec.status];
+  if (INTENSIDADE_RANK[sugestao.intensidade] <= INTENSIDADE_RANK[teto]) return sugestao;
+
+  const nota = ` Ajustado pela Recuperação (${rec.score}/100): ${
+    teto === "descanso"
+      ? "hoje o corpo pede descanso"
+      : `intensidade limitada a ${teto}`
+  }.`;
+
+  if (teto === "descanso") {
+    return {
+      ...sugestao,
+      tipo: "descanso ativo",
+      grupos: [],
+      intensidade: "descanso",
+      motivo: `Hoje é dia de aliviar.${nota} Faça mobilidade, alongamento ou uma caminhada leve.`,
+    };
+  }
+
+  return {
+    ...sugestao,
+    tipo: sugestao.tipo === "força" && teto === "leve" ? "funcional leve" : sugestao.tipo,
+    intensidade: teto,
+    motivo: sugestao.motivo + nota,
+  };
 }

@@ -24,7 +24,22 @@ export async function extractTextFromFile(
   }
 
   if (["txt", "md", "csv", "json"].includes(ext)) {
-    return await file.text();
+    const raw = await file.text();
+    // CSV exportado de outros apps (Strong, Hevy, FitNotes): converte para o
+    // texto de plano que o importador já entende, reaproveitando o fuzzy match.
+    if (ext === "csv") {
+      const { isWorkoutAppCsv, workoutCsvToPlanText } = await import("@/lib/workout-csv-import");
+      if (isWorkoutAppCsv(raw)) {
+        try {
+          return workoutCsvToPlanText(raw).text;
+        } catch (e) {
+          throw new Error(
+            e instanceof Error ? e.message : "Não consegui interpretar esse CSV de treino.",
+          );
+        }
+      }
+    }
+    return raw;
   }
 
   if (ext === "pdf") {
