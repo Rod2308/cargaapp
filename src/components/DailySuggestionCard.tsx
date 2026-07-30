@@ -106,8 +106,13 @@ export function DailySuggestionCard({
           <div className="mt-4 space-y-3 rounded-lg border border-border/60 bg-secondary/30 p-3">
             {/* Recuperação */}
             {(() => {
-              const t = scoreTone(sugestao.score);
-              const pct = Math.max(4, Math.min(100, sugestao.score * 10));
+              // Fonte única: se o motor de Recuperação respondeu, usamos o score
+              // dele. Caso contrário, convertemos o score local (0–10) para a
+              // mesma escala 0–100, para nunca exibir duas medidas diferentes.
+              const score100 = Math.round(recuperacao?.score ?? sugestao.score * 10);
+              const t = scoreTone(score100);
+              const label = recuperacao?.statusLabel ?? t.label;
+              const pct = Math.max(4, Math.min(100, score100));
               return (
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -115,13 +120,16 @@ export function DailySuggestionCard({
                       <HeartPulse className="size-3.5" /> Recuperação
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.cls}`}>{t.label}</span>
-                      <span className="text-[11px] font-mono font-semibold tabular-nums text-foreground">{sugestao.score.toFixed(1)}/10</span>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.cls}`}>{label}</span>
+                      <span className="text-[11px] font-mono font-semibold tabular-nums text-foreground">{score100}/100</span>
                     </div>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${pct}%` }} />
                   </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Mesma leitura do bloco Recuperação · decisão de hoje: {sugestao.intensidade === "descanso" ? "descansar" : `treinar (${s.label.toLowerCase()})`}
+                  </p>
                 </div>
               );
             })()}
