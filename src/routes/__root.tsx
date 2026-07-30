@@ -213,6 +213,7 @@ function RootComponent() {
     return () => {
       data.subscription.unsubscribe();
       detachPersistence();
+      detachCrossTabSync();
       nativeAuthUnsub?.();
       removeUrlListener?.();
       window.removeEventListener("online", handleOnline);
