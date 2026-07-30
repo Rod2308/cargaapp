@@ -257,19 +257,26 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {adjustments.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" onClick={applySafeAndAsk} disabled={apply.isPending}>
-            {apply.isPending ? <><Loader2 className="size-3.5 animate-spin" /> Aplicando...</> : <><Check className="size-3.5" /> Atualizar plano</>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {adjustments.length > 0 && (
+          <>
+            <Button size="sm" onClick={applySafeAndAsk} disabled={apply.isPending}>
+              {apply.isPending ? <><Loader2 className="size-3.5 animate-spin" /> Aplicando...</> : <><Check className="size-3.5" /> Atualizar plano</>}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              Ver ajustes
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => refetch()}>
+              Recalcular
+            </Button>
+          </>
+        )}
+        {versions.length > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => setVersionsOpen(true)}>
+            <History className="size-3.5" /> Versões do plano ({versions.length})
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            Ver ajustes
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => refetch()}>
-            Recalcular
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Detalhamento completo */}
       <Dialog open={open} onOpenChange={setOpen}>
