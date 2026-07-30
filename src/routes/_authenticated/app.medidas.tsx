@@ -73,10 +73,36 @@ type Measurement = Record<string, any> & { id: string; log_date: string };
 
 const todayISO = () => format(new Date(), "yyyy-MM-dd");
 
+function MeasurementsError() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 pb-28 pt-6">
+      <div className="mb-5 flex items-center gap-3">
+        <Link
+          to="/app/perfil"
+          className="rounded-full border border-border p-2 hover:bg-muted"
+          aria-label="Voltar"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <h1 className="font-display text-2xl font-bold">Medidas e fotos</h1>
+      </div>
+      <EmptyState
+        icon={Ruler}
+        title="Não consegui abrir esta página"
+        message="Tente novamente em instantes. Seus dados continuam salvos."
+        action={
+          <Button onClick={() => window.location.reload()}>Tentar de novo</Button>
+        }
+      />
+    </div>
+  );
+}
+
 function MeasurementsPage() {
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"medidas" | "fotos">("medidas");
+
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-28 pt-6">
