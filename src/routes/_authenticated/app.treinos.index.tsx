@@ -58,23 +58,25 @@ function TreinosList() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      // Snapshot do treino + exercícios para permitir "Desfazer".
-      const workout = ((qc.getQueryData<any[]>(["workouts", user.id]) ?? []) as any[]).find((w) => w.id === id);
+      // Snapshot dos exercícios para permitir "Desfazer" (o treino vem do onMutate).
       const { data: items } = await supabase.from("workout_exercises").select("*").eq("workout_id", id);
       const { writeDelete } = await import("@/lib/offline-writes");
       await writeDelete("workouts", { id });
-      return { workout: workout ?? null, items: items ?? [] };
+      return { items: items ?? [] };
     },
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: ["workouts", user.id] });
       const prev = qc.getQueryData<any[]>(["workouts", user.id]);
+      const workout = (prev ?? []).find((w) => w.id === id) ?? null;
       qc.setQueryData<any[]>(["workouts", user.id], (old = []) => old.filter((w) => w.id !== id));
-      return { prev };
+      return { prev, workout };
     },
     onError: (_e, _id, ctx: any) => {
       if (ctx?.prev) qc.setQueryData(["workouts", user.id], ctx.prev);
     },
-    onSuccess: (snap: any) => {
+    onSuccess: (res: any, _id, ctx: any) => {
+      const snap = { workout: ctx?.workout ?? null, items: res?.items ?? [] };
+
       qc.invalidateQueries({ queryKey: ["workouts"] });
       toastUndo({
         message: "Treino excluído",

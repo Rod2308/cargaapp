@@ -219,22 +219,21 @@ function WorkoutEditor() {
 
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
-      // Guarda uma cópia do registro para permitir "Desfazer".
-      const snapshot = ((qc.getQueryData<any[]>(["workout-exercises", id]) ?? []) as any[]).find(
-        (it) => it.id === itemId,
-      );
       const { writeDelete } = await import("@/lib/offline-writes");
       await writeDelete("workout_exercises", { id: itemId });
-      return snapshot ?? null;
+      return itemId;
     },
     onMutate: async (itemId: string) => {
       await qc.cancelQueries({ queryKey: ["workout-exercises", id] });
       const prev = qc.getQueryData<any[]>(["workout-exercises", id]);
+      // Guarda uma cópia do registro ANTES de remover da cache, para o "Desfazer".
+      const snapshot = (prev ?? []).find((it) => it.id === itemId) ?? null;
       qc.setQueryData<any[]>(["workout-exercises", id], (old = []) => old.filter((it) => it.id !== itemId));
-      return { prev };
+      return { prev, snapshot };
     },
     onError: (_e, _id, ctx: any) => { if (ctx?.prev) qc.setQueryData(["workout-exercises", id], ctx.prev); },
-    onSuccess: (snapshot: any) => {
+    onSuccess: (_itemId, _vars, ctx: any) => {
+      const snapshot = ctx?.snapshot ?? null;
       qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
       toastUndo({
         message: "Exercício removido",
@@ -254,6 +253,7 @@ function WorkoutEditor() {
       });
     },
   });
+
 
 
   const startSession = useMutation({
