@@ -126,6 +126,7 @@ export function combineTimeline(
       : 45;
     out.push({
       date: toDateStr(s.started_at),
+      at: s.started_at,
       source: "workout",
       label: s.workout_label ? `Treino ${s.workout_label}` : s.workout_name ?? "Treino",
       impact,
@@ -144,6 +145,7 @@ export function combineTimeline(
       (a.ended_at ? Math.max(0, (new Date(a.ended_at).getTime() - started.getTime()) / 60000) : 30);
     out.push({
       date: toDateStr(a.started_at),
+      at: a.started_at,
       source: "extra",
       label: a.activity_name,
       impact: map?.muscles ?? {},
@@ -156,23 +158,33 @@ export function combineTimeline(
   return out;
 }
 
-// Dias desde o último esforço de impacto médio/alto num grupo (Infinity se nunca).
+/**
+ * Dias (fracionados) desde o último esforço de impacto médio/alto num grupo.
+ * Usa `fractionalDaysSince` — mesma matemática do motor de Recuperação.
+ * Infinity quando nunca houve estímulo na janela.
+ */
 export function diasDesdeUltimoEsforco(
   timeline: TimelineEntry[],
   grupo: MuscleGroup,
   now: Date = new Date(),
 ): number {
-  const today = new Date(now.toISOString().slice(0, 10));
   let best: number | null = null;
   for (const e of timeline) {
     const impact = e.impact[grupo];
     if (impact === "alto" || impact === "medio") {
-      const diff = daysBetween(today, new Date(e.date));
+      const diff = Math.max(0, fractionalDaysSince(e.at ?? `${e.date}T12:00:00.000Z`, now));
       if (best == null || diff < best) best = diff;
     }
   }
   return best == null ? Number.POSITIVE_INFINITY : best;
 }
+
+/** Formata dias fracionados para exibição (ex.: 2.4d → "2,4"). */
+export function formatDias(d: number): string {
+  if (!Number.isFinite(d)) return "—";
+  return d >= 10 ? String(Math.round(d)) : d.toFixed(1).replace(".", ",");
+}
+
 
 export function gruposLiberados(
   timeline: TimelineEntry[],
