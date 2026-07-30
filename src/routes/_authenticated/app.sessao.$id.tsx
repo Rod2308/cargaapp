@@ -1027,6 +1027,73 @@ function formatRefSet(s: any): string {
 }
 
 /** Mostra, de forma informativa, o que foi feito na última vez neste exercício. */
+/**
+ * Marca o exercício como indisponível hoje e sugere substitutos do mesmo
+ * grupo muscular (priorizando equipamento parecido) já cadastrados.
+ */
+function SwapExerciseButton({
+  current,
+  catalog,
+  onSwap,
+}: {
+  current: { id: string; name: string; muscle_group?: string | null; equipment?: string | null };
+  catalog: any[];
+  onSwap: (exerciseId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(() => {
+    const group = (current.muscle_group ?? "").toLowerCase();
+    const equip = (current.equipment ?? "").toLowerCase();
+    return catalog
+      .filter((e) => e.id !== current.id && (e.muscle_group ?? "").toLowerCase() === group)
+      .sort((a, b) => {
+        const sa = (a.equipment ?? "").toLowerCase() === equip ? 0 : 1;
+        const sb = (b.equipment ?? "").toLowerCase() === equip ? 0 : 1;
+        return sa - sb || String(a.name).localeCompare(String(b.name), "pt-BR");
+      })
+      .slice(0, 12);
+  }, [catalog, current]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Trocar exercício">
+          <Ban className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-3">
+        <p className="text-sm font-semibold">Indisponível hoje?</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Substitutos para {current.muscle_group ?? "o mesmo grupo"}:
+        </p>
+        {options.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Não encontrei outro exercício cadastrado para esse grupo muscular.
+          </p>
+        ) : (
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {options.map((e) => (
+              <button
+                key={e.id}
+                className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                onClick={() => {
+                  onSwap(e.id);
+                  setOpen(false);
+                }}
+              >
+                {e.name}
+                {e.equipment && (
+                  <span className="ml-1 text-xs text-muted-foreground">· {e.equipment}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } }) {
   const when = new Date(reference.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   return (
