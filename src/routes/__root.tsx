@@ -126,6 +126,8 @@ function RootComponent() {
     // Mantém o token do Supabase persistido corretamente em qualquer origem
     // (inclui o retorno do Google e da ponte /auth-bridge).
     const detachPersistence = attachSessionPersistence(supabase.auth);
+    // Sincroniza o cache entre abas (check-in feito em outra aba atualiza aqui)
+    const detachCrossTabSync = initCrossTabSync(queryClient);
 
     // Pré-carrega dados essenciais para uso offline (best-effort)
     supabase.auth.getUser().then(({ data }) => {
