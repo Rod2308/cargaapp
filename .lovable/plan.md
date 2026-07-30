@@ -1,47 +1,79 @@
-# Modo Offline — Evolução do sistema atual (auditado)
+# Modo Offline Completo — Fila de Sincronização
 
-> Revisado após auditoria do código existente. **Não vamos reconstruir do zero.**
-> O app já tem uma base offline funcional; o plano agora é evoluí-la.
+Transformar o Carga num app que continua funcionando 100% quando a internet cai: você navega, cria treinos, marca séries, manda mensagem — e tudo sincroniza sozinho quando a conexão volta.
 
-## O que JÁ existe hoje (auditoria)
+## O que você vai ganhar
 
-| Peça | Arquivo | Estado |
-|---|---|---|
-| Fila de escrita offline (IndexedDB via `idb-keyval`) | `src/lib/offline-queue.ts` | Funciona: FIFO, flush em `online`/`focus`/30s, idempotência por `client_mutation_id` |
-| Helpers de escrita "atravessa fila" | `src/lib/offline-writes.ts` | Funciona: insert/upsert/update/delete com fallback automático para a fila |
-| Cache de leitura offline | `src/lib/query-persister.ts` | Funciona: persiste o cache do React Query em IndexedDB (30 dias) |
-| Pré-carga de dados essenciais | `src/lib/offline-prefetch.ts` | Funciona |
-| Banner de status + pendentes | `src/components/SyncStatus.tsx` | Funciona, com ping real de rede (`useOnline`) |
-| Aviso "precisa de internet" | `src/components/OfflineNotice.tsx` | Funciona |
-| Snapshot da sessão em andamento | `src/lib/session-persist.ts` | Funciona |
-| Coluna `client_mutation_id` UNIQUE | migration já aplicada | Feito |
+- **Abrir o app offline**: telas, últimos treinos e histórico ficam em cache local.
+- **Criar/editar offline**: novos treinos, séries, sessões, check-ins diários e mensagens entram numa fila.
+- **Sincronização automática**: quando volta a internet, a fila envia tudo em ordem e você vê um badge "Sincronizando… X pendentes".
+- **Indicador visual**: cada item criado offline mostra um ícone "⏳ pendente" até sincronizar.
+- **Resolução de conflitos**: se o mesmo registro foi alterado no servidor, você é avisado e decide (manter o seu / usar o do servidor).
 
-## Decisão sobre Dexie / tabelas `cache_*`
+## O que fica offline (leitura)
 
-**Não implementar agora.** O `idb-keyval` + persister do React Query já cobre
-leitura e escrita offline com volume atual (dezenas de treinos, ~30 sessões,
-~100 mensagens por conversa). Dexie só se justifica quando precisarmos de
-consultas indexadas locais (filtro/ordenção por data direto no IndexedDB) ou
-quando o blob único do cache passar de ~5 MB.
+Cache local no IndexedDB, atualizado a cada abertura online:
+- Seus treinos e exercícios (todos)
+- Últimas 30 sessões + séries
+- Perfil, preferências, grupos que você participa
+- Últimas 100 mensagens de cada conversa/grupo
 
-**Gatilhos para reavaliar Dexie:**
-- cache serializado do React Query > 5 MB (medir com `navigator.storage.estimate()`);
-- necessidade de busca/paginação local em histórico longo;
-- perda de performance no throttle de gravação (hoje 1,5 s).
+## O que fica na fila (escrita)
 
-## O que falta (backlog priorizado)
+Operações que geram um item na fila offline:
+- Iniciar/finalizar sessão de treino
+- Adicionar/editar/remover série
+- Criar/editar/excluir treino e exercício do treino
+- Check-in diário, sono, desconforto
+- Enviar mensagem (DM ou grupo)
+- Editar perfil
 
-1. **Falhas permanentes visíveis** — *feito*: ops que falham por RLS/constraint
-   vão para `failed_ops` persistido, com badge "N alterações não sincronizaram",
-   detalhe do erro e botões tentar de novo / descartar.
-2. **`PendingBadge` nos itens** — marcar visualmente itens criados offline
-   (`_pending` já é devolvido por `writeInsert`).
-3. **Detecção de conflito por `updated_at`** — hoje o último write vence.
-4. **Backoff exponencial** no flush (hoje intervalo fixo de 30 s).
-5. **Limpeza de cache ao trocar de conta** (evitar vazamento entre usuários).
-6. **Migrar escritas restantes** para `offline-writes` (medidas, grupos, perfil).
+Operações que **exigem internet** (mostram aviso claro):
+- Login/cadastro
+- Entrar em grupo por código, aceitar convite
+- Importar arquivo `.fit`/plano (parse é local, mas salvar precisa de rede)
+- Push notifications (chegam só online)
+- Ranking em tempo real do grupo
 
-## Fora de escopo
+## Como funciona por dentro (técnico)
 
-- Sincronização colaborativa em tempo real offline (chat/ranking de grupo).
-- Cache offline de imagens de exercícios.
+```text
+┌─────────────┐   escrita    ┌──────────────┐
+│  Componente │ ───────────► │  offline-db  │  IndexedDB local
+└─────────────┘              │  (Dexie)     │  ├─ cache_*   (leitura)
+       ▲                     │              │  └─ mutations (fila)
+       │ lê                  └──────┬───────┘
+       │                            │ quando online
+       │                            ▼
+       │                     ┌──────────────┐
+       └──── sync ◄───────── │ sync-engine  │ ──► Supabase
+                             └──────────────┘
+```
+
+**Componentes novos:**
+1. `src/lib/offline-db.ts` — Dexie (wrapper amigável do IndexedDB) com tabelas `mutations`, `cache_workouts`, `cache_sessions`, `cache_messages`, etc.
+2. `src/lib/sync-engine.ts` — worker que processa a fila em ordem FIFO, com retry exponencial e detecção de conflito por `updated_at`.
+3. `src/hooks/useOfflineMutation.ts` — substituto do `useMutation` que grava na fila se offline, direto se online.
+4. `src/hooks/useOfflineQuery.ts` — wrapper do `useQuery` que devolve dado do cache quando offline.
+5. `src/components/SyncBadge.tsx` — mostra "N pendentes • sincronizando…" no header.
+6. `src/components/PendingBadge.tsx` — ícone ⏳ em cada item ainda não sincronizado.
+
+**Backend:**
+- Adicionar coluna `client_mutation_id uuid` nas tabelas de escrita (sessions, session_sets, workouts, workout_exercises, messages, group_messages, daily_checkins, sleep_logs) com `UNIQUE` — garante idempotência (se o retry duplicar, o servidor ignora).
+- Migration única com `ADD COLUMN IF NOT EXISTS` + índice único.
+
+**Escopo dos dados em cache:** só do usuário logado. Ao trocar de conta, o cache é limpo.
+
+## Fora de escopo (fica pra depois se quiser)
+
+- Sincronização entre múltiplos dispositivos do mesmo usuário em tempo real offline.
+- Cache offline de imagens grandes de exercícios (só metadados).
+- Ranking e chat de grupo em modo offline colaborativo.
+
+## Entrega em 3 passos
+
+1. **Infra base**: Dexie + offline-db + sync-engine + SyncBadge + migration `client_mutation_id`.
+2. **Migração das escritas críticas**: sessão de treino, séries, check-in, perfil (o fluxo que você mais usa).
+3. **Migração das demais**: workouts, mensagens, sleep_logs + PendingBadge nos itens.
+
+Posso começar pelo passo 1 agora. Confirma?

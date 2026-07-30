@@ -26,12 +26,10 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as ApiPublicVapidRouteImport } from './routes/api/public/vapid'
 import { Route as ApiPublicBridgeRouteImport } from './routes/api/public/bridge'
-import { Route as AuthenticatedAppVolumeRouteImport } from './routes/_authenticated/app.volume'
 import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authenticated/app.progresso'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
 import { Route as AuthenticatedAppMensagensRouteImport } from './routes/_authenticated/app.mensagens'
-import { Route as AuthenticatedAppMedidasRouteImport } from './routes/_authenticated/app.medidas'
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
 import { Route as AuthenticatedAppInstalarRouteImport } from './routes/_authenticated/app.instalar'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
@@ -139,11 +137,6 @@ const ApiPublicBridgeRoute = ApiPublicBridgeRouteImport.update({
   path: '/api/public/bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAppVolumeRoute = AuthenticatedAppVolumeRouteImport.update({
-  id: '/volume',
-  path: '/volume',
-  getParentRoute: () => AuthenticatedAppRoute,
-} as any)
 const AuthenticatedAppProgressoRoute =
   AuthenticatedAppProgressoRouteImport.update({
     id: '/progresso',
@@ -167,11 +160,6 @@ const AuthenticatedAppMensagensRoute =
     path: '/mensagens',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
-const AuthenticatedAppMedidasRoute = AuthenticatedAppMedidasRouteImport.update({
-  id: '/medidas',
-  path: '/medidas',
-  getParentRoute: () => AuthenticatedAppRoute,
-} as any)
 const AuthenticatedAppMcpTesteRoute =
   AuthenticatedAppMcpTesteRouteImport.update({
     id: '/mcp-teste',
@@ -309,12 +297,10 @@ export interface FileRoutesByFullPath {
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
-  '/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
-  '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app/': typeof AuthenticatedAppIndexRoute
@@ -352,12 +338,10 @@ export interface FileRoutesByTo {
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
-  '/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
-  '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/app': typeof AuthenticatedAppIndexRoute
@@ -398,12 +382,10 @@ export interface FileRoutesById {
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/_authenticated/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
-  '/_authenticated/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/_authenticated/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/progresso': typeof AuthenticatedAppProgressoRoute
-  '/_authenticated/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
@@ -444,12 +426,10 @@ export interface FileRouteTypes {
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
-    | '/app/medidas'
     | '/app/mensagens'
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
-    | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app/'
@@ -487,12 +467,10 @@ export interface FileRouteTypes {
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
-    | '/app/medidas'
     | '/app/mensagens'
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
-    | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/app'
@@ -532,12 +510,10 @@ export interface FileRouteTypes {
     | '/_authenticated/app/historico'
     | '/_authenticated/app/instalar'
     | '/_authenticated/app/mcp-teste'
-    | '/_authenticated/app/medidas'
     | '/_authenticated/app/mensagens'
     | '/_authenticated/app/notificacoes'
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/progresso'
-    | '/_authenticated/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
     | '/_authenticated/app/'
@@ -705,13 +681,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/app/volume': {
-      id: '/_authenticated/app/volume'
-      path: '/volume'
-      fullPath: '/app/volume'
-      preLoaderRoute: typeof AuthenticatedAppVolumeRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
     '/_authenticated/app/progresso': {
       id: '/_authenticated/app/progresso'
       path: '/progresso'
@@ -738,13 +707,6 @@ declare module '@tanstack/react-router' {
       path: '/mensagens'
       fullPath: '/app/mensagens'
       preLoaderRoute: typeof AuthenticatedAppMensagensRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
-    '/_authenticated/app/medidas': {
-      id: '/_authenticated/app/medidas'
-      path: '/medidas'
-      fullPath: '/app/medidas'
-      preLoaderRoute: typeof AuthenticatedAppMedidasRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/mcp-teste': {
@@ -923,12 +885,10 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
   AuthenticatedAppInstalarRoute: typeof AuthenticatedAppInstalarRoute
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
-  AuthenticatedAppMedidasRoute: typeof AuthenticatedAppMedidasRoute
   AuthenticatedAppMensagensRoute: typeof AuthenticatedAppMensagensRoute
   AuthenticatedAppNotificacoesRoute: typeof AuthenticatedAppNotificacoesRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
   AuthenticatedAppProgressoRoute: typeof AuthenticatedAppProgressoRoute
-  AuthenticatedAppVolumeRoute: typeof AuthenticatedAppVolumeRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
   AuthenticatedAppGruposIdRoute: typeof AuthenticatedAppGruposIdRouteWithChildren
@@ -943,12 +903,10 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
   AuthenticatedAppInstalarRoute: AuthenticatedAppInstalarRoute,
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
-  AuthenticatedAppMedidasRoute: AuthenticatedAppMedidasRoute,
   AuthenticatedAppMensagensRoute: AuthenticatedAppMensagensRoute,
   AuthenticatedAppNotificacoesRoute: AuthenticatedAppNotificacoesRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
   AuthenticatedAppProgressoRoute: AuthenticatedAppProgressoRoute,
-  AuthenticatedAppVolumeRoute: AuthenticatedAppVolumeRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
   AuthenticatedAppGruposIdRoute: AuthenticatedAppGruposIdRouteWithChildren,

@@ -14,66 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      body_measurements: {
-        Row: {
-          arm_cm: number | null
-          body_fat_pct: number | null
-          calf_cm: number | null
-          chest_cm: number | null
-          created_at: string
-          forearm_cm: number | null
-          hip_cm: number | null
-          id: string
-          log_date: string
-          neck_cm: number | null
-          notes: string | null
-          shoulder_cm: number | null
-          thigh_cm: number | null
-          updated_at: string
-          user_id: string
-          waist_cm: number | null
-          weight_kg: number | null
-        }
-        Insert: {
-          arm_cm?: number | null
-          body_fat_pct?: number | null
-          calf_cm?: number | null
-          chest_cm?: number | null
-          created_at?: string
-          forearm_cm?: number | null
-          hip_cm?: number | null
-          id?: string
-          log_date?: string
-          neck_cm?: number | null
-          notes?: string | null
-          shoulder_cm?: number | null
-          thigh_cm?: number | null
-          updated_at?: string
-          user_id: string
-          waist_cm?: number | null
-          weight_kg?: number | null
-        }
-        Update: {
-          arm_cm?: number | null
-          body_fat_pct?: number | null
-          calf_cm?: number | null
-          chest_cm?: number | null
-          created_at?: string
-          forearm_cm?: number | null
-          hip_cm?: number | null
-          id?: string
-          log_date?: string
-          neck_cm?: number | null
-          notes?: string | null
-          shoulder_cm?: number | null
-          thigh_cm?: number | null
-          updated_at?: string
-          user_id?: string
-          waist_cm?: number | null
-          weight_kg?: number | null
-        }
-        Relationships: []
-      }
       daily_checkins: {
         Row: {
           client_mutation_id: string | null
@@ -488,36 +428,6 @@ export type Database = {
         }
         Relationships: []
       }
-      progress_photos: {
-        Row: {
-          created_at: string
-          id: string
-          note: string | null
-          pose: string | null
-          storage_path: string
-          taken_on: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          note?: string | null
-          pose?: string | null
-          storage_path: string
-          taken_on?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          note?: string | null
-          pose?: string | null
-          storage_path?: string
-          taken_on?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       push_outbox: {
         Row: {
           body: string
@@ -623,12 +533,10 @@ export type Database = {
           completed_at: string
           exercise_id: string
           id: string
-          notes: string | null
           reps: number | null
           rpe: number | null
           session_id: string
           set_number: number
-          technique: string
           weight_kg: number | null
           workout_exercise_id: string | null
         }
@@ -637,12 +545,10 @@ export type Database = {
           completed_at?: string
           exercise_id: string
           id?: string
-          notes?: string | null
           reps?: number | null
           rpe?: number | null
           session_id: string
           set_number: number
-          technique?: string
           weight_kg?: number | null
           workout_exercise_id?: string | null
         }
@@ -651,12 +557,10 @@ export type Database = {
           completed_at?: string
           exercise_id?: string
           id?: string
-          notes?: string | null
           reps?: number | null
           rpe?: number | null
           session_id?: string
           set_number?: number
-          technique?: string
           weight_kg?: number | null
           workout_exercise_id?: string | null
         }
@@ -879,7 +783,6 @@ export type Database = {
         Row: {
           client_mutation_id: string | null
           exercise_id: string
-          group_key: string | null
           id: string
           notes: string | null
           order_idx: number
@@ -887,13 +790,11 @@ export type Database = {
           target_rest_seconds: number
           target_sets: number
           target_weight_kg: number | null
-          technique: string
           workout_id: string
         }
         Insert: {
           client_mutation_id?: string | null
           exercise_id: string
-          group_key?: string | null
           id?: string
           notes?: string | null
           order_idx?: number
@@ -901,13 +802,11 @@ export type Database = {
           target_rest_seconds?: number
           target_sets?: number
           target_weight_kg?: number | null
-          technique?: string
           workout_id: string
         }
         Update: {
           client_mutation_id?: string | null
           exercise_id?: string
-          group_key?: string | null
           id?: string
           notes?: string | null
           order_idx?: number
@@ -915,7 +814,6 @@ export type Database = {
           target_rest_seconds?: number
           target_sets?: number
           target_weight_kg?: number | null
-          technique?: string
           workout_id?: string
         }
         Relationships: [

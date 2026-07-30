@@ -40,11 +40,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
 import { RestTimer } from "@/components/RestTimer";
-import { PlateCalculator } from "@/components/PlateCalculator";
-import { checkPr } from "@/lib/pr";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
-import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -212,27 +209,6 @@ function SessionPage() {
 
 
 
-  /**
-   * Compara a série recém-registrada com todo o histórico do exercício
-   * (sessões anteriores + o que já foi feito hoje) e avisa se for recorde.
-   */
-  const announcePr = useCallback(
-    (exerciseId: string, reps: number, weight: number | null) => {
-      if (!weight || weight <= 0 || !reps) return;
-      const history = [
-        ...(prevSets as any[])
-          .filter((r) => r.exercise_id === exerciseId)
-          .map((r) => ({ weight_kg: r.weight_kg, reps: r.reps })),
-        ...(sets as any[])
-          .filter((s) => s.exercise_id === exerciseId)
-          .map((s) => ({ weight_kg: s.weight_kg, reps: s.reps })),
-      ];
-      const pr = checkPr({ weight_kg: weight, reps }, history);
-      if (pr.isPr) toast.success(`🏆 ${pr.message}`, { duration: 6000 });
-    },
-    [prevSets, sets],
-  );
-
 
   const logSet = useMutation({
     mutationFn: async (row: any) => {
@@ -309,7 +285,7 @@ function SessionPage() {
   const removeExerciseItem = useMutation({
     mutationFn: async (item: { id: string; exercise_id: string }) => {
       // Snapshots para permitir "Desfazer" (exercício do plano + séries feitas).
-      const itemSnap = ((qc.getQueryData<any[]>(["session-plan", id]) ?? []) as any[]).find(
+      const itemSnap = ((qc.getQueryData<any[]>(["session-items", id]) ?? []) as any[]).find(
         (it) => it.id === item.id,
       );
       const setsSnap = ((qc.getQueryData<any[]>(["session-sets", id]) ?? []) as any[]).filter(
@@ -318,7 +294,7 @@ function SessionPage() {
       qc.setQueryData(["session-sets", id], (prev: any[] = []) =>
         prev.filter((s) => s.workout_exercise_id !== item.id),
       );
-      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
+      qc.setQueryData(["session-items", id], (prev: any[] = []) =>
         prev.filter((it) => it.id !== item.id),
       );
       await enqueueOp({
@@ -338,7 +314,7 @@ function SessionPage() {
           }
         },
         onRestored: () => {
-          qc.invalidateQueries({ queryKey: ["session-plan", id] });
+          qc.invalidateQueries({ queryKey: ["session-items", id] });
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
         },
         onRedo: async () => {
@@ -350,7 +326,7 @@ function SessionPage() {
           await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
         },
         onRedone: () => {
-          qc.invalidateQueries({ queryKey: ["session-plan", id] });
+          qc.invalidateQueries({ queryKey: ["session-items", id] });
           qc.invalidateQueries({ queryKey: ["session-sets", id] });
         },
 
@@ -358,33 +334,11 @@ function SessionPage() {
     },
     onError: (e: any) => toast.error(e.message),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["session-plan", id] });
+      qc.invalidateQueries({ queryKey: ["session-items", id] });
       qc.invalidateQueries({ queryKey: ["session-sets", id] });
     },
   });
 
-  // Troca o exercício do plano por um substituto (quando o aparelho está
-  // ocupado/indisponível), mantendo séries, reps e descanso planejados.
-  const swapExercise = useMutation({
-    mutationFn: async ({ itemId, exerciseId }: { itemId: string; exerciseId: string }) => {
-      const replacement = (allExercises as any[]).find((e) => e.id === exerciseId);
-      if (!replacement) throw new Error("Exercício substituto não encontrado.");
-      qc.setQueryData(["session-plan", id], (prev: any[] = []) =>
-        prev.map((it) =>
-          it.id === itemId ? { ...it, exercise_id: exerciseId, exercises: replacement } : it,
-        ),
-      );
-      await enqueueOp({
-        kind: "update",
-        table: "workout_exercises",
-        match: { id: itemId },
-        patch: { exercise_id: exerciseId },
-      });
-      toast.success(`Trocado por ${replacement.name}`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Não consegui trocar o exercício."),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["session-plan", id] }),
-  });
 
 
   const finish = useMutation({
@@ -450,7 +404,10 @@ function SessionPage() {
       } else {
         void markSessionSnapshotPendingClear(id);
       }
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
@@ -469,7 +426,9 @@ function SessionPage() {
     },
     onSuccess: () => {
       void clearSessionSnapshot(id);
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
       toast.success("Treino cancelado");
       navigate({ to: "/app" });
     },
@@ -480,10 +439,7 @@ function SessionPage() {
   const { data: allExercises = [] } = useQuery({
     queryKey: ["all-exercises"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("exercises")
-        .select("id, name, muscle_group, equipment, image_url")
-        .order("name");
+      const { data } = await supabase.from("exercises").select("id, name, muscle_group, image_url").order("name");
       return data ?? [];
     },
   });
@@ -735,11 +691,6 @@ function SessionPage() {
                       <span className="text-xs text-muted-foreground">
                         {done.length}/{it.target_sets}
                       </span>
-                      <SwapExerciseButton
-                        current={it.exercises}
-                        catalog={allExercises as any[]}
-                        onSwap={(exerciseId) => swapExercise.mutate({ itemId: it.id, exerciseId })}
-                      />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Remover exercício">
@@ -813,7 +764,7 @@ function SessionPage() {
                 lastSet={lastRef?.sets[done.length] ?? null}
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
 
-                onLog={(reps, weight, extras) => {
+                onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
                     workout_exercise_id: it.id,
@@ -821,11 +772,7 @@ function SessionPage() {
                     set_number: done.length + 1,
                     reps,
                     weight_kg: weight || null,
-                    rpe: extras.rpe,
-                    notes: extras.notes,
-                    technique: extras.technique,
                   });
-                  announcePr(it.exercise_id, reps, weight || null);
                   startRest(it.target_rest_seconds, it.exercises?.name);
                 }}
               />
@@ -881,7 +828,7 @@ function SessionPage() {
                 repsLabel={isSport ? "Minutos" : "Reps"}
                 hideWeight={isSport}
                 actionLabel={isSport ? "Registrar" : "Adicionar série"}
-                onLog={(reps, weight, extras) => {
+                onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
                     workout_exercise_id: null,
@@ -889,14 +836,8 @@ function SessionPage() {
                     set_number: doneSets.length + 1,
                     reps,
                     weight_kg: isSport ? null : (weight || null),
-                    rpe: extras.rpe,
-                    notes: extras.notes,
-                    technique: extras.technique,
                   });
-                  if (!isSport) {
-                    announcePr(exerciseId, reps, weight || null);
-                    startRest(60, name);
-                  }
+                  if (!isSport) startRest(60, name);
                 }}
               />
             </div>
@@ -1023,73 +964,6 @@ function formatRefSet(s: any): string {
 }
 
 /** Mostra, de forma informativa, o que foi feito na última vez neste exercício. */
-/**
- * Marca o exercício como indisponível hoje e sugere substitutos do mesmo
- * grupo muscular (priorizando equipamento parecido) já cadastrados.
- */
-function SwapExerciseButton({
-  current,
-  catalog,
-  onSwap,
-}: {
-  current: { id: string; name: string; muscle_group?: string | null; equipment?: string | null };
-  catalog: any[];
-  onSwap: (exerciseId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const options = useMemo(() => {
-    const group = (current.muscle_group ?? "").toLowerCase();
-    const equip = (current.equipment ?? "").toLowerCase();
-    return catalog
-      .filter((e) => e.id !== current.id && (e.muscle_group ?? "").toLowerCase() === group)
-      .sort((a, b) => {
-        const sa = (a.equipment ?? "").toLowerCase() === equip ? 0 : 1;
-        const sb = (b.equipment ?? "").toLowerCase() === equip ? 0 : 1;
-        return sa - sb || String(a.name).localeCompare(String(b.name), "pt-BR");
-      })
-      .slice(0, 12);
-  }, [catalog, current]);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Trocar exercício">
-          <Ban className="h-4 w-4 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3">
-        <p className="text-sm font-semibold">Indisponível hoje?</p>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Substitutos para {current.muscle_group ?? "o mesmo grupo"}:
-        </p>
-        {options.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Não encontrei outro exercício cadastrado para esse grupo muscular.
-          </p>
-        ) : (
-          <div className="max-h-64 space-y-1 overflow-y-auto">
-            {options.map((e) => (
-              <button
-                key={e.id}
-                className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  onSwap(e.id);
-                  setOpen(false);
-                }}
-              >
-                {e.name}
-                {e.equipment && (
-                  <span className="ml-1 text-xs text-muted-foreground">· {e.equipment}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } }) {
   const when = new Date(reference.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   return (
@@ -1105,16 +979,7 @@ function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } 
   );
 }
 
-type LogExtras = { rpe: number | null; notes: string | null; technique: string };
-
-const TECHNIQUES = [
-  { value: "normal", label: "Normal" },
-  { value: "drop_set", label: "Drop-set" },
-  { value: "rest_pause", label: "Rest-pause" },
-  { value: "falha", label: "Até a falha" },
-];
-
-function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null, extras: LogExtras) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
   // Pré-seleciona os valores da última vez que o exercício foi feito (se houver),
   // caindo para os alvos do treino quando não há histórico. Sempre editável.
   const prefRepsBase = lastSet?.reps != null ? String(lastSet.reps) : String(defaultReps);
@@ -1122,141 +987,52 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
   const [reps, setReps] = useState<string>(prefRepsBase);
   const [weight, setWeight] = useState<string>(prefWeightBase);
   const [touched, setTouched] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [rpe, setRpe] = useState<string>("");
-  const [notes, setNotes] = useState<string>("");
-  const [technique, setTechnique] = useState<string>("normal");
   useEffect(() => {
     if (touched) return;
     setReps(prefRepsBase);
     setWeight(prefWeightBase);
   }, [prefRepsBase, prefWeightBase, touched]);
-
-  const submit = () => {
-    const r = Number(reps);
-    const w = weight === "" ? null : Number(weight);
-    if (!(r > 0)) return;
-    const rpeNum = rpe === "" ? null : Number(rpe);
-    onLog(r, hideWeight ? null : w, {
-      rpe: rpeNum != null && Number.isFinite(rpeNum) && rpeNum >= 1 && rpeNum <= 10 ? rpeNum : null,
-      notes: notes.trim() ? notes.trim().slice(0, 300) : null,
-      technique,
-    });
-    setTouched(false);
-    setRpe("");
-    setNotes("");
-    setTechnique("normal");
-    setShowDetails(false);
-  };
-
   return (
-    <div className="mt-3 border-t border-border pt-3">
-      <div className={`grid gap-2 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
+    <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
+      <label className="block">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={reps}
+          onChange={(e) => { setTouched(true); setReps(e.target.value); }}
+          className="mt-0.5 h-10"
+          placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
+        />
+      </label>
+
+      {!hideWeight && (
         <label className="block">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
           <Input
             type="number"
-            inputMode="numeric"
-            value={reps}
-            onChange={(e) => { setTouched(true); setReps(e.target.value); }}
+            inputMode="decimal"
+            step="0.5"
+            value={weight}
+            onChange={(e) => { setTouched(true); setWeight(e.target.value); }}
+
             className="mt-0.5 h-10"
-            placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
+            placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
           />
         </label>
-
-        {!hideWeight && (
-          <label className="block">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              value={weight}
-              onChange={(e) => { setTouched(true); setWeight(e.target.value); }}
-              className="mt-0.5 h-10"
-              placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
-            />
-          </label>
-        )}
-
-        <Button className="mt-4 h-10" onClick={submit}>
-          <Plus className="size-4" /> {actionLabel}
-        </Button>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowDetails((v) => !v)}
-          className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:underline"
-        >
-          {showDetails ? "Ocultar detalhes" : "RPE, técnica e observação"}
-        </button>
-        {!hideWeight && (
-          <PlateCalculator
-            targetWeight={weight === "" ? null : Number(weight)}
-            trigger={
-              <button
-                type="button"
-                className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Calcular anilhas
-              </button>
-            }
-          />
-        )}
-      </div>
-
-      {showDetails && (
-        <div className="mt-2 space-y-2 rounded-lg bg-secondary/40 p-2.5">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                RPE (1–10)
-              </span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={10}
-                step="0.5"
-                value={rpe}
-                onChange={(e) => setRpe(e.target.value)}
-                className="mt-0.5 h-9"
-                placeholder="opcional"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Técnica
-              </span>
-              <select
-                value={technique}
-                onChange={(e) => setTechnique(e.target.value)}
-                className="mt-0.5 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              >
-                {TECHNIQUES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Observação da série
-            </span>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              maxLength={300}
-              className="mt-0.5 h-9"
-              placeholder="Ex.: dor no ombro, pegada mais aberta…"
-            />
-          </label>
-        </div>
       )}
+
+      <Button
+        className="mt-4 h-10"
+        onClick={() => {
+          const r = Number(reps);
+          const w = weight === "" ? null : Number(weight);
+          if (r > 0) { onLog(r, hideWeight ? null : w); setTouched(false); }
+        }}
+      >
+        <Plus className="size-4" /> {actionLabel}
+      </Button>
+
     </div>
   );
 }
@@ -1272,39 +1048,20 @@ function SetRow({ index, set, onSave, onDelete, unit = "reps", hideWeight = fals
   }, [set.reps, set.weight_kg]);
 
   if (!editing) {
-    const techLabel =
-      set.technique && set.technique !== "normal"
-        ? (TECHNIQUES.find((t) => t.value === set.technique)?.label ?? set.technique)
-        : null;
     return (
-      <div className="text-sm">
-        <div className="flex items-center gap-2">
-          <Check className="size-4 shrink-0 text-success" />
-          <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
-          <span className="font-semibold">{set.reps} {unit}</span>
-          {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
-          {set.rpe != null && (
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              RPE {set.rpe}
-            </span>
-          )}
-          {techLabel && (
-            <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand">
-              {techLabel}
-            </span>
-          )}
-          <div className="ml-auto flex gap-1">
-            <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
-              <Pencil className="size-3.5" />
-            </Button>
-            <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
+      <div className="flex items-center gap-2 text-sm">
+        <Check className="size-4 shrink-0 text-success" />
+        <span className="text-muted-foreground">{unit === "min" ? "Bloco" : "Série"} {index + 1}:</span>
+        <span className="font-semibold">{set.reps} {unit}</span>
+        {!hideWeight && set.weight_kg != null && <span className="font-semibold">· {set.weight_kg} kg</span>}
+        <div className="ml-auto flex gap-1">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(true)} aria-label="Editar">
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Excluir">
+            <Trash2 className="size-3.5" />
+          </Button>
         </div>
-        {set.notes && (
-          <p className="ml-6 mt-0.5 text-[11px] italic text-muted-foreground">{set.notes}</p>
-        )}
       </div>
     );
   }

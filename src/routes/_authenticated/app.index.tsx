@@ -21,20 +21,14 @@ import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
-import { AutoProgressionCard } from "@/components/AutoProgressionCard";
-
-import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
-import { DecisionExplainer } from "@/components/DecisionExplainer";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
 import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
-import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
-  alinharComRecuperacao,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
   proximoNaRotinaComRecuperacao,
@@ -157,7 +151,10 @@ function Dashboard() {
       return { session: data, retro: !!dateStr };
     },
     onSuccess: ({ session, retro }) => {
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
       navigate({
         to: retro ? "/app/sessao/$id/editar" : "/app/sessao/$id",
         params: { id: session.id },
@@ -345,23 +342,7 @@ function Dashboard() {
 
   }, [todayCheckin, atividades, workouts]);
 
-  // O motor de Recuperação é a AUTORIDADE sobre treinar × descansar.
-  // A sugestão do dia continua escolhendo QUAL treino, mas a intensidade é
-  // rebaixada aqui pra que os dois cards nunca digam coisas opostas.
-  const suggestion = useMemo(() => {
-    const base = planoOuGeral.suggestion;
-    if (!base) return null;
-    return alinharComRecuperacao(
-      base,
-      recovery
-        ? {
-            status: recovery.status,
-            score: recovery.score,
-            intensityLabel: recovery.intensityLabel,
-          }
-        : null,
-    );
-  }, [planoOuGeral.suggestion, recovery]);
+  const suggestion = planoOuGeral.suggestion;
   const workoutSugeridoId = planoOuGeral.workoutId;
 
   const [checkinEditOpen, setCheckinEditOpen] = useState(false);
@@ -431,7 +412,8 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Sono registrado!");
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["sleep-logs"] });
+      qc.invalidateQueries({ queryKey: ["recovery"] });
     },
   });
 
@@ -487,7 +469,9 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Esporte registrado!");
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+      qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      qc.invalidateQueries({ queryKey: ["history-sessions"] });
       setSportOpen(false);
       setSportId("");
       setSportDuration("30");
@@ -567,11 +551,6 @@ function Dashboard() {
         <CardioRecoveryAlert userId={user.id} />
       </div>
 
-      <div className="mt-4">
-        <AutoProgressionCard userId={user.id} />
-      </div>
-
-
       {/* Frase do dia */}
       <div className="card-lift mt-4 flex items-start gap-3 p-4 sm:p-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground">
@@ -605,17 +584,6 @@ function Dashboard() {
         <DailySuggestionCard
           sugestao={suggestion}
           workoutSugeridoId={workoutSugeridoId}
-          recuperacao={
-            recovery
-              ? {
-                  score: recovery.score,
-                  statusLabel: RECOVERY_STATUS_LABEL[recovery.status],
-                  factors: recovery.factors,
-                  ignoredFactors: recovery.ignoredFactors,
-                  recommendation: recovery.recommendation,
-                }
-              : null
-          }
           onEditCheckin={() => setCheckinEditOpen(true)}
           onStart={() => {
             if (suggestion.intensidade === "descanso") {
@@ -683,10 +651,6 @@ function Dashboard() {
           <Plus className="size-5 text-muted-foreground" strokeWidth={2.5} />
         </button>
       </div>
-
-      <StreakSummaryCard userId={user.id} />
-
-
 
       {/* Dialog: registrar esporte */}
       <Dialog open={sportOpen} onOpenChange={setSportOpen}>
@@ -812,10 +776,6 @@ function Dashboard() {
             <Link to="/app/progresso" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Progresso
             </Link>
-            <Link to="/app/medidas" className="text-xs font-semibold text-foreground underline underline-offset-4">
-              Medidas
-            </Link>
-
             <Link to="/app/historico" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Histórico
             </Link>
@@ -936,14 +896,6 @@ function Dashboard() {
   );
 }
 
-/** Rótulo único de status compartilhado pelos cards de Recuperação e Sugestão. */
-const RECOVERY_STATUS_LABEL: Record<RecoveryData["status"], string> = {
-  recuperado: "Excelente",
-  leve: "Boa",
-  cuidado: "Moderada",
-  descanso: "Baixa",
-};
-
 type RecoveryData = {
   status: "recuperado" | "leve" | "cuidado" | "descanso";
   score: number;
@@ -969,12 +921,11 @@ function RecoveryCard({
   onRefresh: () => void;
 }) {
   const styles: Record<RecoveryData["status"], { bar: string; badge: string; label: string }> = {
-    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: RECOVERY_STATUS_LABEL.recuperado },
-    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: RECOVERY_STATUS_LABEL.leve },
-    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: RECOVERY_STATUS_LABEL.cuidado },
-    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: RECOVERY_STATUS_LABEL.descanso },
+    recuperado: { bar: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-500", label: "Excelente" },
+    leve: { bar: "bg-brand", badge: "bg-brand/20 text-foreground", label: "Boa" },
+    cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: "Moderada" },
+    descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: "Baixa" },
   };
-  const [explainOpen, setExplainOpen] = useState(false);
   const s = recovery ? styles[recovery.status] : styles.leve;
   const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
   const topFactors = allFactors;
@@ -1003,20 +954,6 @@ function RecoveryCard({
                   <span className="tabular-nums">{recovery.score}</span>
                   <span className="opacity-60">/100</span>
                 </span>
-              )}
-              {recovery && (
-                <DecisionExplainer
-                  open={explainOpen}
-                  onOpenChange={setExplainOpen}
-                  decision={recovery.status === "descanso" ? "descansar" : "treinar"}
-                  score={recovery.score}
-                  statusLabel={s.label}
-                  intensityLabel={recovery.intensityLabel}
-                  summary={recovery.reason}
-                  factors={recovery.factors}
-                  ignoredFactors={recovery.ignoredFactors}
-                  origin={`Decisão do motor de Recuperação · ${recovery.recommendation}`}
-                />
               )}
               <button
                 onClick={onRefresh}
@@ -1088,18 +1025,55 @@ function RecoveryCard({
                 </div>
               )}
 
-              {/* Fatores considerados no cálculo — detalhe completo no modal */}
+              {/* Fatores considerados no cálculo */}
               {(topFactors.length > 0 || ignoredFactors.length > 0) && (
-                <button
-                  type="button"
-                  onClick={() => setExplainOpen(true)}
-                  className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                >
-                  Como o score foi calculado ({topFactors.length} fator{topFactors.length === 1 ? "" : "es"}
-                  {ignoredFactors.length > 0 ? ` · ${ignoredFactors.length} ignorado${ignoredFactors.length === 1 ? "" : "s"}` : ""})
-                </button>
-              )}
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                    Como o score foi calculado ({topFactors.length} fator{topFactors.length === 1 ? "" : "es"}
+                    {ignoredFactors.length > 0 ? ` · ${ignoredFactors.length} ignorado${ignoredFactors.length === 1 ? "" : "s"}` : ""})
+                  </summary>
 
+                  {topFactors.length > 0 && (
+                    <>
+                      <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores usados</p>
+                      <ul className="mt-1 space-y-1">
+                        {topFactors.map((f) => (
+                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">{f.label}</p>
+                              <p className="truncate text-muted-foreground">{f.detail}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                              {f.impact > 0 ? `−${f.impact}` : "0"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  {ignoredFactors.length > 0 && (
+                    <>
+                      <p className="mt-3 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores ignorados</p>
+                      <ul className="mt-1 space-y-1">
+                        {ignoredFactors.map((f) => (
+                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <p className="font-medium text-muted-foreground line-through decoration-muted-foreground/40">
+                                {f.label}
+                              </p>
+                              <p className="text-muted-foreground">{f.reason}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-secondary/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              n/a
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </details>
+              )}
 
               {/* Dica prática */}
               {recovery.tip && (

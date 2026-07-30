@@ -14,15 +14,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    // Vite 8/Rolldown can drop declarations from the production server bundle
-    // while retaining their references. The build succeeds, but every deployed
-    // request then fails during module initialization. Development is unaffected,
-    // which is why this only appeared in preview/published deployments.
-    build: {
-      rollupOptions: {
-        treeshake: false,
-      },
-    },
     plugins: [
       imagetools(),
       mcpPlugin(),

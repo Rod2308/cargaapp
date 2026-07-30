@@ -9,16 +9,6 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import {
-  ALL_MUSCLE_GROUPS,
-  MUSCLE_LABEL,
-  MUSCLE_RECOVERY_DAYS,
-  fractionalDaysSince,
-  isMuscleRecovered,
-  normalizeMuscleGroup,
-  type MuscleGroup,
-} from "./muscle-recovery";
-
 
 const FactorSchema = z.object({
   key: z.string(),
@@ -53,7 +43,7 @@ type Factor = z.infer<typeof FactorSchema>;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
-export function scoreToStatus(score: number): RecoveryAdvice["status"] {
+function scoreToStatus(score: number): RecoveryAdvice["status"] {
   if (score >= 80) return "recuperado";
   if (score >= 60) return "leve";
   if (score >= 40) return "cuidado";
@@ -87,38 +77,7 @@ type SessionRow = {
   }[];
 };
 
-export type SleepRow = { log_date: string; hours: number; quality: number | null };
-
-/** Check-in diário manual — fallback de sono e fonte de prontidão do dia. */
-export type CheckinRow = {
-  log_date: string;
-  sleep_hours: number;
-  sleep_quality: number | null;
-  soreness: number | null;
-  energy: number | null;
-};
-
-/**
- * FONTE ÚNICA DE SONO: `sleep_logs` tem prioridade por dia; quando não houver
- * registro do dia, cai para o check-in diário manual. Nunca as duas em paralelo.
- * Retorna ordenado do mais recente para o mais antigo.
- */
-export function unifySleepSources(
-  sleepLogs: SleepRow[] | null | undefined,
-  checkins: CheckinRow[] | null | undefined,
-): SleepRow[] {
-  const byDate = new Map<string, SleepRow>();
-  for (const c of checkins ?? []) {
-    byDate.set(c.log_date, {
-      log_date: c.log_date,
-      hours: Number(c.sleep_hours),
-      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
-    });
-  }
-  for (const r of sleepLogs ?? []) byDate.set(r.log_date, r);
-  return Array.from(byDate.values()).sort((a, b) => (a.log_date < b.log_date ? 1 : -1));
-}
-
+type SleepRow = { log_date: string; hours: number; quality: number | null };
 
 type ProfileRow = {
   experience_level: string | null;
@@ -136,15 +95,7 @@ type ProfileRow = {
 
 type IgnoredFactor = { key: string; label: string; reason: string };
 
-type MuscleAgg = {
-  group: string;
-  key: MuscleGroup;
-  setsRecent: number;
-  volume: number;
-  avgRpe: number | null;
-  lastDaysAgo: number;
-};
-
+type MuscleAgg = { group: string; setsRecent: number; volume: number; avgRpe: number | null; lastDaysAgo: number };
 
 function ageYears(birth: string | null): number | null {
   if (!birth) return null;
@@ -160,19 +111,13 @@ function ageYears(birth: string | null): number | null {
 function aggregateMuscles(sessions: SessionRow[], now: Date): MuscleAgg[] {
   const map = new Map<string, MuscleAgg>();
   for (const s of sessions) {
-    const daysAgo = fractionalDaysSince(s.started_at, now);
+    const daysAgo = (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000;
     if (daysAgo > 5) continue;
     for (const st of s.session_sets ?? []) {
-      const raw = st.exercises?.muscle_group;
-      if (!raw || raw === "Esportes") continue;
-      // Fonte única de normalização — "Panturrilha"/"Panturrilhas" viram o
-      // mesmo grupo, "Antebraço" é reconhecido, "Core" vira "Abdômen".
-      const mg = normalizeMuscleGroup(raw);
-      if (!mg) continue;
-      const g = MUSCLE_LABEL[mg];
+      const g = st.exercises?.muscle_group;
+      if (!g || g === "Esportes") continue;
       const cur =
-        map.get(g) ??
-        { group: g, key: mg, setsRecent: 0, volume: 0, avgRpe: null, lastDaysAgo: 999 };
+        map.get(g) ?? { group: g, setsRecent: 0, volume: 0, avgRpe: null, lastDaysAgo: 999 };
       cur.setsRecent += 1;
       cur.volume += (Number(st.reps) || 0) * (Number(st.weight_kg) || 0);
       if (st.rpe) cur.avgRpe = cur.avgRpe == null ? Number(st.rpe) : (cur.avgRpe + Number(st.rpe)) / 2;
@@ -183,17 +128,14 @@ function aggregateMuscles(sessions: SessionRow[], now: Date): MuscleAgg[] {
   return Array.from(map.values());
 }
 
-
 function computeScore(input: {
   profile: ProfileRow | null;
   sessions: SessionRow[];
   sleep: SleepRow[];
-  checkinToday?: CheckinRow | null;
   now: Date;
   cycle: import("./cycle").CycleInfo | null;
 }) {
   const { profile, sessions, sleep, now } = input;
-  const checkinToday = input.checkinToday ?? null;
   const factors: Factor[] = [];
 
   const experienced = ["intermediario", "avancado", "avançado"].includes(
@@ -234,21 +176,14 @@ function computeScore(input: {
   }
 
   const muscles = aggregateMuscles(sessions, now);
-  // Limiar POR GRUPO (fonte única em muscle-recovery.ts): pernas precisam de
-  // mais dias que abdômen, então nada de 1.75d fixo pra todo mundo.
-  const overlapped = muscles.filter((m) => !isMuscleRecovered(m.key, m.lastDaysAgo) && m.setsRecent >= 4);
+  const overlapped = muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 4);
   let musclePenalty = 0;
   if (overlapped.length > 0) {
     musclePenalty = clamp(overlapped.length * 8, 0, 20);
     factors.push({
       key: "muscle-overlap",
       label: "Grupos ainda em recuperação",
-      detail: overlapped
-        .map(
-          (m) =>
-            `${m.group} há ${m.lastDaysAgo.toFixed(1)}d de ${MUSCLE_RECOVERY_DAYS[m.key]}d (${m.setsRecent} séries)`,
-        )
-        .join(", "),
+      detail: overlapped.map((m) => `${m.group} há ${m.lastDaysAgo.toFixed(1)}d (${m.setsRecent} séries)`).join(", "),
       impact: Math.round(musclePenalty),
     });
   }
@@ -287,34 +222,6 @@ function computeScore(input: {
       impact: Math.round(sleepPenalty),
     });
   }
-
-  // Prontidão de hoje — vem do mesmo check-in diário que alimenta o card
-  // "Sugestão de hoje", pra que os dois nunca discordem sobre dor/energia.
-  if (checkinToday) {
-    let readinessPenalty = 0;
-    const bits: string[] = [];
-    const dor = Number(checkinToday.soreness ?? 0);
-    const energia = Number(checkinToday.energy ?? 0);
-    if (dor >= 4) {
-      readinessPenalty += (dor - 3) * 9;
-      bits.push(`dor ${dor}/5`);
-    }
-    if (energia > 0 && energia <= 2) {
-      readinessPenalty += (3 - energia) * 8;
-      bits.push(`energia ${energia}/5`);
-    }
-    readinessPenalty = clamp(readinessPenalty, 0, 25);
-    if (readinessPenalty >= 3) {
-      factors.push({
-        key: "readiness",
-        label: "Check-in de hoje",
-        detail: bits.join(" · "),
-        impact: Math.round(readinessPenalty),
-      });
-    }
-  }
-
-
 
   const sportMinutes48h = sessions
     .filter((s) => (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000 <= 2)
@@ -452,19 +359,14 @@ function computeScore(input: {
   const top = [...factors].filter((f) => f.impact > 0).sort((a, b) => b.impact - a.impact).slice(0, 3);
 
   const workedRecent = new Set(
-    muscles.filter((m) => !isMuscleRecovered(m.key, m.lastDaysAgo) && m.setsRecent >= 3).map((m) => m.group),
+    muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 3).map((m) => m.group),
   );
   const workedYesterday = new Set(
-    muscles
-      .filter((m) => m.lastDaysAgo < MUSCLE_RECOVERY_DAYS[m.key] * 1.25 && m.setsRecent >= 4)
-      .map((m) => m.group),
+    muscles.filter((m) => m.lastDaysAgo < 2.5 && m.setsRecent >= 4).map((m) => m.group),
   );
-  const untouched = muscles
-    .filter((m) => m.lastDaysAgo >= MUSCLE_RECOVERY_DAYS[m.key] * 1.5)
-    .map((m) => m.group);
+  const untouched = muscles.filter((m) => m.lastDaysAgo >= 3).map((m) => m.group);
 
-  // Rótulos canônicos vindos da fonte única (inclui Abdômen e Antebraço).
-  const canonicalGroups = ALL_MUSCLE_GROUPS.map((g) => MUSCLE_LABEL[g]);
+  const canonicalGroups = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Core"];
   const avoidBase = new Set<string>([...workedRecent]);
   if (score < 40) canonicalGroups.forEach((g) => avoidBase.add(g));
   else if (score < 60) workedYesterday.forEach((g) => avoidBase.add(g));
@@ -555,7 +457,7 @@ export async function computeRecoveryAdviceFor(
   const since = new Date(now.getTime() - 14 * 86_400_000);
   const sleepSince = new Date(now.getTime() - 7 * 86_400_000);
 
-  const [{ data: profile }, { data: sessions }, { data: sleep }, { data: checkins }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
     supabase
       .from("profiles")
       .select("experience_level, uses_enhancers, birth_date, activity_level, injuries, weekly_frequency, sex, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days")
@@ -574,21 +476,7 @@ export async function computeRecoveryAdviceFor(
       .eq("user_id", userId)
       .gte("log_date", sleepSince.toISOString().slice(0, 10))
       .order("log_date", { ascending: false }),
-    supabase
-      .from("daily_checkins")
-      .select("log_date, sleep_hours, sleep_quality, soreness, energy")
-      .eq("user_id", userId)
-      .gte("log_date", sleepSince.toISOString().slice(0, 10))
-      .order("log_date", { ascending: false }),
   ]);
-
-  const sleepUnified = unifySleepSources(sleep as SleepRow[] | null, checkins as CheckinRow[] | null);
-
-  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
-  const checkinToday =
-    ((checkins ?? []) as CheckinRow[]).find((c) => c.log_date === todayStr) ?? null;
 
   const sex = (profile as { sex?: string } | null)?.sex ?? null;
   const ignoredFactors: IgnoredFactor[] = [];
@@ -606,7 +494,7 @@ export async function computeRecoveryAdviceFor(
     });
   }
 
-  if ((!sessions || sessions.length === 0) && sleepUnified.length === 0) {
+  if ((!sessions || sessions.length === 0) && (!sleep || sleep.length === 0)) {
     return {
       status: "recuperado",
       score: 95,
@@ -616,7 +504,7 @@ export async function computeRecoveryAdviceFor(
       reason: "Sem histórico ainda — corpo pronto para o primeiro treino.",
       recommendation: "Escolha um treino do plano e comece com carga moderada, focando técnica.",
       tip: "Anote o RPE de cada série pra afinar as recomendações.",
-      canDo: ["Peito", "Costas", "Ombro", "Pernas", "Abdômen"],
+      canDo: ["Peito", "Costas", "Ombros", "Pernas", "Core"],
       avoid: [],
       factors: [],
       ignoredFactors,
@@ -636,8 +524,7 @@ export async function computeRecoveryAdviceFor(
   const calc = computeScore({
     profile: (profile ?? null) as ProfileRow | null,
     sessions: (sessions ?? []) as SessionRow[],
-    sleep: sleepUnified,
-    checkinToday,
+    sleep: (sleep ?? []) as SleepRow[],
     now,
     cycle,
   });

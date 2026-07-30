@@ -43,47 +43,14 @@ export function safeNextPath(next: unknown): string {
   return next;
 }
 
-/**
- * Verifica se uma origem está acessível antes de redirecionar para ela.
- * Usa `no-cors` (resposta opaca) só para saber se a rede/host respondem —
- * qualquer falha ou estouro de tempo devolve false.
- */
-export async function probeOrigin(origin: string, timeoutMs = 7000): Promise<boolean> {
-  if (typeof fetch === "undefined") return true;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    await fetch(`${origin}/favicon.png?ping=${Date.now()}`, {
-      mode: "no-cors",
-      cache: "no-store",
-      credentials: "omit",
-      signal: controller.signal,
-    });
-    return true;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Manda o usuário da origem espelho para a tela de login canônica.
- * Antes checa se o domínio canônico responde; se não responder (offline,
- * DNS/rede falhando ou muito lento), devolve false e NÃO navega — quem chamou
- * mostra a tela "Não conseguimos conectar" do próprio app.
- */
-export async function redirectToCanonicalLogin(next: string): Promise<boolean> {
+/** Manda o usuário da origem espelho para a tela de login canônica. */
+export function redirectToCanonicalLogin(next: string): void {
   const url = new URL("/auth", CANONICAL_ORIGIN);
   url.searchParams.set("bridge", window.location.origin);
   const safe = safeNextPath(next);
   if (safe) url.searchParams.set("next", safe);
-  const reachable = await probeOrigin(CANONICAL_ORIGIN);
-  if (!reachable) return false;
   window.location.replace(url.toString());
-  return true;
 }
-
 
 /**
  * Na origem canônica: devolve a sessão para a origem espelho.

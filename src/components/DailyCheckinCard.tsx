@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ClipboardCheck } from "lucide-react";
 import { z } from "zod";
-import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 
 const checkinSchema = z.object({
   sleep_hours: z.number().min(0).max(24),
@@ -55,27 +54,12 @@ export function DailyCheckinCard({
         { user_id: userId, log_date: todayStr, ...parsed.data },
         { onConflict: "user_id,log_date" },
       );
-      // Mantém sleep_logs em sincronia com o check-in: o motor de Recuperação
-      // usa sleep_logs como fonte primária de sono e o check-in como fallback.
-      await writeUpsert(
-        "sleep_logs",
-        {
-          user_id: userId,
-          log_date: todayStr,
-          hours: parsed.data.sleep_hours,
-          quality: parsed.data.sleep_quality,
-        },
-        { onConflict: "user_id,log_date" },
-      );
       return parsed.data;
-
     },
     onSuccess: (payload) => {
       // Atualiza cache local para refletir imediatamente (mesmo offline).
       qc.setQueryData(["daily-checkin", userId, todayStr], payload);
-      // Invalida aqui e avisa as outras abas — Recuperação e Sugestão de hoje
-      // recarregam imediatamente em todas elas.
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
+      qc.invalidateQueries({ queryKey: ["daily-checkin"] });
       toast.success(initial ? "Check-in atualizado" : "Check-in salvo!");
       onSaved?.();
     },
