@@ -155,10 +155,7 @@ function Dashboard() {
       return { session: data, retro: !!dateStr };
     },
     onSuccess: ({ session, retro }) => {
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       navigate({
         to: retro ? "/app/sessao/$id/editar" : "/app/sessao/$id",
         params: { id: session.id },
