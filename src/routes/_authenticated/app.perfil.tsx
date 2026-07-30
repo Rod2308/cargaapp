@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight } from "lucide-react";
+import { LogOut, Smartphone, Share, MoreVertical, UserPlus, Unlink, Bell, ChevronRight, Ruler, BarChart3 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { getMyTrainer, linkTrainerByCode, unlinkMyTrainer, linkStudentByCode } from "@/lib/trainer.functions";
@@ -115,6 +115,34 @@ function PerfilPage() {
         <div className="flex-1">
           <p className="font-semibold">Notificações</p>
           <p className="text-xs text-muted-foreground">Ative ou desative por categoria</p>
+        </div>
+        <ChevronRight className="size-5 text-muted-foreground" />
+      </Link>
+
+      <Link
+        to="/app/medidas"
+        className="card-soft mt-3 flex items-center gap-3 p-4 hover:bg-accent/40 transition"
+      >
+        <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          <Ruler className="size-5" />
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold">Medidas e fotos</p>
+          <p className="text-xs text-muted-foreground">Peso, medidas corporais e fotos de progresso</p>
+        </div>
+        <ChevronRight className="size-5 text-muted-foreground" />
+      </Link>
+
+      <Link
+        to="/app/volume"
+        className="card-soft mt-3 flex items-center gap-3 p-4 hover:bg-accent/40 transition"
+      >
+        <div className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          <BarChart3 className="size-5" />
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold">Volume semanal</p>
+          <p className="text-xs text-muted-foreground">Séries por grupo muscular na semana</p>
         </div>
         <ChevronRight className="size-5 text-muted-foreground" />
       </Link>
