@@ -28,6 +28,7 @@ import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
 import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
