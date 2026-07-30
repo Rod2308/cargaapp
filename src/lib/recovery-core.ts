@@ -201,14 +201,21 @@ function computeScore(input: {
   }
 
   const muscles = aggregateMuscles(sessions, now);
-  const overlapped = muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 4);
+  // Limiar POR GRUPO (fonte única em muscle-recovery.ts): pernas precisam de
+  // mais dias que abdômen, então nada de 1.75d fixo pra todo mundo.
+  const overlapped = muscles.filter((m) => !isMuscleRecovered(m.key, m.lastDaysAgo) && m.setsRecent >= 4);
   let musclePenalty = 0;
   if (overlapped.length > 0) {
     musclePenalty = clamp(overlapped.length * 8, 0, 20);
     factors.push({
       key: "muscle-overlap",
       label: "Grupos ainda em recuperação",
-      detail: overlapped.map((m) => `${m.group} há ${m.lastDaysAgo.toFixed(1)}d (${m.setsRecent} séries)`).join(", "),
+      detail: overlapped
+        .map(
+          (m) =>
+            `${m.group} há ${m.lastDaysAgo.toFixed(1)}d de ${MUSCLE_RECOVERY_DAYS[m.key]}d (${m.setsRecent} séries)`,
+        )
+        .join(", "),
       impact: Math.round(musclePenalty),
     });
   }
@@ -384,14 +391,19 @@ function computeScore(input: {
   const top = [...factors].filter((f) => f.impact > 0).sort((a, b) => b.impact - a.impact).slice(0, 3);
 
   const workedRecent = new Set(
-    muscles.filter((m) => m.lastDaysAgo < 1.75 && m.setsRecent >= 3).map((m) => m.group),
+    muscles.filter((m) => !isMuscleRecovered(m.key, m.lastDaysAgo) && m.setsRecent >= 3).map((m) => m.group),
   );
   const workedYesterday = new Set(
-    muscles.filter((m) => m.lastDaysAgo < 2.5 && m.setsRecent >= 4).map((m) => m.group),
+    muscles
+      .filter((m) => m.lastDaysAgo < MUSCLE_RECOVERY_DAYS[m.key] * 1.25 && m.setsRecent >= 4)
+      .map((m) => m.group),
   );
-  const untouched = muscles.filter((m) => m.lastDaysAgo >= 3).map((m) => m.group);
+  const untouched = muscles
+    .filter((m) => m.lastDaysAgo >= MUSCLE_RECOVERY_DAYS[m.key] * 1.5)
+    .map((m) => m.group);
 
-  const canonicalGroups = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Pernas", "Glúteos", "Core"];
+  // Rótulos canônicos vindos da fonte única (inclui Abdômen e Antebraço).
+  const canonicalGroups = ALL_MUSCLE_GROUPS.map((g) => MUSCLE_LABEL[g]);
   const avoidBase = new Set<string>([...workedRecent]);
   if (score < 40) canonicalGroups.forEach((g) => avoidBase.add(g));
   else if (score < 60) workedYesterday.forEach((g) => avoidBase.add(g));
@@ -529,7 +541,7 @@ export async function computeRecoveryAdviceFor(
       reason: "Sem histórico ainda — corpo pronto para o primeiro treino.",
       recommendation: "Escolha um treino do plano e comece com carga moderada, focando técnica.",
       tip: "Anote o RPE de cada série pra afinar as recomendações.",
-      canDo: ["Peito", "Costas", "Ombros", "Pernas", "Core"],
+      canDo: ["Peito", "Costas", "Ombro", "Pernas", "Abdômen"],
       avoid: [],
       factors: [],
       ignoredFactors,
