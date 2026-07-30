@@ -834,7 +834,7 @@ function SessionPage() {
                 repsLabel={isSport ? "Minutos" : "Reps"}
                 hideWeight={isSport}
                 actionLabel={isSport ? "Registrar" : "Adicionar série"}
-                onLog={(reps, weight) => {
+                onLog={(reps, weight, extras) => {
                   logSet.mutate({
                     session_id: id,
                     workout_exercise_id: null,
@@ -842,8 +842,14 @@ function SessionPage() {
                     set_number: doneSets.length + 1,
                     reps,
                     weight_kg: isSport ? null : (weight || null),
+                    rpe: extras.rpe,
+                    notes: extras.notes,
+                    technique: extras.technique,
                   });
-                  if (!isSport) startRest(60, name);
+                  if (!isSport) {
+                    announcePr(exerciseId, reps, weight || null);
+                    startRest(60, name);
+                  }
                 }}
               />
             </div>
