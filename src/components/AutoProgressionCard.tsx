@@ -343,6 +343,66 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Histórico de versões do plano */}
+      <Dialog open={versionsOpen} onOpenChange={setVersionsOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="size-4" /> Versões do plano
+            </DialogTitle>
+            <DialogDescription>
+              Cada atualização automática salva os valores anteriores. Você pode voltar o plano
+              para como ele estava antes de qualquer uma delas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {versions.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma versão salva ainda.</p>
+            )}
+            {versions.map((v) => (
+              <div key={v.id} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{v.label}</p>
+                  <span className="text-[11px] text-muted-foreground">
+                    {new Date(v.createdAt).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <ul className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
+                  {v.entries.slice(0, 4).map((e) => (
+                    <li key={e.itemId}>
+                      • {e.exerciseName}: {fmtKg(e.before.target_weight_kg)} → {" "}
+                      {e.after.target_weight_kg !== undefined
+                        ? fmtKg(e.after.target_weight_kg)
+                        : fmtKg(e.before.target_weight_kg)}
+                      {e.after.target_rest_seconds !== undefined &&
+                        ` · descanso ${e.before.target_rest_seconds}s → ${e.after.target_rest_seconds}s`}
+                    </li>
+                  ))}
+                  {v.entries.length > 4 && <li>• +{v.entries.length - 4} exercício(s)</li>}
+                </ul>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => restore.mutate(v.id)}
+                    disabled={restore.isPending}
+                  >
+                    {restore.isPending
+                      ? <><Loader2 className="size-3.5 animate-spin" /> Restaurando...</>
+                      : <><RotateCcw className="size-3.5" /> Voltar a esta versão</>}
+                  </Button>
+                  {v.restoredAt && (
+                    <span className="text-[11px] text-muted-foreground">Já restaurada</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
