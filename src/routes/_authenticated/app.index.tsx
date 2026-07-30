@@ -23,6 +23,7 @@ import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
+import { DecisionExplainer } from "@/components/DecisionExplainer";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
@@ -607,6 +608,9 @@ function Dashboard() {
               ? {
                   score: recovery.score,
                   statusLabel: RECOVERY_STATUS_LABEL[recovery.status],
+                  factors: recovery.factors,
+                  ignoredFactors: recovery.ignoredFactors,
+                  recommendation: recovery.recommendation,
                 }
               : null
           }
@@ -968,6 +972,7 @@ function RecoveryCard({
     cuidado: { bar: "bg-amber-500", badge: "bg-amber-500/15 text-amber-500", label: RECOVERY_STATUS_LABEL.cuidado },
     descanso: { bar: "bg-destructive", badge: "bg-destructive/15 text-destructive", label: RECOVERY_STATUS_LABEL.descanso },
   };
+  const [explainOpen, setExplainOpen] = useState(false);
   const s = recovery ? styles[recovery.status] : styles.leve;
   const allFactors = (recovery?.factors ?? []).slice().sort((a, b) => b.impact - a.impact);
   const topFactors = allFactors;
@@ -996,6 +1001,20 @@ function RecoveryCard({
                   <span className="tabular-nums">{recovery.score}</span>
                   <span className="opacity-60">/100</span>
                 </span>
+              )}
+              {recovery && (
+                <DecisionExplainer
+                  open={explainOpen}
+                  onOpenChange={setExplainOpen}
+                  decision={recovery.status === "descanso" ? "descansar" : "treinar"}
+                  score={recovery.score}
+                  statusLabel={s.label}
+                  intensityLabel={recovery.intensityLabel}
+                  summary={recovery.reason}
+                  factors={recovery.factors}
+                  ignoredFactors={recovery.ignoredFactors}
+                  origin={`Decisão do motor de Recuperação · ${recovery.recommendation}`}
+                />
               )}
               <button
                 onClick={onRefresh}
@@ -1067,55 +1086,18 @@ function RecoveryCard({
                 </div>
               )}
 
-              {/* Fatores considerados no cálculo */}
+              {/* Fatores considerados no cálculo — detalhe completo no modal */}
               {(topFactors.length > 0 || ignoredFactors.length > 0) && (
-                <details className="mt-3 group">
-                  <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-                    Como o score foi calculado ({topFactors.length} fator{topFactors.length === 1 ? "" : "es"}
-                    {ignoredFactors.length > 0 ? ` · ${ignoredFactors.length} ignorado${ignoredFactors.length === 1 ? "" : "s"}` : ""})
-                  </summary>
-
-                  {topFactors.length > 0 && (
-                    <>
-                      <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores usados</p>
-                      <ul className="mt-1 space-y-1">
-                        {topFactors.map((f) => (
-                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
-                            <div className="min-w-0">
-                              <p className="font-medium text-foreground">{f.label}</p>
-                              <p className="truncate text-muted-foreground">{f.detail}</p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                              {f.impact > 0 ? `−${f.impact}` : "0"}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-
-                  {ignoredFactors.length > 0 && (
-                    <>
-                      <p className="mt-3 text-[10px] uppercase tracking-wide text-muted-foreground">Fatores ignorados</p>
-                      <ul className="mt-1 space-y-1">
-                        {ignoredFactors.map((f) => (
-                          <li key={f.key} className="flex items-start justify-between gap-2 text-[11px]">
-                            <div className="min-w-0">
-                              <p className="font-medium text-muted-foreground line-through decoration-muted-foreground/40">
-                                {f.label}
-                              </p>
-                              <p className="text-muted-foreground">{f.reason}</p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-secondary/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                              n/a
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </details>
+                <button
+                  type="button"
+                  onClick={() => setExplainOpen(true)}
+                  className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Como o score foi calculado ({topFactors.length} fator{topFactors.length === 1 ? "" : "es"}
+                  {ignoredFactors.length > 0 ? ` · ${ignoredFactors.length} ignorado${ignoredFactors.length === 1 ? "" : "s"}` : ""})
+                </button>
               )}
+
 
               {/* Dica prática */}
               {recovery.tip && (
