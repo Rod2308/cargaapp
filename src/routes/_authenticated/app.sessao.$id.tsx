@@ -968,7 +968,7 @@ function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } 
   const when = new Date(reference.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   return (
     <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-secondary/50 px-2.5 py-1.5 text-[11px] text-muted-foreground">
-      <History className="size-3.5 shrink-0" />
+      <HistoryIcon className="size-3.5 shrink-0" />
       <span className="font-medium">Última vez ({when}):</span>
       {reference.sets.map((s, i) => (
         <span key={i} className="rounded bg-background/70 px-1.5 py-0.5">
