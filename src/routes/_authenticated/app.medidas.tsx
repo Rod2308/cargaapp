@@ -256,8 +256,18 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
 
   return (
     <div className="space-y-4">
-      <section className="card-lift p-4">
-        <h2 className="mb-3 font-display text-lg font-bold">Novo registro</h2>
+      <section ref={formRef} className="card-lift p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold">
+            {editingId ? "Editar registro" : "Novo registro"}
+          </h2>
+          {editingId && (
+            <Button variant="ghost" size="sm" onClick={resetForm}>
+              <X className="size-4" />
+              Cancelar
+            </Button>
+          )}
+        </div>
         <div className="mb-3">
           <Label className="text-xs">Data</Label>
           <Input type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} className="mt-1" />
@@ -290,12 +300,15 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         </div>
         <Button className="mt-3 w-full" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Salvar medidas
+          {editingId ? "Salvar alterações" : "Salvar medidas"}
         </Button>
         <p className="mt-2 text-xs text-muted-foreground">
-          Salvar na mesma data substitui o registro daquele dia.
+          {editingId
+            ? "Campos deixados em branco apagam o valor salvo nesse registro."
+            : "Salvar na mesma data substitui o registro daquele dia."}
         </p>
       </section>
+
 
       {error ? (
         <EmptyState
