@@ -652,6 +652,10 @@ function Dashboard() {
         </button>
       </div>
 
+      <StreakSummaryCard userId={user.id} />
+
+
+
       {/* Dialog: registrar esporte */}
       <Dialog open={sportOpen} onOpenChange={setSportOpen}>
         <DialogContent>
