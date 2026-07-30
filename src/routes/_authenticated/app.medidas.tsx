@@ -386,7 +386,12 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
           <section className="space-y-2">
             <h2 className="font-display text-lg font-bold">Histórico</h2>
             {rows.map((r) => (
-              <div key={r.id} className="card-soft flex items-start justify-between gap-3 p-3">
+              <div
+                key={r.id}
+                className={`card-soft flex items-start justify-between gap-3 p-3 ${
+                  editingId === r.id ? "ring-2 ring-primary" : ""
+                }`}
+              >
                 <div className="min-w-0">
                   <p className="font-display text-sm font-bold">
                     {format(new Date(`${r.log_date}T12:00:00`), "dd MMM yyyy", { locale: ptBR })}
@@ -398,16 +403,27 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
                   </p>
                   {r.notes && <p className="mt-1 text-xs italic text-muted-foreground">{r.notes}</p>}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remover registro"
-                  onClick={() => remove.mutate(r.id)}
-                  disabled={remove.isPending}
-                >
-                  <Trash2 className="size-4 text-muted-foreground" />
-                </Button>
+                <div className="flex shrink-0 items-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Editar registro"
+                    onClick={() => startEdit(r)}
+                  >
+                    <Pencil className="size-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remover registro"
+                    onClick={() => remove.mutate(r.id)}
+                    disabled={remove.isPending}
+                  >
+                    <Trash2 className="size-4 text-muted-foreground" />
+                  </Button>
+                </div>
               </div>
+
             ))}
           </section>
         </>
