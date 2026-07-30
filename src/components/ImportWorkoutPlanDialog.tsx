@@ -158,10 +158,11 @@ function inferGroupFromText(text: string | undefined | null): string | null {
   for (const key of Object.keys(MUSCLE_ALIASES)) {
     // word-boundary match on the alias
     const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    if (re.test(lower)) return MUSCLE_ALIASES[key];
+    if (re.test(lower)) return normalizeMuscleGroup(MUSCLE_ALIASES[key]);
   }
-  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return g;
+  for (const [re, g] of NAME_GROUP_HINTS) if (re.test(lower)) return normalizeMuscleGroup(g);
   return null;
+
 }
 
 const FALLBACK_IMAGE_BY_GROUP: Record<string, string> = {
