@@ -21,6 +21,8 @@ import { getRecoveryAdvice } from "@/lib/recovery.functions";
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
+import { AutoProgressionCard } from "@/components/AutoProgressionCard";
+
 import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
 import { DecisionExplainer } from "@/components/DecisionExplainer";
@@ -564,6 +566,11 @@ function Dashboard() {
       <div className="mt-4">
         <CardioRecoveryAlert userId={user.id} />
       </div>
+
+      <div className="mt-4">
+        <AutoProgressionCard userId={user.id} />
+      </div>
+
 
       {/* Frase do dia */}
       <div className="card-lift mt-4 flex items-start gap-3 p-4 sm:p-5">
