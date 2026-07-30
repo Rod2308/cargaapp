@@ -266,6 +266,34 @@ function computeScore(input: {
     });
   }
 
+  // Prontidão de hoje — vem do mesmo check-in diário que alimenta o card
+  // "Sugestão de hoje", pra que os dois nunca discordem sobre dor/energia.
+  if (checkinToday) {
+    let readinessPenalty = 0;
+    const bits: string[] = [];
+    const dor = Number(checkinToday.soreness ?? 0);
+    const energia = Number(checkinToday.energy ?? 0);
+    if (dor >= 4) {
+      readinessPenalty += (dor - 3) * 9;
+      bits.push(`dor ${dor}/5`);
+    }
+    if (energia > 0 && energia <= 2) {
+      readinessPenalty += (3 - energia) * 8;
+      bits.push(`energia ${energia}/5`);
+    }
+    readinessPenalty = clamp(readinessPenalty, 0, 25);
+    if (readinessPenalty >= 3) {
+      factors.push({
+        key: "readiness",
+        label: "Check-in de hoje",
+        detail: bits.join(" · "),
+        impact: Math.round(readinessPenalty),
+      });
+    }
+  }
+
+
+
   const sportMinutes48h = sessions
     .filter((s) => (now.getTime() - new Date(s.started_at).getTime()) / 86_400_000 <= 2)
     .flatMap((s) => s.session_sets ?? [])
