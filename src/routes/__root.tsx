@@ -20,6 +20,7 @@ import { prefetchOfflineEssentials } from "@/lib/offline-prefetch";
 import { SyncStatus } from "@/components/SyncStatus";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { attachSessionPersistence } from "@/lib/remember-me";
+import { initCrossTabSync } from "@/lib/cross-tab-sync";
 
 
 function NotFoundComponent() {
