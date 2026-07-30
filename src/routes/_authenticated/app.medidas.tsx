@@ -393,18 +393,26 @@ function PhotosTab({ userId, qc }: { userId: string; qc: ReturnType<typeof useQu
     queryKey: ["progress-photo-urls", photos.map((p) => p.id).join(",")],
     enabled: photos.length > 0,
     staleTime: 45 * 60 * 1000,
+    retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.storage
-        .from("progress-photos")
-        .createSignedUrls(photos.map((p) => p.storage_path), 60 * 60);
-      if (error) throw error;
+      const paths = photos.map((p) => p.storage_path).filter(Boolean);
       const map: Record<string, string> = {};
-      (data ?? []).forEach((d, i) => {
-        if (d.signedUrl) map[photos[i].storage_path] = d.signedUrl;
-      });
+      if (paths.length === 0) return map;
+      try {
+        const { data, error } = await supabase.storage
+          .from("progress-photos")
+          .createSignedUrls(paths, 60 * 60);
+        if (error) throw error;
+        (data ?? []).forEach((d, i) => {
+          if (d.signedUrl) map[paths[i]] = d.signedUrl;
+        });
+      } catch {
+        // sem URLs assinadas a galeria ainda abre, apenas sem miniaturas
+      }
       return map;
     },
   });
+
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
