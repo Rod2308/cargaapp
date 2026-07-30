@@ -31,6 +31,11 @@ export type DecisionExplainerProps = {
   /** Título do modal. */
   title?: string;
   className?: string;
+  /** Controle externo da abertura (opcional). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Esconde o botão de info quando o modal é aberto por outro elemento. */
+  hideTrigger?: boolean;
 };
 
 /**
@@ -51,13 +56,22 @@ export function DecisionExplainer({
   origin,
   title = "Por que essa decisão?",
   className,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
 }: DecisionExplainerProps) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    onOpenChange?.(v);
+  };
   const usados = factors.slice().sort((a, b) => b.impact - a.impact);
   const descansar = decision === "descansar";
 
   return (
     <>
+      {!hideTrigger && (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -67,6 +81,7 @@ export function DecisionExplainer({
       >
         <Info className="size-3.5" strokeWidth={2.5} />
       </button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
