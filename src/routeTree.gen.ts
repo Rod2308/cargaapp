@@ -30,6 +30,7 @@ import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
 import { Route as AuthenticatedAppMensagensRouteImport } from './routes/_authenticated/app.mensagens'
+import { Route as AuthenticatedAppMedidasRouteImport } from './routes/_authenticated/app.medidas'
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
 import { Route as AuthenticatedAppInstalarRouteImport } from './routes/_authenticated/app.instalar'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
@@ -160,6 +161,11 @@ const AuthenticatedAppMensagensRoute =
     path: '/mensagens',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppMedidasRoute = AuthenticatedAppMedidasRouteImport.update({
+  id: '/medidas',
+  path: '/medidas',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const AuthenticatedAppMcpTesteRoute =
   AuthenticatedAppMcpTesteRouteImport.update({
     id: '/mcp-teste',
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
+  '/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
@@ -338,6 +345,7 @@ export interface FileRoutesByTo {
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
+  '/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/_authenticated/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
+  '/_authenticated/app/medidas': typeof AuthenticatedAppMedidasRoute
   '/_authenticated/app/mensagens': typeof AuthenticatedAppMensagensRoute
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
@@ -426,6 +435,7 @@ export interface FileRouteTypes {
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
+    | '/app/medidas'
     | '/app/mensagens'
     | '/app/notificacoes'
     | '/app/perfil'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
+    | '/app/medidas'
     | '/app/mensagens'
     | '/app/notificacoes'
     | '/app/perfil'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/historico'
     | '/_authenticated/app/instalar'
     | '/_authenticated/app/mcp-teste'
+    | '/_authenticated/app/medidas'
     | '/_authenticated/app/mensagens'
     | '/_authenticated/app/notificacoes'
     | '/_authenticated/app/perfil'
@@ -709,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppMensagensRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/medidas': {
+      id: '/_authenticated/app/medidas'
+      path: '/medidas'
+      fullPath: '/app/medidas'
+      preLoaderRoute: typeof AuthenticatedAppMedidasRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/mcp-teste': {
       id: '/_authenticated/app/mcp-teste'
       path: '/mcp-teste'
@@ -885,6 +904,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
   AuthenticatedAppInstalarRoute: typeof AuthenticatedAppInstalarRoute
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
+  AuthenticatedAppMedidasRoute: typeof AuthenticatedAppMedidasRoute
   AuthenticatedAppMensagensRoute: typeof AuthenticatedAppMensagensRoute
   AuthenticatedAppNotificacoesRoute: typeof AuthenticatedAppNotificacoesRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
@@ -903,6 +923,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
   AuthenticatedAppInstalarRoute: AuthenticatedAppInstalarRoute,
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
+  AuthenticatedAppMedidasRoute: AuthenticatedAppMedidasRoute,
   AuthenticatedAppMensagensRoute: AuthenticatedAppMensagensRoute,
   AuthenticatedAppNotificacoesRoute: AuthenticatedAppNotificacoesRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
