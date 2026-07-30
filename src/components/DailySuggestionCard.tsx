@@ -11,9 +11,12 @@ const INTENSITY_STYLES: Record<Intensidade, { bar: string; badge: string; label:
   descanso: { bar: "bg-muted-foreground", badge: "bg-muted text-muted-foreground", label: "Descanso" },
 };
 
-function scoreTone(score: number) {
-  if (score >= 7) return { label: "Boa", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" };
-  if (score >= 5) return { label: "Moderada", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400", bar: "bg-amber-500" };
+// Mesma escala (0–100) e mesmos rótulos do card de Recuperação, para que os
+// dois blocos nunca pareçam discordar sobre treinar × descansar.
+export function scoreTone(score100: number) {
+  if (score100 >= 75) return { label: "Excelente", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" };
+  if (score100 >= 60) return { label: "Boa", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" };
+  if (score100 >= 45) return { label: "Moderada", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400", bar: "bg-amber-500" };
   return { label: "Baixa", cls: "bg-destructive/15 text-destructive", bar: "bg-destructive" };
 }
 
