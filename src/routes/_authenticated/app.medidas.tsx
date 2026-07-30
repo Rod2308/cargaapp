@@ -21,6 +21,8 @@ import {
   Trash2,
   Save,
   ImageOff,
+  Pencil,
+  X,
 } from "lucide-react";
 import {
   LineChart,
@@ -150,6 +152,8 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
   const [values, setValues] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [metric, setMetric] = useState<FieldKey>("weight_kg");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLElement>(null);
 
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["body-measurements", userId],
@@ -164,13 +168,36 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
     },
   });
 
+  const resetForm = () => {
+    setEditingId(null);
+    setValues({});
+    setNotes("");
+    setDate(todayISO());
+  };
+
+  const startEdit = (r: Measurement) => {
+    setEditingId(r.id);
+    setDate(r.log_date);
+    setNotes(r.notes ?? "");
+    const next: Record<string, string> = {};
+    for (const f of FIELDS) {
+      if (r[f.key] != null) next[f.key] = String(r[f.key]).replace(".", ",");
+    }
+    setValues(next);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const payload: Record<string, any> = { user_id: userId, log_date: date, notes: notes.trim() || null };
       let filled = 0;
       for (const f of FIELDS) {
         const raw = (values[f.key] ?? "").replace(",", ".").trim();
-        if (raw === "") continue;
+        if (raw === "") {
+          // ao editar, campo esvaziado limpa o valor salvo
+          payload[f.key] = null;
+          continue;
+        }
         const n = Number(raw);
         if (!Number.isFinite(n) || n <= 0) throw new Error(`Valor inválido em ${f.label}.`);
         if (n > 500) throw new Error(`${f.label} parece fora do razoável.`);
@@ -178,19 +205,28 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         filled += 1;
       }
       if (filled === 0) throw new Error("Preencha ao menos um campo.");
+      if (editingId) {
+        const { error } = await supabase
+          .from("body_measurements")
+          .update(payload as never)
+          .eq("id", editingId)
+          .eq("user_id", userId);
+        if (error) throw error;
+        return;
+      }
       const { error } = await supabase
         .from("body_measurements")
         .upsert(payload, { onConflict: "user_id,log_date" });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Medidas salvas");
-      setValues({});
-      setNotes("");
+      toast.success(editingId ? "Registro atualizado" : "Medidas salvas");
+      resetForm();
       qc.invalidateQueries({ queryKey: ["body-measurements", userId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui salvar as medidas."),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -222,8 +258,18 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
 
   return (
     <div className="space-y-4">
-      <section className="card-lift p-4">
-        <h2 className="mb-3 font-display text-lg font-bold">Novo registro</h2>
+      <section ref={formRef} className="card-lift p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold">
+            {editingId ? "Editar registro" : "Novo registro"}
+          </h2>
+          {editingId && (
+            <Button variant="ghost" size="sm" onClick={resetForm}>
+              <X className="size-4" />
+              Cancelar
+            </Button>
+          )}
+        </div>
         <div className="mb-3">
           <Label className="text-xs">Data</Label>
           <Input type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} className="mt-1" />
@@ -256,12 +302,15 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         </div>
         <Button className="mt-3 w-full" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Salvar medidas
+          {editingId ? "Salvar alterações" : "Salvar medidas"}
         </Button>
         <p className="mt-2 text-xs text-muted-foreground">
-          Salvar na mesma data substitui o registro daquele dia.
+          {editingId
+            ? "Campos deixados em branco apagam o valor salvo nesse registro."
+            : "Salvar na mesma data substitui o registro daquele dia."}
         </p>
       </section>
+
 
       {error ? (
         <EmptyState
@@ -337,7 +386,12 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
           <section className="space-y-2">
             <h2 className="font-display text-lg font-bold">Histórico</h2>
             {rows.map((r) => (
-              <div key={r.id} className="card-soft flex items-start justify-between gap-3 p-3">
+              <div
+                key={r.id}
+                className={`card-soft flex items-start justify-between gap-3 p-3 ${
+                  editingId === r.id ? "ring-2 ring-primary" : ""
+                }`}
+              >
                 <div className="min-w-0">
                   <p className="font-display text-sm font-bold">
                     {format(new Date(`${r.log_date}T12:00:00`), "dd MMM yyyy", { locale: ptBR })}
@@ -349,16 +403,27 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
                   </p>
                   {r.notes && <p className="mt-1 text-xs italic text-muted-foreground">{r.notes}</p>}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remover registro"
-                  onClick={() => remove.mutate(r.id)}
-                  disabled={remove.isPending}
-                >
-                  <Trash2 className="size-4 text-muted-foreground" />
-                </Button>
+                <div className="flex shrink-0 items-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Editar registro"
+                    onClick={() => startEdit(r)}
+                  >
+                    <Pencil className="size-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remover registro"
+                    onClick={() => remove.mutate(r.id)}
+                    disabled={remove.isPending}
+                  >
+                    <Trash2 className="size-4 text-muted-foreground" />
+                  </Button>
+                </div>
               </div>
+
             ))}
           </section>
         </>
