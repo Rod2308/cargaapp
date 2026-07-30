@@ -132,6 +132,7 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
   const [auto, setAuto] = useState(false);
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   useEffect(() => setAuto(isAutoEnabled(userId)), [userId]);
@@ -140,6 +141,12 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
     queryKey: ["auto-progression", userId],
     queryFn: () => computeAutoProgression(userId),
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: versions = [] } = useQuery({
+    queryKey: ["plan-versions", userId],
+    queryFn: () => listPlanVersions(userId),
+    staleTime: 60 * 1000,
   });
 
   const { auto: safeAdjustments, needsConfirmation } = useMemo(
