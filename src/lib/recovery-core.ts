@@ -89,6 +89,15 @@ type SessionRow = {
 
 type SleepRow = { log_date: string; hours: number; quality: number | null };
 
+/** Check-in diário manual — fallback de sono e fonte de prontidão do dia. */
+type CheckinRow = {
+  log_date: string;
+  sleep_hours: number;
+  sleep_quality: number | null;
+  soreness: number | null;
+  energy: number | null;
+};
+
 type ProfileRow = {
   experience_level: string | null;
   uses_enhancers: boolean | null;
@@ -157,10 +166,12 @@ function computeScore(input: {
   profile: ProfileRow | null;
   sessions: SessionRow[];
   sleep: SleepRow[];
+  checkinToday?: CheckinRow | null;
   now: Date;
   cycle: import("./cycle").CycleInfo | null;
 }) {
   const { profile, sessions, sleep, now } = input;
+  const checkinToday = input.checkinToday ?? null;
   const factors: Factor[] = [];
 
   const experienced = ["intermediario", "avancado", "avançado"].includes(
@@ -494,7 +505,7 @@ export async function computeRecoveryAdviceFor(
   const since = new Date(now.getTime() - 14 * 86_400_000);
   const sleepSince = new Date(now.getTime() - 7 * 86_400_000);
 
-  const [{ data: profile }, { data: sessions }, { data: sleep }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }, { data: sleep }, { data: checkins }] = await Promise.all([
     supabase
       .from("profiles")
       .select("experience_level, uses_enhancers, birth_date, activity_level, injuries, weekly_frequency, sex, cycle_tracking_enabled, cycle_last_period_start, cycle_length_days, cycle_period_length_days")
@@ -513,7 +524,37 @@ export async function computeRecoveryAdviceFor(
       .eq("user_id", userId)
       .gte("log_date", sleepSince.toISOString().slice(0, 10))
       .order("log_date", { ascending: false }),
+    supabase
+      .from("daily_checkins")
+      .select("log_date, sleep_hours, sleep_quality, soreness, energy")
+      .eq("user_id", userId)
+      .gte("log_date", sleepSince.toISOString().slice(0, 10))
+      .order("log_date", { ascending: false }),
   ]);
+
+  // ---- FONTE ÚNICA DE SONO -------------------------------------------------
+  // `sleep_logs` (integração externa / MCP) tem prioridade por dia; quando não
+  // houver registro do dia, cai para o check-in diário manual (`daily_checkins`).
+  // Nunca as duas em paralelo sem hierarquia.
+  const sleepByDate = new Map<string, SleepRow>();
+  for (const c of (checkins ?? []) as CheckinRow[]) {
+    sleepByDate.set(c.log_date, {
+      log_date: c.log_date,
+      hours: Number(c.sleep_hours),
+      quality: c.sleep_quality == null ? null : Number(c.sleep_quality),
+    });
+  }
+  for (const r of (sleep ?? []) as SleepRow[]) {
+    sleepByDate.set(r.log_date, r);
+  }
+  const sleepUnified = Array.from(sleepByDate.values()).sort((a, b) =>
+    a.log_date < b.log_date ? 1 : -1,
+  );
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+  const checkinToday =
+    ((checkins ?? []) as CheckinRow[]).find((c) => c.log_date === todayStr) ?? null;
 
   const sex = (profile as { sex?: string } | null)?.sex ?? null;
   const ignoredFactors: IgnoredFactor[] = [];
@@ -531,7 +572,7 @@ export async function computeRecoveryAdviceFor(
     });
   }
 
-  if ((!sessions || sessions.length === 0) && (!sleep || sleep.length === 0)) {
+  if ((!sessions || sessions.length === 0) && sleepUnified.length === 0) {
     return {
       status: "recuperado",
       score: 95,
@@ -561,7 +602,8 @@ export async function computeRecoveryAdviceFor(
   const calc = computeScore({
     profile: (profile ?? null) as ProfileRow | null,
     sessions: (sessions ?? []) as SessionRow[],
-    sleep: (sleep ?? []) as SleepRow[],
+    sleep: sleepUnified,
+    checkinToday,
     now,
     cycle,
   });
