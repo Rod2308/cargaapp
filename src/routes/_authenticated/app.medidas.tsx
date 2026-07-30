@@ -34,6 +34,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/app/medidas")({
   component: MeasurementsPage,
+  errorComponent: MeasurementsError,
   head: () => ({
     meta: [
       { title: "Medidas e fotos de progresso · Carga" },
@@ -72,10 +73,36 @@ type Measurement = Record<string, any> & { id: string; log_date: string };
 
 const todayISO = () => format(new Date(), "yyyy-MM-dd");
 
+function MeasurementsError() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 pb-28 pt-6">
+      <div className="mb-5 flex items-center gap-3">
+        <Link
+          to="/app/perfil"
+          className="rounded-full border border-border p-2 hover:bg-muted"
+          aria-label="Voltar"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <h1 className="font-display text-2xl font-bold">Medidas e fotos</h1>
+      </div>
+      <EmptyState
+        icon={Ruler}
+        title="Não consegui abrir esta página"
+        message="Tente novamente em instantes. Seus dados continuam salvos."
+        action={
+          <Button onClick={() => window.location.reload()}>Tentar de novo</Button>
+        }
+      />
+    </div>
+  );
+}
+
 function MeasurementsPage() {
   const { user } = AuthedRoute.useRouteContext();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"medidas" | "fotos">("medidas");
+
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-28 pt-6">
@@ -366,18 +393,26 @@ function PhotosTab({ userId, qc }: { userId: string; qc: ReturnType<typeof useQu
     queryKey: ["progress-photo-urls", photos.map((p) => p.id).join(",")],
     enabled: photos.length > 0,
     staleTime: 45 * 60 * 1000,
+    retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.storage
-        .from("progress-photos")
-        .createSignedUrls(photos.map((p) => p.storage_path), 60 * 60);
-      if (error) throw error;
+      const paths = photos.map((p) => p.storage_path).filter(Boolean);
       const map: Record<string, string> = {};
-      (data ?? []).forEach((d, i) => {
-        if (d.signedUrl) map[photos[i].storage_path] = d.signedUrl;
-      });
+      if (paths.length === 0) return map;
+      try {
+        const { data, error } = await supabase.storage
+          .from("progress-photos")
+          .createSignedUrls(paths, 60 * 60);
+        if (error) throw error;
+        (data ?? []).forEach((d, i) => {
+          if (d.signedUrl) map[paths[i]] = d.signedUrl;
+        });
+      } catch {
+        // sem URLs assinadas a galeria ainda abre, apenas sem miniaturas
+      }
       return map;
     },
   });
+
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
