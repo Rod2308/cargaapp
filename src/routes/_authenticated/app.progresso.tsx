@@ -189,13 +189,46 @@ function ProgressPage() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link
+          to="/app/volume"
+          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        >
+          Volume por grupo muscular
+        </Link>
+        <Link
+          to="/app/medidas"
+          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+        >
+          Medidas e fotos
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.value}
+            onClick={() => setPeriod(p.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              period === p.value
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="card-lift p-6 text-sm text-muted-foreground">Carregando…</div>
       ) : byExercise.length === 0 ? (
         <div className="card-lift p-6 text-center">
           <Dumbbell className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Registre séries com carga e repetições nas sessões para ver seu progresso aqui.
+            {allSets.length === 0
+              ? "Registre séries com carga e repetições nas sessões para ver seu progresso aqui."
+              : "Nenhuma série registrada nesse período. Escolha um intervalo maior."}
           </p>
         </div>
       ) : (
@@ -218,6 +251,7 @@ function ProgressPage() {
               </SelectContent>
             </Select>
           </div>
+
 
           {current && (
             <>
