@@ -766,7 +766,7 @@ function SessionPage() {
                 lastSet={lastRef?.sets[done.length] ?? null}
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
 
-                onLog={(reps, weight) => {
+                onLog={(reps, weight, extras) => {
                   logSet.mutate({
                     session_id: id,
                     workout_exercise_id: it.id,
@@ -774,7 +774,11 @@ function SessionPage() {
                     set_number: done.length + 1,
                     reps,
                     weight_kg: weight || null,
+                    rpe: extras.rpe,
+                    notes: extras.notes,
+                    technique: extras.technique,
                   });
+                  announcePr(it.exercise_id, reps, weight || null);
                   startRest(it.target_rest_seconds, it.exercises?.name);
                 }}
               />
