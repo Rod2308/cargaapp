@@ -979,7 +979,16 @@ function LastTimeHint({ reference }: { reference: { date: string; sets: any[] } 
   );
 }
 
-function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
+type LogExtras = { rpe: number | null; notes: string | null; technique: string };
+
+const TECHNIQUES = [
+  { value: "normal", label: "Normal" },
+  { value: "drop_set", label: "Drop-set" },
+  { value: "rest_pause", label: "Rest-pause" },
+  { value: "falha", label: "Até a falha" },
+];
+
+function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hideWeight = false, actionLabel = "Série", lastSet = null }: { defaultReps: number; defaultWeight: any; onLog: (reps: number, weight: number | null, extras: LogExtras) => void; repsLabel?: string; hideWeight?: boolean; actionLabel?: string; lastSet?: any }) {
   // Pré-seleciona os valores da última vez que o exercício foi feito (se houver),
   // caindo para os alvos do treino quando não há histórico. Sempre editável.
   const prefRepsBase = lastSet?.reps != null ? String(lastSet.reps) : String(defaultReps);
@@ -987,52 +996,141 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
   const [reps, setReps] = useState<string>(prefRepsBase);
   const [weight, setWeight] = useState<string>(prefWeightBase);
   const [touched, setTouched] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [rpe, setRpe] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [technique, setTechnique] = useState<string>("normal");
   useEffect(() => {
     if (touched) return;
     setReps(prefRepsBase);
     setWeight(prefWeightBase);
   }, [prefRepsBase, prefWeightBase, touched]);
-  return (
-    <div className={`mt-3 grid gap-2 border-t border-border pt-3 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
-      <label className="block">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
-        <Input
-          type="number"
-          inputMode="numeric"
-          value={reps}
-          onChange={(e) => { setTouched(true); setReps(e.target.value); }}
-          className="mt-0.5 h-10"
-          placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
-        />
-      </label>
 
-      {!hideWeight && (
+  const submit = () => {
+    const r = Number(reps);
+    const w = weight === "" ? null : Number(weight);
+    if (!(r > 0)) return;
+    const rpeNum = rpe === "" ? null : Number(rpe);
+    onLog(r, hideWeight ? null : w, {
+      rpe: rpeNum != null && Number.isFinite(rpeNum) && rpeNum >= 1 && rpeNum <= 10 ? rpeNum : null,
+      notes: notes.trim() ? notes.trim().slice(0, 300) : null,
+      technique,
+    });
+    setTouched(false);
+    setRpe("");
+    setNotes("");
+    setTechnique("normal");
+    setShowDetails(false);
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className={`grid gap-2 ${hideWeight ? "grid-cols-[1fr_auto]" : "grid-cols-[1fr_1fr_auto]"}`}>
         <label className="block">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{repsLabel}</span>
           <Input
             type="number"
-            inputMode="decimal"
-            step="0.5"
-            value={weight}
-            onChange={(e) => { setTouched(true); setWeight(e.target.value); }}
-
+            inputMode="numeric"
+            value={reps}
+            onChange={(e) => { setTouched(true); setReps(e.target.value); }}
             className="mt-0.5 h-10"
-            placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
+            placeholder={lastSet?.reps != null ? `última: ${lastSet.reps}` : undefined}
           />
         </label>
+
+        {!hideWeight && (
+          <label className="block">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Carga (kg)</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              value={weight}
+              onChange={(e) => { setTouched(true); setWeight(e.target.value); }}
+              className="mt-0.5 h-10"
+              placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
+            />
+          </label>
+        )}
+
+        <Button className="mt-4 h-10" onClick={submit}>
+          <Plus className="size-4" /> {actionLabel}
+        </Button>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:underline"
+        >
+          {showDetails ? "Ocultar detalhes" : "RPE, técnica e observação"}
+        </button>
+        {!hideWeight && (
+          <PlateCalculator
+            targetWeight={weight === "" ? null : Number(weight)}
+            trigger={
+              <button
+                type="button"
+                className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:underline"
+              >
+                Calcular anilhas
+              </button>
+            }
+          />
+        )}
+      </div>
+
+      {showDetails && (
+        <div className="mt-2 space-y-2 rounded-lg bg-secondary/40 p-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                RPE (1–10)
+              </span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={10}
+                step="0.5"
+                value={rpe}
+                onChange={(e) => setRpe(e.target.value)}
+                className="mt-0.5 h-9"
+                placeholder="opcional"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Técnica
+              </span>
+              <select
+                value={technique}
+                onChange={(e) => setTechnique(e.target.value)}
+                className="mt-0.5 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                {TECHNIQUES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Observação da série
+            </span>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={300}
+              className="mt-0.5 h-9"
+              placeholder="Ex.: dor no ombro, pegada mais aberta…"
+            />
+          </label>
+        </div>
       )}
-
-      <Button
-        className="mt-4 h-10"
-        onClick={() => {
-          const r = Number(reps);
-          const w = weight === "" ? null : Number(weight);
-          if (r > 0) { onLog(r, hideWeight ? null : w); setTouched(false); }
-        }}
-      >
-        <Plus className="size-4" /> {actionLabel}
-      </Button>
-
     </div>
   );
 }
