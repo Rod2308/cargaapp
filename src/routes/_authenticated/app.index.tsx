@@ -485,9 +485,7 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Esporte registrado!");
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       setSportOpen(false);
       setSportId("");
       setSportDuration("30");
