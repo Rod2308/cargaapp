@@ -170,9 +170,13 @@ function HistoryPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Link to="/app/medidas" className="text-xs font-semibold underline underline-offset-4">
+            Medidas e fotos
+          </Link>
           <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
           <ImportWorkoutDialog userId={user.id} />
         </div>
+
       </header>
 
       {/* Calendário: dias com treino vs. dias sem treino registrado */}
