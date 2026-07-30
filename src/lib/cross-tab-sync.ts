@@ -24,12 +24,27 @@ type SyncMessage = {
   at: number;
 };
 
-const TAB_ID =
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
+/**
+ * ID da aba gerado sob demanda.
+ *
+ * IMPORTANTE: não pode ser gerado em escopo de módulo. No runtime de produção
+ * (Cloudflare Worker) qualquer geração de valor aleatório em escopo global
+ * lança "Disallowed operation called within global scope" e derruba o SSR
+ * inteiro com HTTP 500 em todas as rotas.
+ */
+let tabId: string | null = null;
+
+function getTabId(): string {
+  if (tabId) return tabId;
+  tabId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return tabId;
+}
 
 let channel: BroadcastChannel | null = null;
+
 
 function getChannel(): BroadcastChannel | null {
   if (typeof window === "undefined") return null;
@@ -67,7 +82,7 @@ export function broadcastInvalidate(keys: SyncKey[]) {
   post({
     type: "invalidate",
     keys: keys.map((k) => [...k]),
-    origin: TAB_ID,
+    origin: getTabId(),
     at: Date.now(),
   });
 }
@@ -103,7 +118,7 @@ export function initCrossTabSync(qc: QueryClient): () => void {
 
   const apply = (raw: unknown) => {
     const msg = raw as SyncMessage | null;
-    if (!msg || msg.type !== "invalidate" || msg.origin === TAB_ID) return;
+    if (!msg || msg.type !== "invalidate" || msg.origin === getTabId()) return;
     if (!Array.isArray(msg.keys)) return;
     for (const key of msg.keys) {
       if (!Array.isArray(key) || key.length === 0) continue;
