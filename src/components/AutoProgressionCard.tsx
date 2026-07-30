@@ -21,6 +21,8 @@ import {
   Sparkles,
   Check,
   AlertTriangle,
+  History,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +37,7 @@ import {
   buildEvidence,
   type AutoAdjustment,
 } from "@/lib/auto-progression";
+import { listPlanVersions, restorePlanVersion } from "@/lib/plan-versions";
 
 const fmtKg = (n: number | null | undefined) =>
   n == null ? "—" : `${(Math.round(Number(n) * 10) / 10).toString().replace(".", ",")} kg`;
