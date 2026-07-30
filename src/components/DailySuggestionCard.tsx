@@ -36,16 +36,25 @@ function Chip({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
   );
 }
 
+export type RecuperacaoResumo = {
+  /** Score autoritativo do motor de Recuperação, na escala 0–100. */
+  score: number;
+  /** Rótulo já exibido no card de Recuperação (Excelente/Boa/Moderada/Baixa). */
+  statusLabel: string;
+};
+
 export function DailySuggestionCard({
   sugestao,
   onStart,
   onEditCheckin,
   workoutSugeridoId,
+  recuperacao,
 }: {
   sugestao: Sugestao;
   onStart: () => void;
   onEditCheckin: () => void;
   workoutSugeridoId: string | null;
+  recuperacao?: RecuperacaoResumo | null;
 }) {
   const s = INTENSITY_STYLES[sugestao.intensidade];
   const grupoLabel =
