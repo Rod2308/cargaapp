@@ -54,7 +54,20 @@ export function DailyCheckinCard({
         { user_id: userId, log_date: todayStr, ...parsed.data },
         { onConflict: "user_id,log_date" },
       );
+      // Mantém sleep_logs em sincronia com o check-in: o motor de Recuperação
+      // usa sleep_logs como fonte primária de sono e o check-in como fallback.
+      await writeUpsert(
+        "sleep_logs",
+        {
+          user_id: userId,
+          log_date: todayStr,
+          hours: parsed.data.sleep_hours,
+          quality: parsed.data.sleep_quality,
+        },
+        { onConflict: "user_id,log_date" },
+      );
       return parsed.data;
+
     },
     onSuccess: (payload) => {
       // Atualiza cache local para refletir imediatamente (mesmo offline).

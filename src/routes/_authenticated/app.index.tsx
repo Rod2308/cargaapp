@@ -30,6 +30,7 @@ import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
+  alinharComRecuperacao,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
   proximoNaRotinaComRecuperacao,
@@ -343,7 +344,23 @@ function Dashboard() {
 
   }, [todayCheckin, atividades, workouts]);
 
-  const suggestion = planoOuGeral.suggestion;
+  // O motor de Recuperação é a AUTORIDADE sobre treinar × descansar.
+  // A sugestão do dia continua escolhendo QUAL treino, mas a intensidade é
+  // rebaixada aqui pra que os dois cards nunca digam coisas opostas.
+  const suggestion = useMemo(() => {
+    const base = planoOuGeral.suggestion;
+    if (!base) return null;
+    return alinharComRecuperacao(
+      base,
+      recovery
+        ? {
+            status: recovery.status,
+            score: recovery.score,
+            intensityLabel: recovery.intensityLabel,
+          }
+        : null,
+    );
+  }, [planoOuGeral.suggestion, recovery]);
   const workoutSugeridoId = planoOuGeral.workoutId;
 
   const [checkinEditOpen, setCheckinEditOpen] = useState(false);
