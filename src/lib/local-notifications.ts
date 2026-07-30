@@ -104,17 +104,43 @@ export async function scheduleRestFinishedNotification(
   if (Notification.permission !== "granted") return;
 
   cancelWebRestNotification();
+
+  // 1) Alarme dentro do service worker: dispara na hora exata, funciona
+  //    offline e sobrevive à aba sendo colocada em segundo plano.
+  void postToServiceWorker({
+    type: "rest-schedule",
+    fireAt: when.getTime(),
+    title: "Descanso acabou! 💪",
+    body,
+  });
+
+  // 2) Rede de segurança na própria página (caso não haja service worker).
   webTimeoutId = setTimeout(() => {
+    webTimeoutId = null;
     void showWebRestNotification(body);
   }, ms);
+}
+
+async function postToServiceWorker(message: Record<string, unknown>): Promise<void> {
+  try {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const reg =
+      (await navigator.serviceWorker.getRegistration("/")) ??
+      (await navigator.serviceWorker.getRegistration());
+    const target = reg?.active ?? navigator.serviceWorker.controller;
+    if (!target) return;
+    target.postMessage(message);
+  } catch (err) {
+    console.warn("[notifications] sw message error", err);
+  }
 }
 
 async function showWebRestNotification(body: string): Promise<void> {
   const title = "Descanso acabou! 💪";
   const options: NotificationOptions = {
     body,
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     tag: "rest-timer",
     requireInteraction: true,
     silent: false,
@@ -123,6 +149,9 @@ async function showWebRestNotification(body: string): Promise<void> {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg) {
+        // Se o próprio SW já mostrou o aviso, não duplica.
+        const shown = await reg.getNotifications({ tag: "rest-timer" });
+        if (shown.length > 0) return;
         await reg.showNotification(title, options);
         return;
       }
@@ -138,6 +167,7 @@ function cancelWebRestNotification(): void {
     clearTimeout(webTimeoutId);
     webTimeoutId = null;
   }
+  void postToServiceWorker({ type: "rest-cancel" });
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     void navigator.serviceWorker.getRegistration().then((reg) => {
       if (!reg) return;
