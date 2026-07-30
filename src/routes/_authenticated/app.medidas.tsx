@@ -206,7 +206,7 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
       if (editingId) {
         const { error } = await supabase
           .from("body_measurements")
-          .update(payload)
+          .update(payload as never)
           .eq("id", editingId)
           .eq("user_id", userId);
         if (error) throw error;
