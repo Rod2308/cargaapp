@@ -53,7 +53,7 @@ type Factor = z.infer<typeof FactorSchema>;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
-function scoreToStatus(score: number): RecoveryAdvice["status"] {
+export function scoreToStatus(score: number): RecoveryAdvice["status"] {
   if (score >= 80) return "recuperado";
   if (score >= 60) return "leve";
   if (score >= 40) return "cuidado";
