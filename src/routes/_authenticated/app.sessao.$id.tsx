@@ -738,6 +738,8 @@ function SessionPage() {
                 />
               )}
 
+              {lastRef && <LastTimeHint reference={lastRef} />}
+
               <div className="mt-3 space-y-2">
                 {done.map((s: any, i: number) => (
                   <SetRow
@@ -759,7 +761,9 @@ function SessionPage() {
                   suggestedWeight ??
                   ""
                 }
+                lastSet={lastRef?.sets[done.length] ?? null}
                 actionLabel={done.length >= it.target_sets ? "Adicionar série extra" : "Adicionar série"}
+
                 onLog={(reps, weight) => {
                   logSet.mutate({
                     session_id: id,
