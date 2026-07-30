@@ -150,6 +150,8 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
   const [values, setValues] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [metric, setMetric] = useState<FieldKey>("weight_kg");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLElement>(null);
 
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["body-measurements", userId],
@@ -164,13 +166,36 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
     },
   });
 
+  const resetForm = () => {
+    setEditingId(null);
+    setValues({});
+    setNotes("");
+    setDate(todayISO());
+  };
+
+  const startEdit = (r: Measurement) => {
+    setEditingId(r.id);
+    setDate(r.log_date);
+    setNotes(r.notes ?? "");
+    const next: Record<string, string> = {};
+    for (const f of FIELDS) {
+      if (r[f.key] != null) next[f.key] = String(r[f.key]).replace(".", ",");
+    }
+    setValues(next);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const payload: Record<string, any> = { user_id: userId, log_date: date, notes: notes.trim() || null };
       let filled = 0;
       for (const f of FIELDS) {
         const raw = (values[f.key] ?? "").replace(",", ".").trim();
-        if (raw === "") continue;
+        if (raw === "") {
+          // ao editar, campo esvaziado limpa o valor salvo
+          payload[f.key] = null;
+          continue;
+        }
         const n = Number(raw);
         if (!Number.isFinite(n) || n <= 0) throw new Error(`Valor inválido em ${f.label}.`);
         if (n > 500) throw new Error(`${f.label} parece fora do razoável.`);
@@ -178,19 +203,28 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         filled += 1;
       }
       if (filled === 0) throw new Error("Preencha ao menos um campo.");
+      if (editingId) {
+        const { error } = await supabase
+          .from("body_measurements")
+          .update(payload)
+          .eq("id", editingId)
+          .eq("user_id", userId);
+        if (error) throw error;
+        return;
+      }
       const { error } = await supabase
         .from("body_measurements")
         .upsert(payload, { onConflict: "user_id,log_date" });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Medidas salvas");
-      setValues({});
-      setNotes("");
+      toast.success(editingId ? "Registro atualizado" : "Medidas salvas");
+      resetForm();
       qc.invalidateQueries({ queryKey: ["body-measurements", userId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui salvar as medidas."),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
