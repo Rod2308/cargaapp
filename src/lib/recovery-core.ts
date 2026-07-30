@@ -9,6 +9,16 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  ALL_MUSCLE_GROUPS,
+  MUSCLE_LABEL,
+  MUSCLE_RECOVERY_DAYS,
+  fractionalDaysSince,
+  isMuscleRecovered,
+  normalizeMuscleGroup,
+  type MuscleGroup,
+} from "./muscle-recovery";
+
 
 const FactorSchema = z.object({
   key: z.string(),
