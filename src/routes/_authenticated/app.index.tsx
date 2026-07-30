@@ -930,6 +930,14 @@ function Dashboard() {
   );
 }
 
+/** Rótulo único de status compartilhado pelos cards de Recuperação e Sugestão. */
+const RECOVERY_STATUS_LABEL: Record<RecoveryData["status"], string> = {
+  recuperado: "Excelente",
+  leve: "Boa",
+  cuidado: "Moderada",
+  descanso: "Baixa",
+};
+
 type RecoveryData = {
   status: "recuperado" | "leve" | "cuidado" | "descanso";
   score: number;
