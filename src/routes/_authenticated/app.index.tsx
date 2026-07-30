@@ -28,6 +28,7 @@ import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
 import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
@@ -154,10 +155,7 @@ function Dashboard() {
       return { session: data, retro: !!dateStr };
     },
     onSuccess: ({ session, retro }) => {
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       navigate({
         to: retro ? "/app/sessao/$id/editar" : "/app/sessao/$id",
         params: { id: session.id },
@@ -431,8 +429,7 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Sono registrado!");
-      qc.invalidateQueries({ queryKey: ["sleep-logs"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
     },
   });
 
@@ -488,9 +485,7 @@ function Dashboard() {
     },
     onSuccess: () => {
       toast.success("Esporte registrado!");
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       setSportOpen(false);
       setSportId("");
       setSportDuration("30");

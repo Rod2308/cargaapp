@@ -44,6 +44,7 @@ import { PlateCalculator } from "@/components/PlateCalculator";
 import { checkPr } from "@/lib/pr";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -449,10 +450,7 @@ function SessionPage() {
       } else {
         void markSessionSnapshotPendingClear(id);
       }
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
-      qc.invalidateQueries({ queryKey: ["recovery"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       const label = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m} min`;
@@ -471,9 +469,7 @@ function SessionPage() {
     },
     onSuccess: () => {
       void clearSessionSnapshot(id);
-      qc.invalidateQueries({ queryKey: ["recent-sessions"] });
-      qc.invalidateQueries({ queryKey: ["month-sessions"] });
-      qc.invalidateQueries({ queryKey: ["history-sessions"] });
+      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
       toast.success("Treino cancelado");
       navigate({ to: "/app" });
     },
