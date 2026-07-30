@@ -44,6 +44,7 @@ import { PlateCalculator } from "@/components/PlateCalculator";
 import { checkPr } from "@/lib/pr";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
+import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
