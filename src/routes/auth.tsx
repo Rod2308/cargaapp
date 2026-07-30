@@ -265,9 +265,17 @@ function AuthPage() {
     // Origem espelho (ex.: Vercel): o provedor não pode redirecionar para cá,
     // então o login acontece na origem canônica e volta pela ponte.
     if (!bridge && isBridgeOrigin()) {
-      validSession().then((session) => {
-        if (session) window.location.href = redirectTo;
-        else redirectToCanonicalLogin(redirectTo);
+      setBridging(true);
+      validSession().then(async (session) => {
+        if (session) {
+          window.location.href = redirectTo;
+          return;
+        }
+        const ok = await redirectToCanonicalLogin(redirectTo);
+        if (!ok) {
+          setBridging(false);
+          setBridgeFailed(true);
+        }
       });
       return;
     }
@@ -276,7 +284,8 @@ function AuthPage() {
       if (bridge && handOffSessionToBridge(bridge, session, redirectTo)) return;
       window.location.href = redirectTo;
     });
-  }, [redirectTo, bridge]);
+  }, [redirectTo, bridge, bridgeAttempt]);
+
 
 
 
