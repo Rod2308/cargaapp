@@ -1014,7 +1014,8 @@ function SetLogger({ defaultReps, defaultWeight, onLog, repsLabel = "Reps", hide
             inputMode="decimal"
             step="0.5"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => { setTouched(true); setWeight(e.target.value); }}
+
             className="mt-0.5 h-10"
             placeholder={lastSet?.weight_kg != null ? `última: ${lastSet.weight_kg}` : undefined}
           />
