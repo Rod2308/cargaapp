@@ -1098,26 +1098,62 @@ export function ImportWorkoutPlanDialog({
         ),
       );
       if (missing.length > 0) {
+        // Grupos que já existem no catálogo carregado — usados para validar
+        // o grupo inferido e evitar criar grupos musculares órfãos.
+        const knownGroups = new Set(
+          (catalogIndex ?? [])
+            .map((e) => e.muscle_group)
+            .filter((g): g is string => Boolean(g && g.trim())),
+        );
+
+        const rowsToCreate = await Promise.all(
+          missing.map(async (n) => {
+            const detectedGroup = groupByParsedKey.get(stripAccents(n));
+            const metadata = getDefaultMetadata(n, detectedGroup);
+
+            // 1) mini-dicionário local só quando é match exato pelo nome;
+            // 2) senão tenta a mesma base pública usada pelo restante do
+            //    catálogo (free-exercise-db) para achar uma imagem de verdade;
+            // 3) só então cai no fallback genérico por grupo.
+            let image_url = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.image_url ?? null;
+            let equipment = DEFAULT_METADATA_BY_NAME[stripAccents(n)]?.equipment ?? null;
+            let group = detectedGroup ?? metadata?.muscle_group ?? null;
+
+            if (!image_url) {
+              try {
+                const found = await lookupExerciseImage(n);
+                if (found) {
+                  image_url = found.image_url;
+                  equipment = equipment ?? found.equipment;
+                  group = group ?? found.muscle_group;
+                }
+              } catch {
+                /* base indisponível — segue para o fallback genérico */
+              }
+            }
+
+            if (!image_url) image_url = metadata?.image_url || null;
+            if (!equipment) equipment = metadata?.equipment ?? null;
+
+            return {
+              name: n,
+              muscle_group: normalizeMuscleGroup(group ?? metadata?.muscle_group, knownGroups),
+              equipment,
+              image_url: image_url || null,
+              is_default: false,
+              created_by: userId,
+            };
+          }),
+        );
+
         const { data: created, error: cErr } = await supabase
           .from("exercises")
-          .insert(
-            missing.map((n) => {
-              const detectedGroup = groupByParsedKey.get(stripAccents(n));
-              const metadata = getDefaultMetadata(n, detectedGroup);
-              return {
-                name: n,
-                muscle_group: metadata?.muscle_group ?? detectedGroup ?? "Outros",
-                equipment: metadata?.equipment ?? null,
-                image_url: metadata?.image_url || null,
-                is_default: false,
-                created_by: userId,
-              };
-            }),
-          )
+          .insert(rowsToCreate)
           .select("id, name");
         if (cErr) throw cErr;
         (created ?? []).forEach((e: any) => idByParsedKey.set(stripAccents(e.name), e.id));
       }
+
 
       const createdWorkouts: { id: string; name: string }[] = [];
       for (let i = 0; i < blocks.length; i++) {
