@@ -1,7 +1,10 @@
 // Autenticação simples para endpoints chamados pelo agendador (pg_cron).
 // O agendador envia o header `apikey` com a chave publicável do backend.
 export function isAuthorizedCronRequest(request: Request): boolean {
-  const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
+  // No Lovable a variável vem sem prefixo; em outros hosts (Vercel) muitas
+  // vezes só a versão VITE_ é configurada. Aceitamos as duas.
+  const expected =
+    process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (!expected) return false;
 
   const apikey = request.headers.get("apikey");
