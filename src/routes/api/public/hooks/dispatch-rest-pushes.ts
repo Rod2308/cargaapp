@@ -40,14 +40,22 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-rest-pushes")({
             title: row.title,
             body: row.body,
             tag: "rest-timer",
-            data: { type: "rest-finished", scheduleId: row.id },
+            data: {
+              type: "rest-finished",
+              scheduleId: row.id,
+              fireAt: new Date(row.fire_at).getTime(),
+              url: "/",
+            },
           });
           for (const s of subs ?? []) {
             try {
               await webpush.sendNotification(
                 { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
                 payload,
-                { TTL: 60 },
+                // TTL maior evita que o push seja descartado pelo servidor de
+                // push quando o aparelho está sem rede por alguns minutos;
+                // a urgência alta reduz o atraso em modo de economia/Doze.
+                { TTL: 300, urgency: "high", topic: "resttimer" },
               );
               sent++;
             } catch (err: unknown) {
