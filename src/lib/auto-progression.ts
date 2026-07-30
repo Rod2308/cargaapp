@@ -222,10 +222,37 @@ export function buildEvidence(a: AutoAdjustment): string[] {
   return out;
 }
 
-/** Grava os ajustes informados (usa a fila offline). Retorna quantos foram aplicados. */
-export async function applyAutoProgression(adjustments: AutoAdjustment[]): Promise<number> {
-  if (adjustments.length === 0) return 0;
+/**
+ * Grava os ajustes informados (usa a fila offline) e salva uma versão do plano
+ * com os valores anteriores, para permitir desfazer depois.
+ * Retorna quantos foram aplicados e a versão criada.
+ */
+export async function applyAutoProgression(
+  adjustments: AutoAdjustment[],
+  opts: { userId?: string; label?: string } = {},
+): Promise<{ applied: number; versionId: string | null }> {
+  if (adjustments.length === 0) return { applied: 0, versionId: null };
   const { writeUpdate } = await import("@/lib/offline-writes");
+
+  let versionId: string | null = null;
+  if (opts.userId) {
+    const { savePlanVersion } = await import("@/lib/plan-versions");
+    const version = await savePlanVersion(opts.userId, {
+      source: "auto-progression",
+      label:
+        opts.label ??
+        `Progressão automática · ${adjustments.length} exercício${adjustments.length === 1 ? "" : "s"}`,
+      entries: adjustments.map((a) => ({
+        itemId: a.itemId,
+        exerciseName: a.exerciseName,
+        workoutName: a.workoutName,
+        before: { target_weight_kg: a.currentWeight, target_rest_seconds: a.currentRest },
+        after: a.patch,
+      })),
+    });
+    versionId = version?.id ?? null;
+  }
+
   let applied = 0;
   for (const a of adjustments) {
     try {
@@ -235,5 +262,5 @@ export async function applyAutoProgression(adjustments: AutoAdjustment[]): Promi
       // segue para os próximos; falhas permanentes já são registradas pela fila
     }
   }
-  return applied;
+  return { applied, versionId };
 }

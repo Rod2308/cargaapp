@@ -21,6 +21,8 @@ import {
   Sparkles,
   Check,
   AlertTriangle,
+  History,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +37,7 @@ import {
   buildEvidence,
   type AutoAdjustment,
 } from "@/lib/auto-progression";
+import { listPlanVersions, restorePlanVersion } from "@/lib/plan-versions";
 
 const fmtKg = (n: number | null | undefined) =>
   n == null ? "—" : `${(Math.round(Number(n) * 10) / 10).toString().replace(".", ",")} kg`;
@@ -129,6 +132,7 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
   const [auto, setAuto] = useState(false);
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   useEffect(() => setAuto(isAutoEnabled(userId)), [userId]);
@@ -137,6 +141,12 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
     queryKey: ["auto-progression", userId],
     queryFn: () => computeAutoProgression(userId),
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: versions = [] } = useQuery({
+    queryKey: ["plan-versions", userId],
+    queryFn: () => listPlanVersions(userId),
+    staleTime: 60 * 1000,
   });
 
   const { auto: safeAdjustments, needsConfirmation } = useMemo(
@@ -151,17 +161,41 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
     }
   }, [confirmOpen, needsConfirmation]);
 
-  const apply = useMutation({
-    mutationFn: async (list: AutoAdjustment[]) => applyAutoProgression(list),
+  const restore = useMutation({
+    mutationFn: async (versionId: string) => restorePlanVersion(userId, versionId),
     onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["workout-exercises"] });
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["auto-progression", userId] });
+      qc.invalidateQueries({ queryKey: ["plan-versions", userId] });
+      toast.success(`Plano restaurado: ${n} exercício(s) voltaram aos valores anteriores.`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao restaurar a versão"),
+  });
+
+  const apply = useMutation({
+    mutationFn: async (list: AutoAdjustment[]) =>
+      applyAutoProgression(list, { userId }),
+    onSuccess: ({ applied, versionId }) => {
       markRanToday(userId);
       qc.invalidateQueries({ queryKey: ["workout-exercises"] });
       qc.invalidateQueries({ queryKey: ["workouts"] });
       qc.invalidateQueries({ queryKey: ["auto-progression", userId] });
+      qc.invalidateQueries({ queryKey: ["plan-versions", userId] });
       setOpen(false);
       setConfirmOpen(false);
-      if (n > 0) toast.success(`Plano atualizado: ${n} ajuste${n === 1 ? "" : "s"} aplicado${n === 1 ? "" : "s"}.`);
-      else toast.info("Nenhum ajuste aplicado.");
+      if (applied > 0) {
+        toast.success(
+          `Plano atualizado: ${applied} ajuste${applied === 1 ? "" : "s"} aplicado${applied === 1 ? "" : "s"}.`,
+          versionId
+            ? {
+                duration: 20000,
+                description: "Não gostou? Você pode desfazer esta atualização.",
+                action: { label: "Desfazer", onClick: () => restore.mutate(versionId) },
+              }
+            : undefined,
+        );
+      } else toast.info("Nenhum ajuste aplicado.");
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar o plano"),
   });
@@ -223,19 +257,26 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {adjustments.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" onClick={applySafeAndAsk} disabled={apply.isPending}>
-            {apply.isPending ? <><Loader2 className="size-3.5 animate-spin" /> Aplicando...</> : <><Check className="size-3.5" /> Atualizar plano</>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {adjustments.length > 0 && (
+          <>
+            <Button size="sm" onClick={applySafeAndAsk} disabled={apply.isPending}>
+              {apply.isPending ? <><Loader2 className="size-3.5 animate-spin" /> Aplicando...</> : <><Check className="size-3.5" /> Atualizar plano</>}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              Ver ajustes
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => refetch()}>
+              Recalcular
+            </Button>
+          </>
+        )}
+        {versions.length > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => setVersionsOpen(true)}>
+            <History className="size-3.5" /> Versões do plano ({versions.length})
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            Ver ajustes
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => refetch()}>
-            Recalcular
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Detalhamento completo */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -300,6 +341,66 @@ export function AutoProgressionCard({ userId }: { userId: string }) {
                 : `Confirmar ${selectedList.length} ajuste(s)`}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Histórico de versões do plano */}
+      <Dialog open={versionsOpen} onOpenChange={setVersionsOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="size-4" /> Versões do plano
+            </DialogTitle>
+            <DialogDescription>
+              Cada atualização automática salva os valores anteriores. Você pode voltar o plano
+              para como ele estava antes de qualquer uma delas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {versions.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhuma versão salva ainda.</p>
+            )}
+            {versions.map((v) => (
+              <div key={v.id} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{v.label}</p>
+                  <span className="text-[11px] text-muted-foreground">
+                    {new Date(v.createdAt).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <ul className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
+                  {v.entries.slice(0, 4).map((e) => (
+                    <li key={e.itemId}>
+                      • {e.exerciseName}: {fmtKg(e.before.target_weight_kg)} → {" "}
+                      {e.after.target_weight_kg !== undefined
+                        ? fmtKg(e.after.target_weight_kg)
+                        : fmtKg(e.before.target_weight_kg)}
+                      {e.after.target_rest_seconds !== undefined &&
+                        ` · descanso ${e.before.target_rest_seconds}s → ${e.after.target_rest_seconds}s`}
+                    </li>
+                  ))}
+                  {v.entries.length > 4 && <li>• +{v.entries.length - 4} exercício(s)</li>}
+                </ul>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => restore.mutate(v.id)}
+                    disabled={restore.isPending}
+                  >
+                    {restore.isPending
+                      ? <><Loader2 className="size-3.5 animate-spin" /> Restaurando...</>
+                      : <><RotateCcw className="size-3.5" /> Voltar a esta versão</>}
+                  </Button>
+                  {v.restoredAt && (
+                    <span className="text-[11px] text-muted-foreground">Já restaurada</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
