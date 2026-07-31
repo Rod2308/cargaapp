@@ -27,6 +27,8 @@ import {
 } from "@/lib/local-notifications";
 import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
 import { ensureWebPushSubscribed } from "@/lib/web-push-client";
+import { needsIOSInstallForPush } from "@/lib/pwa-env";
+import { Link } from "@tanstack/react-router";
 
 // Agendamento do push no servidor. Se o app estiver offline (ou a chamada
 // falhar), guardamos o alvo e reenviamos assim que a conexão voltar — antes
@@ -165,6 +167,7 @@ export function RestTimer({
   const [paused, setPaused] = useState(initialPaused);
   const [done, setDone] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
+  const [iosNeedsInstall, setIosNeedsInstall] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedRef = useRef(false);
 
@@ -182,6 +185,10 @@ export function RestTimer({
       scheduleRestFinishedNotification(nextSeconds, exerciseName),
     );
   };
+
+  useEffect(() => {
+    setIosNeedsInstall(needsIOSInstallForPush());
+  }, []);
 
   // Onboarding: na primeira vez que o timer aparece, pergunta se pode notificar.
   useEffect(() => {
@@ -417,6 +424,15 @@ export function RestTimer({
             <p className="text-[11px] leading-snug text-muted-foreground">
               A notificação aparece quando o app está em segundo plano ou a tela está bloqueada.
             </p>
+            {iosNeedsInstall && (
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                No iPhone o aviso com a tela bloqueada só funciona depois de adicionar o Carga
+                à Tela de Início.{" "}
+                <Link to="/app/instalar" className="underline">
+                  Ver como instalar
+                </Link>
+              </p>
+            )}
           </PopoverContent>
         </Popover>
       </div>
