@@ -178,9 +178,9 @@ self.addEventListener("message", (event) => {
     // Reinicia a janela de dedupe: este é um novo descanso.
     lastRestShownAt = 0;
     clearRestTimer();
-    void idbDelete(SHOWN_KEY);
     event.waitUntil(
       (async () => {
+        await idbDelete(SHOWN_KEY);
         await idbSet(ALARM_KEY, { fireAt, title, body });
         await restoreAlarm();
       })(),
