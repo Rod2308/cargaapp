@@ -220,11 +220,11 @@ self.addEventListener("push", (event) => {
         // do fim do descanso — é isso que faz o aviso chegar na hora certa
         // mesmo com o celular bloqueado.
         if (wait > 0) {
-          await clearAlarm();
+          // Não apagamos o alarme local antes da hora: se o sistema encerrar
+          // o worker durante a espera, o alarme persistido ainda avisa.
           await new Promise((resolve) => setTimeout(resolve, Math.min(wait, 150000)));
-        } else {
-          await clearAlarm();
         }
+        await clearAlarm();
         await showRestNotification(payload.title, payload.body);
       })(),
 
