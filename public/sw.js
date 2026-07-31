@@ -23,6 +23,9 @@ const MAX_ALARM_LATENESS_MS = 10 * 60 * 1000;
 const DB_NAME = "carga-sw";
 const STORE = "state";
 const ALARM_KEY = "rest-alarm";
+// Guardado em disco porque no iOS o service worker é reiniciado a cada push:
+// só a variável em memória não impediria um aviso duplicado.
+const SHOWN_KEY = "rest-shown-at";
 
 let restTimeoutId = null;
 let lastRestShownAt = 0;
@@ -100,7 +103,14 @@ self.addEventListener("activate", (event) => {
 async function showRestNotification(title, body) {
   const now = Date.now();
   if (now - lastRestShownAt < DEDUPE_WINDOW_MS) return;
+  const persisted = Number(await idbGet(SHOWN_KEY)) || 0;
+  if (now - persisted < DEDUPE_WINDOW_MS) return;
+  // Se o aviso já está na tela (voltando do segundo plano no iPhone), não
+  // mostramos outro.
+  const existing = await self.registration.getNotifications({ tag: REST_TAG });
+  if (existing.length > 0) return;
   lastRestShownAt = now;
+  await idbSet(SHOWN_KEY, now);
   await self.registration.showNotification(title || "Descanso acabou! 💪", {
     body: body || "Hora de iniciar a próxima série.",
     icon: "/icon-192.png",
@@ -170,6 +180,7 @@ self.addEventListener("message", (event) => {
     clearRestTimer();
     event.waitUntil(
       (async () => {
+        await idbDelete(SHOWN_KEY);
         await idbSet(ALARM_KEY, { fireAt, title, body });
         await restoreAlarm();
       })(),
@@ -179,6 +190,7 @@ self.addEventListener("message", (event) => {
 
   if (msg.type === "rest-cancel") {
     lastRestShownAt = Date.now();
+    void idbSet(SHOWN_KEY, Date.now());
     event.waitUntil(
       (async () => {
         await clearAlarm();
