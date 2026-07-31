@@ -26,6 +26,7 @@ import {
   ensureRestChannel,
 } from "@/lib/local-notifications";
 import { scheduleRestPush, cancelRestPush } from "@/lib/rest-push.functions";
+import { ensureWebPushSubscribed } from "@/lib/web-push-client";
 
 // Agendamento do push no servidor. Se o app estiver offline (ou a chamada
 // falhar), guardamos o alvo e reenviamos assim que a conexão voltar — antes
@@ -36,6 +37,9 @@ let onlineListenerBound = false;
 async function sendSchedule(fireAt: number, exerciseName?: string): Promise<void> {
   const seconds = Math.round((fireAt - Date.now()) / 1000);
   if (seconds < 5) return; // servidor exige >= 5s; abaixo disso o alarme local basta
+  // Com a tela bloqueada o push do servidor é o caminho mais confiável, então
+  // revalidamos a assinatura antes de agendar (ela pode ter sido invalidada).
+  await ensureWebPushSubscribed().catch(() => {});
   await callServer("rest.schedule", scheduleRestPush, { seconds, exerciseName });
 }
 

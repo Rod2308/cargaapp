@@ -20,13 +20,18 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-rest-pushes")({
         }
         webpush.setVapidDetails(subject, publicKey, privateKey);
 
-        const nowIso = new Date().toISOString();
+        // Antecipação: o cron roda a cada minuto, então enviamos também os
+        // descansos que vencem nos próximos 90s. O service worker recebe o
+        // push, vê o `fireAt` no futuro e só exibe a notificação na hora
+        // exata — assim o aviso chega no horário certo com a tela bloqueada.
+        const lookaheadIso = new Date(Date.now() + 90 * 1000).toISOString();
         const { data: due, error } = await supabaseAdmin
           .from("rest_push_schedules")
           .select("id, user_id, title, body, fire_at")
           .is("sent_at", null)
-          .lte("fire_at", nowIso)
+          .lte("fire_at", lookaheadIso)
           .limit(200);
+
         if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
 
         let sent = 0;

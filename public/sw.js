@@ -212,11 +212,22 @@ self.addEventListener("push", (event) => {
   if (data.type === "rest-finished" || payload.tag === REST_TAG) {
     const fireAt = Number(data.fireAt) || 0;
     if (fireAt && Date.now() - fireAt > MAX_REST_PUSH_LATENESS_MS) return;
+    const wait = fireAt ? fireAt - Date.now() : 0;
     event.waitUntil(
       (async () => {
+        // O servidor envia o push com até 90s de antecedência (o cron roda a
+        // cada minuto). Aqui seguramos o worker acordado até o instante exato
+        // do fim do descanso — é isso que faz o aviso chegar na hora certa
+        // mesmo com o celular bloqueado.
+        if (wait > 0) {
+          // Não apagamos o alarme local antes da hora: se o sistema encerrar
+          // o worker durante a espera, o alarme persistido ainda avisa.
+          await new Promise((resolve) => setTimeout(resolve, Math.min(wait, 150000)));
+        }
         await clearAlarm();
         await showRestNotification(payload.title, payload.body);
       })(),
+
     );
     return;
   }
