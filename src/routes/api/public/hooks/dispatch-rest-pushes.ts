@@ -105,7 +105,7 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-rest-pushes")({
           .delete()
           .lt("fire_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-        return Response.json({ processed: due?.length ?? 0, sent, failed });
+        return Response.json({ processed: due?.length ?? 0, sent, failed, deferred });
       },
     },
   },
