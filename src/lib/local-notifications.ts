@@ -105,6 +105,8 @@ export async function scheduleRestFinishedNotification(
 
   cancelWebRestNotification();
 
+  pendingWebAlarm = { fireAt: when.getTime(), body };
+
   // 1) Alarme dentro do service worker: dispara na hora exata, funciona
   //    offline e sobrevive à aba sendo colocada em segundo plano.
   void postToServiceWorker({
@@ -114,12 +116,84 @@ export async function scheduleRestFinishedNotification(
     body,
   });
 
-  // 2) Rede de segurança na própria página (caso não haja service worker).
+  // 2) Mantém o service worker acordado enquanto o descanso corre: no celular
+  //    ele é encerrado após poucos segundos parado, e o ping faz com que ele
+  //    reavalie o alarme persistido em disco.
+  startHeartbeat();
+  bindForegroundRecovery();
+  void requestBackgroundSync();
+
+  // 3) Rede de segurança na própria página (caso não haja service worker).
   webTimeoutId = setTimeout(() => {
     webTimeoutId = null;
     void showWebRestNotification(body);
   }, ms);
 }
+
+let pendingWebAlarm: { fireAt: number; body: string } | null = null;
+let heartbeatId: ReturnType<typeof setInterval> | null = null;
+let foregroundBound = false;
+
+function startHeartbeat(): void {
+  stopHeartbeat();
+  heartbeatId = setInterval(() => {
+    if (!pendingWebAlarm) {
+      stopHeartbeat();
+      return;
+    }
+    if (pendingWebAlarm.fireAt <= Date.now() - 60_000) {
+      // Já passou bastante: nada mais a manter vivo.
+      pendingWebAlarm = null;
+      stopHeartbeat();
+      return;
+    }
+    void postToServiceWorker({ type: "rest-ping" });
+  }, 8000);
+}
+
+function stopHeartbeat(): void {
+  if (heartbeatId !== null) {
+    clearInterval(heartbeatId);
+    heartbeatId = null;
+  }
+}
+
+/**
+ * Em celulares a aba costuma ser congelada em segundo plano, o que atrasa o
+ * setTimeout da página. Ao voltar ao primeiro plano conferimos se o descanso
+ * já venceu e, se venceu há pouco, mostramos o aviso imediatamente.
+ */
+function bindForegroundRecovery(): void {
+  if (foregroundBound || typeof document === "undefined") return;
+  foregroundBound = true;
+  const check = () => {
+    if (document.visibilityState !== "visible") return;
+    void postToServiceWorker({ type: "rest-ping" });
+    const alarm = pendingWebAlarm;
+    if (!alarm) return;
+    const late = Date.now() - alarm.fireAt;
+    if (late >= 0 && late < 10 * 60_000) {
+      pendingWebAlarm = null;
+      stopHeartbeat();
+      void showWebRestNotification(alarm.body);
+    }
+  };
+  document.addEventListener("visibilitychange", check);
+  window.addEventListener("focus", check);
+}
+
+async function requestBackgroundSync(): Promise<void> {
+  try {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const reg = (await navigator.serviceWorker.getRegistration("/")) as
+      | (ServiceWorkerRegistration & { sync?: { register: (t: string) => Promise<void> } })
+      | undefined;
+    await reg?.sync?.register("rest-alarm");
+  } catch {
+    // Background Sync não é suportado em todos os navegadores (iOS).
+  }
+}
+
 
 async function postToServiceWorker(message: Record<string, unknown>): Promise<void> {
   try {
