@@ -241,7 +241,10 @@ function cancelWebRestNotification(): void {
     clearTimeout(webTimeoutId);
     webTimeoutId = null;
   }
+  pendingWebAlarm = null;
+  stopHeartbeat();
   void postToServiceWorker({ type: "rest-cancel" });
+
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     void navigator.serviceWorker.getRegistration().then((reg) => {
       if (!reg) return;
