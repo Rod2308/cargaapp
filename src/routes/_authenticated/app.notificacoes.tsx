@@ -9,6 +9,8 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush,
   isPushSupported,
+  resubscribeWebPush,
+  sendTestNotification,
 } from "@/lib/web-push-client";
 import { needsIOSInstallForPush, isEmbedded } from "@/lib/pwa-env";
 
