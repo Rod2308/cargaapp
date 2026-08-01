@@ -84,8 +84,10 @@ export function describeNextWorkout<T extends RotinaWorkout>(args: {
   workoutSugeridoId?: string | null;
   suggestion?: SuggestionLike;
   lastWorkoutId?: string | null;
+  /** Motor de Recuperação — autoridade sobre treinar × descansar. */
+  recovery?: { status: string; score: number; intensityLabel?: string } | null;
 }): NextWorkoutReason | null {
-  const { nextWorkout, workoutSugeridoId, suggestion, lastWorkoutId } = args;
+  const { nextWorkout, workoutSugeridoId, suggestion, lastWorkoutId, recovery } = args;
   if (!nextWorkout) return null;
   const usouSugestao = !!workoutSugeridoId && workoutSugeridoId === nextWorkout.id;
 
@@ -98,22 +100,30 @@ export function describeNextWorkout<T extends RotinaWorkout>(args: {
     .filter((g, i, arr) => arr.indexOf(g) === i)
     .map((g) => MUSCLE_LABEL[g as MuscleGroup] ?? String(g));
 
-  const origem = usouSugestao
-    ? "Sugestão do dia (plano + recuperação)"
-    : lastWorkoutId
-      ? "Rotação do plano após o último treino"
-      : "Primeiro treino da sua rotina";
+  const descanso = suggestion?.intensidade === "descanso" || recovery?.status === "descanso";
 
-  const recuperacao =
-    suggestion && typeof suggestion.score === "number"
-      ? `Score ${suggestion.score.toFixed(1)}/10 · intensidade ${suggestion.intensidade}`
-      : null;
+  const origem = descanso
+    ? "Recuperação pediu descanso — este é o próximo quando você voltar"
+    : usouSugestao
+      ? "Sugestão do dia (plano + recuperação)"
+      : lastWorkoutId
+        ? "Rotação do plano após o último treino"
+        : "Primeiro treino da sua rotina";
+
+  // Uma única frase de recuperação, na mesma escala do card "Recuperação",
+  // com a intensidade já alinhada da "Sugestão de hoje".
+  const partes: string[] = [];
+  if (recovery) partes.push(`${Math.round(recovery.score)}/100 · ${recovery.status}`);
+  else if (typeof suggestion?.score === "number") partes.push(`Score ${suggestion.score.toFixed(1)}/10`);
+  if (suggestion?.intensidade) partes.push(`treino ${suggestion.intensidade}`);
+  const recuperacao = partes.length ? partes.join(" · ") : null;
 
   return {
     grupos,
     origem,
     recuperacao,
     scoreDetalhe: suggestion?.scoreDetalhe ?? null,
-    motivo: usouSugestao ? suggestion?.motivo ?? null : null,
+    motivo: usouSugestao || descanso ? suggestion?.motivo ?? null : null,
   };
 }
+
