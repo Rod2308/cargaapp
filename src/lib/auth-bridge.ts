@@ -32,8 +32,7 @@ export function isAllowedBridgeOrigin(origin: string | null | undefined): boolea
 
 /** true quando o app está rodando numa origem espelho que precisa da ponte. */
 export function isBridgeOrigin(): boolean {
-  if (typeof window === "undefined") return false;
-  return isAllowedBridgeOrigin(window.location.origin);
+  return false;
 }
 
 /** Sanitiza um destino interno (evita open redirect e URLs absolutas). */
