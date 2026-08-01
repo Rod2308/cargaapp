@@ -107,8 +107,11 @@ export function DailySuggestionCard({
                   <ul className="mt-1.5 space-y-1 text-[11px] text-muted-foreground">
                     <li>{sugestao.scoreDetalhe}</li>
                     <li>
-                      Cardio na semana: {sugestao.cardio.sessoesIntensas} sessão(ões) intensa(s) ·{" "}
-                      {sugestao.cardio.minutos} min
+                      Cardio na semana (desde domingo): {sugestao.cardio.sessoes} sessão(ões) ·{" "}
+                      {sugestao.cardio.sessoesIntensas} intensa(s) · {sugestao.cardio.minutos} min
+                      {sugestao.cardio.duplicadasIgnoradas > 0
+                        ? ` · ${sugestao.cardio.duplicadasIgnoradas} duplicada(s) ignorada(s)`
+                        : ""}
                     </li>
                     <li>Dias com esforço nos últimos 7: {sugestao.diasEsforcoSemana}/7</li>
                     {sugestao.gruposLiberados.length > 0 && (
@@ -248,8 +251,8 @@ export function DailySuggestionCard({
             <div className="flex flex-wrap gap-1.5">
               <Chip
                 icon={<Activity className="size-3" />}
-                label="Cardio semana"
-                value={`${sugestao.cardio.sessoesIntensas} intensas · ${sugestao.cardio.minutos}min`}
+                label="Cardio semana (dom→hoje)"
+                value={`${sugestao.cardio.sessoes} sessões · ${sugestao.cardio.sessoesIntensas} intensas · ${sugestao.cardio.minutos}min`}
                 tone={cardioTone(sugestao.cardio.nivel)}
               />
               <Chip
