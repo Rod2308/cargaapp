@@ -286,7 +286,7 @@ export function sugerirTreinoDoDia(args: {
   const now = args.hoje ?? new Date();
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
   const liberados = gruposLiberados(timeline, now);
-  const cardio = cargaCardioSemana(timeline);
+  const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const temPoucoHistorico = args.sessoes.length + args.atividadesExtras.length < 3;
@@ -524,7 +524,7 @@ export function sugerirTreinoDoPlano(args: {
 
   const now = args.hoje ?? new Date();
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
-  const cardio = cargaCardioSemana(timeline);
+  const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const liberados = gruposLiberados(timeline, now);
