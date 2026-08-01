@@ -715,6 +715,15 @@ const TETO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
   descanso: "descanso",
 };
 
+// Piso: só a Recuperação pode mandar descansar. Se ela diz que dá pra treinar,
+// a sugestão do dia não pode contradizer pedindo descanso total.
+const PISO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
+  recuperado: "moderada",
+  leve: "leve",
+  cuidado: "leve",
+  descanso: "descanso",
+};
+
 /** Recuperação mandou descansar? Nesse caso nada de treino de força. */
 export function recuperacaoExigeDescanso(rec: RecoveryAuthority | null | undefined): boolean {
   return !!rec && rec.status === "descanso";
@@ -727,28 +736,61 @@ export function alinharComRecuperacao(
   if (!rec) return sugestao;
 
   const teto = TETO_POR_STATUS[rec.status];
-  if (INTENSIDADE_RANK[sugestao.intensidade] <= INTENSIDADE_RANK[teto]) return sugestao;
+  const piso = PISO_POR_STATUS[rec.status];
+  const atual = INTENSIDADE_RANK[sugestao.intensidade];
 
-  const nota = ` Ajustado pela Recuperação (${rec.score}/100): ${
-    teto === "descanso"
-      ? "hoje o corpo pede descanso"
-      : `intensidade limitada a ${teto}`
-  }.`;
+  // 1) Rebaixar quando a sugestão é mais agressiva do que a Recuperação permite
+  if (atual > INTENSIDADE_RANK[teto]) {
+    const nota = ` Ajustado pela Recuperação (${rec.score}/100): ${
+      teto === "descanso" ? "hoje o corpo pede descanso" : `intensidade limitada a ${teto}`
+    }.`;
 
-  if (teto === "descanso") {
+    if (teto === "descanso") {
+      return {
+        ...sugestao,
+        tipo: "descanso ativo",
+        grupos: [],
+        intensidade: "descanso",
+        motivo: `Hoje é dia de aliviar.${nota} Faça mobilidade, alongamento ou uma caminhada leve.`,
+      };
+    }
+
     return {
       ...sugestao,
-      tipo: "descanso ativo",
-      grupos: [],
-      intensidade: "descanso",
-      motivo: `Hoje é dia de aliviar.${nota} Faça mobilidade, alongamento ou uma caminhada leve.`,
+      tipo: sugestao.tipo === "força" && teto === "leve" ? "funcional leve" : sugestao.tipo,
+      intensidade: teto,
+      motivo: sugestao.motivo + nota,
     };
   }
 
-  return {
-    ...sugestao,
-    tipo: sugestao.tipo === "força" && teto === "leve" ? "funcional leve" : sugestao.tipo,
-    intensidade: teto,
-    motivo: sugestao.motivo + nota,
-  };
+  // 2) Elevar quando a sugestão pede descanso mas a Recuperação libera treino
+  if (atual < INTENSIDADE_RANK[piso]) {
+    const nota = ` Ajustado pela Recuperação (${rec.score}/100 · ${rec.status}): dá pra treinar hoje, ${
+      piso === "leve" ? "mas mantenha leve" : "com carga moderada"
+    }.`;
+
+    if (sugestao.intensidade === "descanso") {
+      const grupos = sugestao.grupos.length
+        ? sugestao.grupos
+        : sugestao.gruposLiberados.slice(0, 2).map((g) => g.grupo);
+      return {
+        ...sugestao,
+        tipo: grupos.length ? "funcional leve" : "cardio leve",
+        grupos,
+        intensidade: piso,
+        motivo:
+          `Treino ${piso} hoje.${nota}` +
+          (grupos.length ? ` Foco em ${joinGrupos(grupos)}, sem buscar falha.` : " Caminhada, bike leve ou mobilidade."),
+      };
+    }
+
+    return {
+      ...sugestao,
+      intensidade: piso,
+      motivo: sugestao.motivo + nota,
+    };
+  }
+
+  return sugestao;
 }
+
