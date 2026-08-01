@@ -142,7 +142,7 @@ function SleepPanelPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           title="Nenhum sono registrado ainda"
-          description="Registre no card “Sono de hoje” no início e este painel começa a montar seu histórico semanal."
+          message="Registre no card “Sono de hoje” no início e este painel começa a montar seu histórico semanal."
         />
       ) : (
         <div className="mt-4 grid gap-3">
