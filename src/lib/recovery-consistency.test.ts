@@ -89,11 +89,21 @@ describe("consistência entre Recuperação e Sugestão de hoje", () => {
     }
   });
 
-  it("não promove intensidade quando a Recuperação está melhor que o check-in", () => {
-    const bruta = sugerir(CHECKIN_RUIM);
-    const alinhada = alinharComRecuperacao(bruta, { status: "recuperado", score: 92 });
-    expect(RANK[alinhada.intensidade]).toBeLessThanOrEqual(RANK[bruta.intensidade]);
+  it("nunca sugere descanso quando a Recuperação libera treino", () => {
+    for (const status of ["recuperado", "leve", "cuidado"] as const) {
+      const bruta = sugerir(CHECKIN_RUIM);
+      const alinhada = alinharComRecuperacao(bruta, { status, score: 75 });
+      expect(alinhada.intensidade).not.toBe("descanso");
+      expect(alinhada.tipo).not.toBe("descanso ativo");
+      expect(RANK[alinhada.intensidade]).toBeLessThanOrEqual(RANK[TETO[status]]);
+    }
   });
+
+  it("mantém descanso quando a Recuperação manda descansar", () => {
+    const alinhada = alinharComRecuperacao(sugerir(CHECKIN_OTIMO), { status: "descanso", score: 30 });
+    expect(alinhada.intensidade).toBe("descanso");
+  });
+
 
   it("mantém a sugestão intacta quando não há dado de Recuperação", () => {
     const bruta = sugerir(CHECKIN_OTIMO);
