@@ -814,6 +814,9 @@ function Dashboard() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-xl">Últimas sessões</h2>
           <div className="flex items-center gap-3">
+            <Link to="/app/guia" className="text-xs font-semibold text-foreground underline underline-offset-4">
+              Guia
+            </Link>
             <Link to="/app/progresso" className="text-xs font-semibold text-foreground underline underline-offset-4">
               Progresso
             </Link>
