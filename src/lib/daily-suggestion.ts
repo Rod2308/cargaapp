@@ -551,6 +551,8 @@ export function sugerirTreinoDoPlano(args: {
   atividadesExtras: ExtraActivity[];
   checkin: DailyCheckin;
   hoje?: Date;
+  /** IANA timezone do usuário (default: fuso do dispositivo). */
+  tz?: string | null;
 }): SugestaoPlano | null {
   const plano = args.workouts
     .filter((w) => w.label && /^[A-Z]$/i.test(w.label.trim()))
