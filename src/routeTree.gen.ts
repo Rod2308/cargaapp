@@ -36,6 +36,7 @@ import { Route as AuthenticatedAppMedidasRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAppMcpTesteRouteImport } from './routes/_authenticated/app.mcp-teste'
 import { Route as AuthenticatedAppInstalarRouteImport } from './routes/_authenticated/app.instalar'
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
+import { Route as AuthenticatedAppGuiaRouteImport } from './routes/_authenticated/app.guia'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAppTreinosIndexRouteImport } from './routes/_authenticated/app.treinos.index'
@@ -196,6 +197,11 @@ const AuthenticatedAppHistoricoRoute =
     path: '/historico',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppGuiaRoute = AuthenticatedAppGuiaRouteImport.update({
+  id: '/guia',
+  path: '/guia',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -312,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/g/$code': typeof GCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/app/guia': typeof AuthenticatedAppGuiaRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/g/$code': typeof GCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/app/guia': typeof AuthenticatedAppGuiaRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/g/$code': typeof GCodeRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/app/guia': typeof AuthenticatedAppGuiaRoute
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
   '/_authenticated/app/instalar': typeof AuthenticatedAppInstalarRoute
   '/_authenticated/app/mcp-teste': typeof AuthenticatedAppMcpTesteRoute
@@ -450,6 +459,7 @@ export interface FileRouteTypes {
     | '/g/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/app/guia'
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/g/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/app/guia'
     | '/app/historico'
     | '/app/instalar'
     | '/app/mcp-teste'
@@ -540,6 +551,7 @@ export interface FileRouteTypes {
     | '/g/$code'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/app/guia'
     | '/_authenticated/app/historico'
     | '/_authenticated/app/instalar'
     | '/_authenticated/app/mcp-teste'
@@ -787,6 +799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppHistoricoRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/guia': {
+      id: '/_authenticated/app/guia'
+      path: '/guia'
+      fullPath: '/app/guia'
+      preLoaderRoute: typeof AuthenticatedAppGuiaRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -939,6 +958,7 @@ const AuthenticatedAppSessaoIdRouteWithChildren =
   )
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppGuiaRoute: typeof AuthenticatedAppGuiaRoute
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
   AuthenticatedAppInstalarRoute: typeof AuthenticatedAppInstalarRoute
   AuthenticatedAppMcpTesteRoute: typeof AuthenticatedAppMcpTesteRoute
@@ -960,6 +980,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppGuiaRoute: AuthenticatedAppGuiaRoute,
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
   AuthenticatedAppInstalarRoute: AuthenticatedAppInstalarRoute,
   AuthenticatedAppMcpTesteRoute: AuthenticatedAppMcpTesteRoute,
