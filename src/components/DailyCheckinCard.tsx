@@ -131,26 +131,26 @@ export function DailyCheckinCard({
             {initial ? "Ajuste seu check-in de hoje" : "Como você está hoje?"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            4 respostas rápidas para calcular a sugestão do dia.
+            2 respostas rápidas para calcular a sugestão do dia. O sono vem do card
+            &ldquo;Sono de hoje&rdquo;.
           </p>
 
           <div className="mt-4 grid gap-4">
-            <div>
-              <Label className="text-xs">Horas de sono na última noite</Label>
-              <Input
-                type="number"
-                step="0.5"
-                min={0}
-                max={24}
-                value={sleepHours}
-                onChange={(e) => setSleepHours(e.target.value)}
-                className="mt-1"
-              />
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">
+                Sono de hoje:{" "}
+                <span className="font-semibold text-foreground">
+                  {sleepToday?.hours != null
+                    ? `${Number(sleepToday.hours)}h`
+                    : "não registrado"}
+                </span>
+                {sleepToday?.quality != null ? ` · qualidade ${sleepToday.quality}/5` : ""}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Registre ou ajuste no card &ldquo;Sono de hoje&rdquo; logo abaixo.
+              </p>
             </div>
-            <div>
-              <Label className="text-xs">Qualidade do sono</Label>
-              <Stars value={sleepQuality} onChange={setSleepQuality} />
-            </div>
+
             <div>
               <Label className="text-xs">Dor muscular hoje (1 = nenhuma, 5 = muita)</Label>
               <Stars value={soreness} onChange={setSoreness} invert />
