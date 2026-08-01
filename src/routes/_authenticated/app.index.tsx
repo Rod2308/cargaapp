@@ -386,25 +386,8 @@ function Dashboard() {
 
 
 
-  // Sono — últimos 7 dias e log de hoje
-  const { data: sleepLogs = [] } = useQuery({
-    queryKey: ["sleep-logs", user.id],
-    queryFn: async () => {
-      const since = format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
-      const { data } = await supabase
-        .from("sleep_logs")
-        .select("log_date, hours, quality")
-        .eq("user_id", user.id)
-        .gte("log_date", since)
-        .order("log_date", { ascending: false });
-      return data ?? [];
-    },
-  });
-  const todaySleep = sleepLogs.find((s: any) => s.log_date === todayStr);
-  const sleepAvg7 =
-    sleepLogs.length > 0
-      ? sleepLogs.reduce((a: number, s: any) => a + Number(s.hours), 0) / sleepLogs.length
-      : null;
+
+
 
   const logSleep = useMutation({
     mutationFn: async ({ hours, quality }: { hours: number; quality?: number | null }) => {
