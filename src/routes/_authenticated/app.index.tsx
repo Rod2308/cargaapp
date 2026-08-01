@@ -536,9 +536,13 @@ function Dashboard() {
         workoutSugeridoId,
         suggestion: suggestion as any,
         lastWorkoutId: lastPlanSession?.workout_id ?? null,
+        recovery: recovery
+          ? { status: recovery.status, score: recovery.score, intensityLabel: recovery.intensityLabel }
+          : null,
       }),
-    [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession],
+    [nextWorkout, workoutSugeridoId, suggestion, lastPlanSession, recovery],
   );
+
 
 
   const dailyQuote = useMemo(() => getDailyQuote(new Date()), []);
