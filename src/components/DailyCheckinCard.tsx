@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ClipboardCheck } from "lucide-react";
@@ -31,31 +30,24 @@ export function DailyCheckinCard({
     soreness: number;
     energy: number;
   } | null;
-  /** FONTE ÚNICA DE SONO: vem do card "Sono de hoje" (tabela sleep_logs). */
-  sleepToday?: { hours: number; quality: number | null } | null;
+  /** Fonte única de sono: card "Sono de hoje" (sleep_logs). */
+  sleepToday?: { hours: number | null; quality: number | null } | null;
   onSaved?: () => void;
 }) {
   const qc = useQueryClient();
-  const hasSleepLog = sleepToday != null && sleepToday.hours != null;
-  const [sleepHours, setSleepHours] = useState<string>(
-    (sleepToday?.hours ?? initial?.sleep_hours)?.toString() ?? "7.5",
-  );
-  const [sleepQuality, setSleepQuality] = useState<number>(
-    sleepToday?.quality ?? initial?.sleep_quality ?? 4,
-  );
   const [soreness, setSoreness] = useState<number>(initial?.soreness ?? 2);
   const [energy, setEnergy] = useState<number>(initial?.energy ?? 4);
 
+  const sleepHoursValue =
+    sleepToday?.hours != null ? Number(sleepToday.hours) : (initial?.sleep_hours ?? 7.5);
+  const sleepQualityValue =
+    sleepToday?.quality != null ? Number(sleepToday.quality) : (initial?.sleep_quality ?? 4);
+
   const save = useMutation({
     mutationFn: async () => {
-      // O sono vem sempre do "Sono de hoje" quando já existe registro do dia.
-      const effectiveHours = hasSleepLog ? Number(sleepToday!.hours) : Number(sleepHours);
-      const effectiveQuality = hasSleepLog
-        ? (sleepToday!.quality ?? sleepQuality)
-        : sleepQuality;
       const parsed = checkinSchema.safeParse({
-        sleep_hours: effectiveHours,
-        sleep_quality: effectiveQuality,
+        sleep_hours: sleepHoursValue,
+        sleep_quality: sleepQualityValue,
         soreness,
         energy,
       });
@@ -68,20 +60,6 @@ export function DailyCheckinCard({
         { user_id: userId, log_date: todayStr, ...parsed.data },
         { onConflict: "user_id,log_date" },
       );
-      // Só escreve em sleep_logs quando ainda não há registro do dia — assim o
-      // "Sono de hoje" continua sendo a única fonte de verdade do sono.
-      if (!hasSleepLog) {
-        await writeUpsert(
-          "sleep_logs",
-          {
-            user_id: userId,
-            log_date: todayStr,
-            hours: parsed.data.sleep_hours,
-            quality: parsed.data.sleep_quality,
-          },
-          { onConflict: "user_id,log_date" },
-        );
-      }
       return parsed.data;
 
     },
@@ -152,41 +130,25 @@ export function DailyCheckinCard({
             {initial ? "Ajuste seu check-in de hoje" : "Como você está hoje?"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            4 respostas rápidas para calcular a sugestão do dia.
+            2 respostas rápidas para calcular a sugestão do dia. O sono vem do card
+            &ldquo;Sono de hoje&rdquo;.
           </p>
 
           <div className="mt-4 grid gap-4">
-            {hasSleepLog ? (
-              <div className="rounded-lg border border-border bg-secondary/40 p-3">
-                <p className="text-xs font-semibold text-foreground">
-                  💤 Sono de hoje: {sleepToday!.hours}h
-                  {sleepToday!.quality != null ? ` · qualidade ${sleepToday!.quality}/5` : ""}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Usamos o valor do card “Sono de hoje” em todos os cálculos. Para alterar,
-                  edite por lá.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <Label className="text-xs">Horas de sono na última noite</Label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    min={0}
-                    max={24}
-                    value={sleepHours}
-                    onChange={(e) => setSleepHours(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Qualidade do sono</Label>
-                  <Stars value={sleepQuality} onChange={setSleepQuality} />
-                </div>
-              </>
-            )}
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">
+                Sono de hoje:{" "}
+                <span className="font-semibold text-foreground">
+                  {sleepToday?.hours != null
+                    ? `${Number(sleepToday.hours)}h`
+                    : "não registrado"}
+                </span>
+                {sleepToday?.quality != null ? ` · qualidade ${sleepToday.quality}/5` : ""}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Registre ou ajuste no card &ldquo;Sono de hoje&rdquo; logo abaixo.
+              </p>
+            </div>
 
             <div>
               <Label className="text-xs">Dor muscular hoje (1 = nenhuma, 5 = muita)</Label>

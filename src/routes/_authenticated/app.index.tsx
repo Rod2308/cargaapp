@@ -209,45 +209,6 @@ function Dashboard() {
     },
   });
 
-  // Sono — últimos 7 dias e log de hoje.
-  // FONTE ÚNICA DE SONO do app: o card "Sono de hoje" (tabela sleep_logs).
-  // Recuperação, Sugestão do dia e o check-in usam este mesmo valor.
-  const { data: sleepLogs = [] } = useQuery({
-    queryKey: ["sleep-logs", user.id],
-    queryFn: async () => {
-      const since = format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
-      const { data } = await supabase
-        .from("sleep_logs")
-        .select("log_date, hours, quality")
-        .eq("user_id", user.id)
-        .gte("log_date", since)
-        .order("log_date", { ascending: false });
-      return data ?? [];
-    },
-  });
-  const todaySleep = sleepLogs.find((s: any) => s.log_date === todayStr);
-  const sleepAvg7 =
-    sleepLogs.length > 0
-      ? sleepLogs.reduce((a: number, s: any) => a + Number(s.hours), 0) / sleepLogs.length
-      : null;
-
-  // Check-in do dia com o sono sobrescrito pelo "Sono de hoje": qualquer
-  // função que dependa de sono passa a ler um único valor.
-  const checkinUnificado = useMemo(() => {
-    if (!todayCheckin) return null;
-    if (!todaySleep) return todayCheckin;
-    return {
-      ...todayCheckin,
-      sleep_hours: Number((todaySleep as any).hours),
-      sleep_quality:
-        (todaySleep as any).quality != null
-          ? Number((todaySleep as any).quality)
-          : todayCheckin.sleep_quality,
-    };
-  }, [todayCheckin, todaySleep]);
-
-
-
   // Sessões dos últimos 7 dias (para timeline de esforço)
   const { data: last7Sessions = [] } = useQuery({
     queryKey: ["last7-sessions", user.id, todayStr],
@@ -322,7 +283,7 @@ function Dashboard() {
   );
 
   const planoOuGeral = useMemo(() => {
-    if (!checkinUnificado) return { suggestion: null, workoutId: null as string | null };
+    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
     const { sessoes, extras } = atividades;
 
     // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
@@ -335,7 +296,7 @@ function Dashboard() {
           workouts: planoWorkouts,
           sessoes,
           atividadesExtras: extras,
-          checkin: checkinUnificado,
+          checkin: todayCheckin,
         })
       : null;
     if (doPlano) {
@@ -346,7 +307,7 @@ function Dashboard() {
     const geral = sugerirTreinoDoDia({
       sessoes,
       atividadesExtras: extras,
-      checkin: checkinUnificado,
+      checkin: todayCheckin,
     });
     const wList = (workouts as any[]).map((w) => {
       const hay = `${w.label} ${w.name}`.toLowerCase();
@@ -382,7 +343,7 @@ function Dashboard() {
     }
     return { suggestion: ajustada, workoutId: wid };
 
-  }, [checkinUnificado, atividades, workouts]);
+  }, [todayCheckin, atividades, workouts]);
 
   // O motor de Recuperação é a AUTORIDADE sobre treinar × descansar.
   // A sugestão do dia continua escolhendo QUAL treino, mas a intensidade é
@@ -425,8 +386,25 @@ function Dashboard() {
 
 
 
-
-
+  // Sono — últimos 7 dias e log de hoje
+  const { data: sleepLogs = [] } = useQuery({
+    queryKey: ["sleep-logs", user.id],
+    queryFn: async () => {
+      const since = format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+      const { data } = await supabase
+        .from("sleep_logs")
+        .select("log_date, hours, quality")
+        .eq("user_id", user.id)
+        .gte("log_date", since)
+        .order("log_date", { ascending: false });
+      return data ?? [];
+    },
+  });
+  const todaySleep = sleepLogs.find((s: any) => s.log_date === todayStr);
+  const sleepAvg7 =
+    sleepLogs.length > 0
+      ? sleepLogs.reduce((a: number, s: any) => a + Number(s.hours), 0) / sleepLogs.length
+      : null;
 
   const logSleep = useMutation({
     mutationFn: async ({ hours, quality }: { hours: number; quality?: number | null }) => {
@@ -623,17 +601,10 @@ function Dashboard() {
           initial={todayCheckin ?? null}
           sleepToday={
             todaySleep
-              ? {
-                  hours: Number((todaySleep as any).hours),
-                  quality:
-                    (todaySleep as any).quality != null
-                      ? Number((todaySleep as any).quality)
-                      : null,
-                }
+              ? { hours: Number(todaySleep.hours), quality: todaySleep.quality ?? null }
               : null
           }
           onSaved={() => setCheckinEditOpen(false)}
-
         />
       ) : suggestion ? (
         <DailySuggestionCard
