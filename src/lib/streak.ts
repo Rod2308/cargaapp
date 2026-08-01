@@ -1,4 +1,3 @@
-import { weekStart } from "@/lib/week";
 // Streak de treinos e resumos semanal/mensal — cálculos puros.
 
 export type SessionLite = { started_at: string; ended_at?: string | null };
@@ -53,7 +52,11 @@ export function computeStreak(sessions: SessionLite[], now: Date = new Date()): 
     prev = date;
   }
 
-  // Semanas consecutivas (domingo a sábado).
+  // Semanas consecutivas (segunda a domingo).
+  const weekStart = (date: Date) => {
+    const dow = (date.getDay() + 6) % 7; // 0 = segunda
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() - dow);
+  };
   const weekKeys = new Set(
     [...days].map((k) => {
       const [y, m, d] = k.split("-").map(Number);

@@ -109,8 +109,11 @@ export function DailySuggestionCard({
                     <li>
                       Cardio na semana (desde domingo): {sugestao.cardio.sessoes} sessão(ões) ·{" "}
                       {sugestao.cardio.sessoesIntensas} intensa(s) · {sugestao.cardio.minutos} min
+                      {sugestao.cardio.duplicadasIgnoradas > 0
+                        ? ` · ${sugestao.cardio.duplicadasIgnoradas} duplicada(s) ignorada(s)`
+                        : ""}
                     </li>
-                    <li>Dias com esforço nesta semana: {sugestao.diasEsforcoSemana}/7</li>
+                    <li>Dias com esforço nos últimos 7: {sugestao.diasEsforcoSemana}/7</li>
                     {sugestao.gruposLiberados.length > 0 && (
                       <li>
                         Grupos recuperados:{" "}
@@ -248,13 +251,13 @@ export function DailySuggestionCard({
             <div className="flex flex-wrap gap-1.5">
               <Chip
                 icon={<Activity className="size-3" />}
-                label="Cardio semana"
+                label="Cardio semana (dom→hoje)"
                 value={`${sugestao.cardio.sessoes} sessões · ${sugestao.cardio.sessoesIntensas} intensas · ${sugestao.cardio.minutos}min`}
                 tone={cardioTone(sugestao.cardio.nivel)}
               />
               <Chip
                 icon={<CalendarDays className="size-3" />}
-                label="Dias c/ esforço (semana)"
+                label="Dias c/ esforço"
                 value={`${sugestao.diasEsforcoSemana}/7`}
                 tone={sugestao.diasEsforcoSemana >= 6 ? "bg-destructive/15 text-destructive" : sugestao.diasEsforcoSemana >= 4 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"}
               />

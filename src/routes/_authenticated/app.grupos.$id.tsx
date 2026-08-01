@@ -147,7 +147,7 @@ function GroupDetail() {
   const ranking = useMemo(() => {
     const cutoff =
       period === "week"
-        ? startOfWeek(new Date(), { weekStartsOn: 0 })
+        ? startOfWeek(new Date(), { weekStartsOn: 1 })
         : period === "month"
           ? startOfMonth(new Date())
           : new Date(0);

@@ -73,7 +73,7 @@ function ClassificacaoPage() {
   });
 
   const cutoff = useMemo(() => {
-    if (period === "week") return startOfWeek(new Date(), { weekStartsOn: 0 });
+    if (period === "week") return startOfWeek(new Date(), { weekStartsOn: 1 });
     if (period === "month") return startOfMonth(new Date());
     return new Date(0);
   }, [period]);
