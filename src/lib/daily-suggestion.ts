@@ -288,7 +288,9 @@ export function sugerirTreinoDoDia(args: {
   const liberados = gruposLiberados(timeline, now);
   const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
-  const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
+  const diasComEsforco = new Set(
+    timeline.filter((e) => e.date >= cardio.desde).map((e) => e.date),
+  ).size; // dias com esforço na semana corrente (domingo → hoje)
   const temPoucoHistorico = args.sessoes.length + args.atividadesExtras.length < 3;
 
   const scoreDetalhe = `Sono ${args.checkin.sleep_hours}h · qualidade ${args.checkin.sleep_quality}/5 · dor ${args.checkin.soreness}/5 · energia ${args.checkin.energy}/5`;
@@ -526,7 +528,9 @@ export function sugerirTreinoDoPlano(args: {
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
   const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
-  const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
+  const diasComEsforco = new Set(
+    timeline.filter((e) => e.date >= cardio.desde).map((e) => e.date),
+  ).size; // dias com esforço na semana corrente (domingo → hoje)
   const liberados = gruposLiberados(timeline, now);
   const scoreDetalhe = `Sono ${args.checkin.sleep_hours}h · qualidade ${args.checkin.sleep_quality}/5 · dor ${args.checkin.soreness}/5 · energia ${args.checkin.energy}/5`;
 
