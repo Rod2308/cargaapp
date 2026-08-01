@@ -9,6 +9,8 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush,
   isPushSupported,
+  resubscribeWebPush,
+  sendTestNotification,
 } from "@/lib/web-push-client";
 import { needsIOSInstallForPush, isEmbedded } from "@/lib/pwa-env";
 
@@ -63,6 +65,54 @@ function NotificationPreferencesPage() {
   const [busy, setBusy] = useState(false);
   const [iosInstallNeeded, setIosInstallNeeded] = useState(false);
   const [embedded, setEmbedded] = useState(false);
+  const [diag, setDiag] = useState<string | null>(null);
+
+  const handleTest = async () => {
+    setBusy(true);
+    setDiag(null);
+    try {
+      const r = await sendTestNotification();
+      if (r.devices === 0) {
+        setDiag("Nenhum aparelho inscrito. Ative o botão acima neste celular.");
+        toast.error("Nenhum aparelho inscrito para notificações.");
+      } else if (r.sent > 0) {
+        setDiag(
+          `Enviado para ${r.sent} de ${r.devices} aparelho(s). Se não aparecer em alguns segundos, confira as notificações do Carga nos ajustes do celular (e o modo Não Perturbe / Foco).`,
+        );
+        toast.success("Notificação de teste enviada");
+      } else {
+        setDiag(
+          `Falha ao enviar${r.removed ? ` — ${r.removed} assinatura(s) expirada(s) removida(s)` : ""}. Toque em “Reconectar este aparelho”.`,
+        );
+        toast.error("Não foi possível entregar a notificação");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha no teste");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReconnect = async () => {
+    setBusy(true);
+    setDiag(null);
+    try {
+      if (Notification.permission !== "granted") {
+        const perm = await requestPermission();
+        if (perm !== "granted") {
+          toast.error("Permissão necessária para reconectar.");
+          return;
+        }
+      }
+      await resubscribeWebPush();
+      update({ webPush: true });
+      toast.success("Aparelho reconectado. Envie um teste para confirmar.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao reconectar");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     setIosInstallNeeded(needsIOSInstallForPush());
@@ -210,7 +260,26 @@ function NotificationPreferencesPage() {
             onCheckedChange={handleWebPush}
           />
         </div>
+
+        {permission === "granted" && !iosInstallNeeded && (
+          <div className="mt-4 border-t pt-4">
+            <p className="text-xs text-muted-foreground">
+              Não está recebendo? Envie um teste; se não chegar, reconecte este aparelho.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={busy} onClick={handleTest}>
+                Enviar teste
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={handleReconnect}>
+                Reconectar este aparelho
+              </Button>
+            </div>
+            {diag && <p className="mt-3 text-xs text-muted-foreground">{diag}</p>}
+          </div>
+        )}
       </section>
+
+
 
 
       <WorkoutReminderSettings />

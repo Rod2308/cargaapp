@@ -185,6 +185,67 @@ export async function deletePushSubscriptionAction(supabase: SB, userId: string,
   return { ok: true };
 }
 
+/**
+ * Envia uma notificação de teste para todos os aparelhos inscritos do usuário
+ * e devolve o resultado por aparelho — assim dá para saber se o problema está
+ * no servidor, na assinatura ou nas configurações do celular.
+ */
+export async function sendTestPushAction(supabase: SB, userId: string) {
+  const subject = process.env.VAPID_SUBJECT;
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!subject || !publicKey || !privateKey) {
+    throw new Error("Chaves de notificação não configuradas no servidor.");
+  }
+
+  const { data: subs, error } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth, user_agent")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  if (!subs || subs.length === 0) {
+    return { devices: 0, sent: 0, failed: 0, removed: 0, errors: [] as string[] };
+  }
+
+  const webpush = (await import("web-push")).default;
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+
+  const payload = JSON.stringify({
+    title: "🔔 Teste do Carga",
+    body: "Se você está vendo isto, as notificações estão funcionando.",
+    tag: "carga-test",
+    data: { url: "/app/notificacoes" },
+  });
+
+  let sent = 0;
+  let failed = 0;
+  let removed = 0;
+  const errors: string[] = [];
+
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        payload,
+        { TTL: 120, urgency: "high" },
+      );
+      sent++;
+    } catch (err: unknown) {
+      failed++;
+      const statusCode = (err as { statusCode?: number })?.statusCode;
+      if (statusCode === 404 || statusCode === 410) {
+        await supabase.from("push_subscriptions").delete().eq("id", s.id);
+        removed++;
+        errors.push("Assinatura expirada removida — reative as notificações neste aparelho.");
+      } else {
+        errors.push(`Falha ao enviar (${statusCode ?? "erro"}).`);
+      }
+    }
+  }
+
+  return { devices: subs.length, sent, failed, removed, errors };
+}
+
 /* ------------------------------------------------------------------ */
 /* Push de fim de descanso                                             */
 /* ------------------------------------------------------------------ */
@@ -528,6 +589,7 @@ export const AUTHED_ACTIONS: Record<string, AuthedAction> = {
   "reminders.save": (sb, uid, p) => saveReminderSettingsAction(sb, uid, p),
   "push.save": (sb, uid, p) => savePushSubscriptionAction(sb, uid, p),
   "push.delete": (sb, uid, p) => deletePushSubscriptionAction(sb, uid, p),
+  "push.test": (sb, uid) => sendTestPushAction(sb, uid),
   "rest.schedule": (sb, uid, p) => scheduleRestPushAction(sb, uid, p),
   "rest.cancel": (sb, uid) => cancelRestPushAction(sb, uid),
   "trainer.listStudents": (sb, uid) => listStudentsAction(sb, uid),

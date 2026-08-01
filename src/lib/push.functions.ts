@@ -22,3 +22,11 @@ export const deletePushSubscription = createServerFn({ method: "POST" })
     const { deletePushSubscriptionAction } = await import("./bridge-actions.server");
     return deletePushSubscriptionAction(context.supabase, context.userId, data);
   });
+
+// Dispara uma notificação de teste para todos os aparelhos do usuário.
+export const sendTestPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { sendTestPushAction } = await import("./bridge-actions.server");
+    return sendTestPushAction(context.supabase, context.userId);
+  });

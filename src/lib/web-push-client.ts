@@ -6,6 +6,7 @@ import {
   getVapidPublicKey,
   savePushSubscription,
   deletePushSubscription,
+  sendTestPush,
 } from "./push.functions";
 
 // `callServer` já resolve a diferença entre os domínios: no canônico executa a
@@ -116,4 +117,37 @@ export async function ensureWebPushSubscribed(): Promise<void> {
   } catch (err) {
     console.warn("[push] ensure subscribe failed", err);
   }
+}
+
+/**
+ * Recria a assinatura do zero neste aparelho. Útil quando o navegador tem
+ * permissão mas o push não chega (assinatura antiga/expirada, chave VAPID
+ * trocada, app reinstalado). Remove a antiga no backend e no navegador.
+ */
+export async function resubscribeWebPush(): Promise<void> {
+  if (!isPushSupported()) throw new Error("Web Push não é suportado neste navegador.");
+  if (Notification.permission !== "granted") {
+    throw new Error("Permissão de notificação necessária.");
+  }
+  const reg = await ensureRegistration();
+  const old = await reg.pushManager.getSubscription();
+  if (old) {
+    const endpoint = old.endpoint;
+    try { await old.unsubscribe(); } catch {}
+    try { await callServer("push.delete", deletePushSubscription, { endpoint }); } catch {}
+  }
+  await subscribeToWebPush();
+}
+
+export type TestPushResult = {
+  devices: number;
+  sent: number;
+  failed: number;
+  removed: number;
+  errors: string[];
+};
+
+/** Pede ao servidor que envie uma notificação de teste para este usuário. */
+export async function sendTestNotification(): Promise<TestPushResult> {
+  return callServer<TestPushResult>("push.test", sendTestPush);
 }
