@@ -20,6 +20,7 @@ export function DailyCheckinCard({
   userId,
   todayStr,
   initial,
+  sleepToday,
   onSaved,
 }: {
   userId: string;
@@ -30,19 +31,24 @@ export function DailyCheckinCard({
     soreness: number;
     energy: number;
   } | null;
+  /** Fonte única de sono: card "Sono de hoje" (sleep_logs). */
+  sleepToday?: { hours: number | null; quality: number | null } | null;
   onSaved?: () => void;
 }) {
   const qc = useQueryClient();
-  const [sleepHours, setSleepHours] = useState<string>(initial?.sleep_hours?.toString() ?? "7.5");
-  const [sleepQuality, setSleepQuality] = useState<number>(initial?.sleep_quality ?? 4);
   const [soreness, setSoreness] = useState<number>(initial?.soreness ?? 2);
   const [energy, setEnergy] = useState<number>(initial?.energy ?? 4);
+
+  const sleepHoursValue =
+    sleepToday?.hours != null ? Number(sleepToday.hours) : (initial?.sleep_hours ?? 7.5);
+  const sleepQualityValue =
+    sleepToday?.quality != null ? Number(sleepToday.quality) : (initial?.sleep_quality ?? 4);
 
   const save = useMutation({
     mutationFn: async () => {
       const parsed = checkinSchema.safeParse({
-        sleep_hours: Number(sleepHours),
-        sleep_quality: sleepQuality,
+        sleep_hours: sleepHoursValue,
+        sleep_quality: sleepQualityValue,
         soreness,
         energy,
       });
@@ -55,21 +61,10 @@ export function DailyCheckinCard({
         { user_id: userId, log_date: todayStr, ...parsed.data },
         { onConflict: "user_id,log_date" },
       );
-      // Mantém sleep_logs em sincronia com o check-in: o motor de Recuperação
-      // usa sleep_logs como fonte primária de sono e o check-in como fallback.
-      await writeUpsert(
-        "sleep_logs",
-        {
-          user_id: userId,
-          log_date: todayStr,
-          hours: parsed.data.sleep_hours,
-          quality: parsed.data.sleep_quality,
-        },
-        { onConflict: "user_id,log_date" },
-      );
       return parsed.data;
 
     },
+
     onSuccess: (payload) => {
       // Atualiza cache local para refletir imediatamente (mesmo offline).
       qc.setQueryData(["daily-checkin", userId, todayStr], payload);
