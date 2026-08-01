@@ -1204,7 +1204,14 @@ function SleepCard({
             >
               Ajustar…
             </button>
+            <Link
+              to="/app/sono"
+              className="rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold hover:bg-secondary"
+            >
+              Ver por semana
+            </Link>
           </div>
+
         </div>
       </div>
 
