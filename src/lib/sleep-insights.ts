@@ -1,14 +1,12 @@
 import type { SleepRow } from "@/lib/recovery-core";
+import { weekStart } from "@/lib/week";
 
 const DAY = 86_400_000;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
-/** Segunda-feira da semana da data informada. */
-export function weekStart(d: Date): Date {
-  const dow = (d.getDay() + 6) % 7;
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow);
-}
+// Domingo 00:00 no fuso do usuário — fonte única em `week.ts`.
+export { weekStart } from "@/lib/week";
 
 export function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -76,10 +74,10 @@ export function buildSleepWeeks(rows: SleepRow[], weeks = 6, today = new Date())
   const byDate = new Map<string, SleepRow>();
   for (const r of rows) byDate.set(r.log_date, r);
 
-  const firstMonday = weekStart(today);
+  const firstSunday = weekStart(today);
   const out: SleepWeek[] = [];
   for (let w = 0; w < weeks; w++) {
-    const start = new Date(firstMonday.getTime() - w * 7 * DAY);
+    const start = new Date(firstSunday.getTime() - w * 7 * DAY);
     const nights: SleepNight[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(start.getTime() + i * DAY);

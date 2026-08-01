@@ -66,9 +66,29 @@ export async function getPublicInviteAction(input: unknown): Promise<PublicInvit
 /* Recuperação                                                         */
 /* ------------------------------------------------------------------ */
 
-export async function getRecoveryAdviceAction(supabase: SB, userId: string): Promise<RecoveryAdvice> {
+/** Valida o IANA timezone enviado pelo cliente (evita input arbitrário). */
+export function parseTimeZone(payload: unknown): string | null {
+  const raw =
+    payload && typeof payload === "object" && "tz" in (payload as Record<string, unknown>)
+      ? (payload as { tz?: unknown }).tz
+      : null;
+  if (typeof raw !== "string" || raw.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(raw)) return null;
   try {
-    return await computeRecoveryAdviceFor(supabase, userId);
+    new Intl.DateTimeFormat("en-CA", { timeZone: raw });
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+export async function getRecoveryAdviceAction(
+  supabase: SB,
+  userId: string,
+  payload?: unknown,
+): Promise<RecoveryAdvice> {
+  const tz = parseTimeZone(payload);
+  try {
+    return await computeRecoveryAdviceFor(supabase, userId, tz);
   } catch (error) {
     console.error("[recovery] failed:", error instanceof Error ? error.message : error);
     throw new Error(
@@ -503,7 +523,7 @@ export async function ensureStravaWebhookAction() {
 type AuthedAction = (supabase: SB, userId: string, payload: unknown) => Promise<unknown>;
 
 export const AUTHED_ACTIONS: Record<string, AuthedAction> = {
-  "recovery.get": (sb, uid) => getRecoveryAdviceAction(sb, uid),
+  "recovery.get": (sb, uid, p) => getRecoveryAdviceAction(sb, uid, p),
   "reminders.get": (sb, uid) => getReminderSettingsAction(sb, uid),
   "reminders.save": (sb, uid, p) => saveReminderSettingsAction(sb, uid, p),
   "push.save": (sb, uid, p) => savePushSubscriptionAction(sb, uid, p),

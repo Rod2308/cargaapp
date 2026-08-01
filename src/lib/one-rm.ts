@@ -1,3 +1,4 @@
+import { weekKey as weekKeyLocal, weekStart as weekStartLocal } from "./week";
 // Cálculo de 1RM estimado (e1RM) e agregações semanais de progressão.
 // Determinístico e sem dependências — usado no painel de progressão.
 
@@ -86,25 +87,14 @@ export function suggestLoads(oneRm: number, step = 2.5): LoadSuggestion[] {
   });
 }
 
-/** Chave da semana ISO (segunda a domingo) — YYYY-Www. */
+/** Chave da semana civil (domingo) — YYYY-MM-DD do domingo, no fuso do usuário. */
 export function weekKey(dateStr: string): string {
-  const d = new Date(dateStr.length <= 10 ? `${dateStr}T12:00:00` : dateStr);
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = tmp.getUTCDay() || 7;
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+  return weekKeyLocal(dateStr.length <= 10 ? `${dateStr}T12:00:00` : dateStr);
 }
 
-/** Data (segunda-feira) da semana ISO de uma data. */
+/** Domingo 00:00 (fuso do usuário) da semana de uma data. */
 export function weekStart(dateStr: string): Date {
-  const d = new Date(dateStr.length <= 10 ? `${dateStr}T12:00:00` : dateStr);
-  const day = d.getDay() || 7;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - (day - 1));
-  monday.setHours(12, 0, 0, 0);
-  return monday;
+  return weekStartLocal(dateStr.length <= 10 ? `${dateStr}T12:00:00` : dateStr);
 }
 
 export type WeeklyPoint = {

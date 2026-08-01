@@ -10,7 +10,8 @@ export type { RecoveryAdvice };
  */
 export const getRecoveryAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<RecoveryAdvice> => {
+  .inputValidator((data: { tz?: string | null } | undefined) => data ?? {})
+  .handler(async ({ context, data }): Promise<RecoveryAdvice> => {
     const { getRecoveryAdviceAction } = await import("./bridge-actions.server");
-    return getRecoveryAdviceAction(context.supabase, context.userId);
+    return getRecoveryAdviceAction(context.supabase, context.userId, data);
   });
