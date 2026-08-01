@@ -6,6 +6,7 @@ import {
   getVapidPublicKey,
   savePushSubscription,
   deletePushSubscription,
+  sendTestPush,
 } from "./push.functions";
 
 // `callServer` já resolve a diferença entre os domínios: no canônico executa a
