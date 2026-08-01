@@ -5,6 +5,7 @@
 // vive em `src/lib/muscle-recovery.ts` — fonte única compartilhada com o
 // motor de Recuperação (`recovery-core.ts`).
 
+import { weekStart } from "./week";
 import {
   MUSCLE_GROUPS,
   MUSCLE_LABEL,
@@ -71,6 +72,8 @@ export type TimelineEntry = {
   impact: Partial<Record<MuscleGroup, Impact>>;
   cardio: Impact | null;
   durationMin: number;
+  /** slug normalizado da atividade (corrida, ciclismo...) — usado p/ dedupe */
+  slug?: string | null;
 
 };
 
@@ -110,7 +113,11 @@ export function combineTimeline(
   atividadesExtras: ExtraActivity[],
   now: Date = new Date(),
 ): TimelineEntry[] {
-  const sevenAgo = new Date(now.getTime() - 7 * 86400_000);
+  // Janela: últimos 7 dias OU desde o domingo (o que for mais antigo),
+  // para que a carga da semana civil nunca fique truncada.
+  const rolling = new Date(now.getTime() - 7 * 86400_000);
+  const ws = weekStart(now);
+  const sevenAgo = ws < rolling ? ws : rolling;
   const out: TimelineEntry[] = [];
 
   for (const s of sessoes) {
@@ -151,6 +158,7 @@ export function combineTimeline(
       impact: map?.muscles ?? {},
       cardio: map?.cardio ?? "baixo",
       durationMin: dur,
+      slug,
     });
   }
 
@@ -195,20 +203,73 @@ export function gruposLiberados(
     .sort((a, b) => b.diasParado - a.diasParado);
 }
 
-export type CardioCarga = { minutos: number; sessoesIntensas: number; nivel: "baixa" | "media" | "alta" };
+export type CardioCarga = {
+  minutos: number;
+  sessoes: number;
+  sessoesIntensas: number;
+  duplicadasIgnoradas: number;
+  nivel: "baixa" | "media" | "alta";
+};
 
-export function cargaCardioSemana(timeline: TimelineEntry[]): CardioCarga {
+/** Teto de sanidade por sessão (min) — evita importações com duração absurda. */
+const MAX_MIN_POR_SESSAO = 300;
+
+/** Duas atividades do mesmo tipo iniciadas dentro dessa janela = mesma sessão. */
+const DEDUPE_MIN = 30;
+
+function entryStart(e: TimelineEntry): number {
+  return new Date(e.at ?? `${e.date}T12:00:00.000Z`).getTime();
+}
+
+/**
+ * Carga de cardio da SEMANA CIVIL (domingo 00:00 → agora).
+ *
+ * - Considera apenas atividades com componente cardio médio/alto.
+ * - Deduplica registros da mesma atividade vindos de fontes diferentes
+ *   (ex.: Strava + manual) quando iniciam com menos de 30 min de diferença.
+ * - Limita a duração de cada sessão a 300 min.
+ */
+export function cargaCardioSemana(timeline: TimelineEntry[], now: Date = new Date()): CardioCarga {
+  const inicioSemana = weekStart(now).getTime();
+  const fim = now.getTime();
+
+  const candidatas = timeline
+    .filter((e) => e.cardio === "alto" || e.cardio === "medio")
+    .map((e) => ({ e, t: entryStart(e) }))
+    .filter((x) => x.t >= inicioSemana && x.t <= fim)
+    .sort((a, b) => a.t - b.t);
+
+  const mantidas: { e: TimelineEntry; t: number }[] = [];
+  let duplicadas = 0;
+
+  for (const c of candidatas) {
+    const chave = c.e.slug ?? c.e.label.trim().toLowerCase();
+    const dup = mantidas.some((m) => {
+      const mChave = m.e.slug ?? m.e.label.trim().toLowerCase();
+      return mChave === chave && Math.abs(m.t - c.t) <= DEDUPE_MIN * 60_000;
+    });
+    if (dup) {
+      duplicadas += 1;
+      continue;
+    }
+    mantidas.push(c);
+  }
+
   let minutos = 0;
   let intensas = 0;
-  for (const e of timeline) {
-    if (!e.cardio) continue;
-    if (e.cardio === "alto" || e.cardio === "medio") {
-      minutos += e.durationMin;
-      if (e.cardio === "alto") intensas += 1;
-    }
+  for (const { e } of mantidas) {
+    minutos += Math.min(Math.max(0, e.durationMin), MAX_MIN_POR_SESSAO);
+    if (e.cardio === "alto") intensas += 1;
   }
+
   const nivel: CardioCarga["nivel"] = intensas >= 3 ? "alta" : intensas >= 1 ? "media" : "baixa";
-  return { minutos: Math.round(minutos), sessoesIntensas: intensas, nivel };
+  return {
+    minutos: Math.round(minutos),
+    sessoes: mantidas.length,
+    sessoesIntensas: intensas,
+    duplicadasIgnoradas: duplicadas,
+    nivel,
+  };
 }
 
 export function scoreRecuperacao(c: DailyCheckin): number {
@@ -254,7 +315,7 @@ export function sugerirTreinoDoDia(args: {
   const now = args.hoje ?? new Date();
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
   const liberados = gruposLiberados(timeline, now);
-  const cardio = cargaCardioSemana(timeline);
+  const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const temPoucoHistorico = args.sessoes.length + args.atividadesExtras.length < 3;
@@ -492,7 +553,7 @@ export function sugerirTreinoDoPlano(args: {
 
   const now = args.hoje ?? new Date();
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
-  const cardio = cargaCardioSemana(timeline);
+  const cardio = cargaCardioSemana(timeline, now);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const liberados = gruposLiberados(timeline, now);
