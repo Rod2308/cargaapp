@@ -67,7 +67,7 @@ export function estimateSleepPenalty(nights: SleepNight[]): { penalty: number; b
 
 /**
  * Agrupa o histórico de sono (fonte única: card "Sono de hoje") em semanas
- * completas de segunda a domingo, da mais recente para a mais antiga.
+ * completas de domingo a sábado, da mais recente para a mais antiga.
  */
 export function buildSleepWeeks(rows: SleepRow[], weeks = 6, today = new Date()): SleepWeek[] {
   const byDate = new Map<string, SleepRow>();
