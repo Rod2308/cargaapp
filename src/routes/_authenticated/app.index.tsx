@@ -322,7 +322,7 @@ function Dashboard() {
   );
 
   const planoOuGeral = useMemo(() => {
-    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+    if (!checkinUnificado) return { suggestion: null, workoutId: null as string | null };
     const { sessoes, extras } = atividades;
 
     // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
@@ -335,7 +335,7 @@ function Dashboard() {
           workouts: planoWorkouts,
           sessoes,
           atividadesExtras: extras,
-          checkin: todayCheckin,
+          checkin: checkinUnificado,
         })
       : null;
     if (doPlano) {
@@ -346,7 +346,7 @@ function Dashboard() {
     const geral = sugerirTreinoDoDia({
       sessoes,
       atividadesExtras: extras,
-      checkin: todayCheckin,
+      checkin: checkinUnificado,
     });
     const wList = (workouts as any[]).map((w) => {
       const hay = `${w.label} ${w.name}`.toLowerCase();
@@ -382,7 +382,7 @@ function Dashboard() {
     }
     return { suggestion: ajustada, workoutId: wid };
 
-  }, [todayCheckin, atividades, workouts]);
+  }, [checkinUnificado, atividades, workouts]);
 
   // O motor de Recuperação é a AUTORIDADE sobre treinar × descansar.
   // A sugestão do dia continua escolhendo QUAL treino, mas a intensidade é
