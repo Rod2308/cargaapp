@@ -195,21 +195,53 @@ export function gruposLiberados(
     .sort((a, b) => b.diasParado - a.diasParado);
 }
 
-export type CardioCarga = { minutos: number; sessoesIntensas: number; nivel: "baixa" | "media" | "alta" };
+export type CardioCarga = {
+  minutos: number;
+  sessoesIntensas: number;
+  nivel: "baixa" | "media" | "alta";
+  /** Total de sessões de cardio contadas na semana (leves incluídas). */
+  sessoes: number;
+  /** Domingo (YYYY-MM-DD) que inicia a janela contada. */
+  desde: string;
+};
 
-export function cargaCardioSemana(timeline: TimelineEntry[]): CardioCarga {
+/**
+ * Carga de cardio da SEMANA CORRENTE (domingo → hoje), não dos últimos 7 dias.
+ * Deduplica registros idênticos (mesma data + atividade + duração) que podem
+ * chegar duplicados de importações (Strava + registro manual).
+ */
+export function cargaCardioSemana(
+  timeline: TimelineEntry[],
+  now: Date = new Date(),
+): CardioCarga {
+  const inicio = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  const desde = `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, "0")}-${String(
+    inicio.getDate(),
+  ).padStart(2, "0")}`;
+
   let minutos = 0;
   let intensas = 0;
+  let sessoes = 0;
+  const vistos = new Set<string>();
+
   for (const e of timeline) {
     if (!e.cardio) continue;
+    if (e.date < desde) continue; // fora da semana corrente
+    const chave = `${e.date}|${e.label.toLowerCase().trim()}|${Math.round(e.durationMin)}`;
+    if (vistos.has(chave)) continue;
+    vistos.add(chave);
+    sessoes += 1;
     if (e.cardio === "alto" || e.cardio === "medio") {
-      minutos += e.durationMin;
+      // sanidade: ignora durações absurdas vindas de importações quebradas
+      minutos += Math.min(Math.max(0, e.durationMin), 300);
       if (e.cardio === "alto") intensas += 1;
     }
   }
+
   const nivel: CardioCarga["nivel"] = intensas >= 3 ? "alta" : intensas >= 1 ? "media" : "baixa";
-  return { minutos: Math.round(minutos), sessoesIntensas: intensas, nivel };
+  return { minutos: Math.round(minutos), sessoesIntensas: intensas, nivel, sessoes, desde };
 }
+
 
 export function scoreRecuperacao(c: DailyCheckin): number {
   const sonoHoras = Math.max(0, Math.min(c.sleep_hours, 10)) / 8; // 8h = 1.0
