@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { ListSkeleton } from "@/components/LoadingState";
@@ -38,6 +38,7 @@ const WEEKDAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 function SleepPanelPage() {
   const { user } = AuthedRoute.useRouteContext();
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const [tab, setTab] = useState<"semanas" | "datas">("semanas");
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["sleep-history", user.id],
@@ -137,6 +138,29 @@ function SleepPanelPage() {
         )}
       </section>
 
+      <div className="mt-4 inline-flex rounded-lg bg-muted p-1">
+        {(
+          [
+            ["semanas", "Por semana"],
+            ["datas", "Por data"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            aria-pressed={tab === key}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+              tab === key
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <ListSkeleton />
       ) : rows.length === 0 ? (
@@ -144,6 +168,35 @@ function SleepPanelPage() {
           title="Nenhum sono registrado ainda"
           message="Registre no card “Sono de hoje” no início e este painel começa a montar seu histórico semanal."
         />
+      ) : tab === "datas" ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-border">
+          {rows.map((r) => {
+            const hours = Number(r.hours) || 0;
+            const st = sleepStatus(hours);
+            return (
+              <div
+                key={r.log_date}
+                className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {format(parseISO(r.log_date), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                    {r.log_date === todayStr ? " · hoje" : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.quality != null ? `Qualidade ${r.quality}/5` : "Sem qualidade registrada"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`size-2 rounded-full ${st.bar}`} aria-hidden />
+                  <span className="font-display text-base font-black tabular-nums text-foreground">
+                    {hours.toFixed(1)}h
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="mt-4 grid gap-3">
           {weeks.map((w, idx) => {
