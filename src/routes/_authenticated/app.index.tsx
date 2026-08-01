@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getRecoveryAdvice } from "@/lib/recovery.functions";
+import { resolveTimeZone } from "@/lib/week";
 
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { computeCyclePhase } from "@/lib/cycle";
@@ -182,12 +183,13 @@ function Dashboard() {
       // Em origens espelho (ex.: Vercel) o app é servido como estático e as
       // server functions não existem — nesse caso calculamos a recuperação no
       // próprio navegador, com exatamente o mesmo motor usado no servidor.
+      const tz = resolveTimeZone();
       try {
-        return await fetchRecovery();
+        return await fetchRecovery({ data: { tz } });
       } catch (err) {
         console.warn("[recovery] server function indisponível, calculando localmente", err);
         const { computeRecoveryAdviceFor } = await import("@/lib/recovery-core");
-        return await computeRecoveryAdviceFor(supabase, user.id);
+        return await computeRecoveryAdviceFor(supabase, user.id, tz);
       }
     },
     staleTime: 1000 * 60 * 30,
