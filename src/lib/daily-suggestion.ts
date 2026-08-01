@@ -316,11 +316,14 @@ export function sugerirTreinoDoDia(args: {
   atividadesExtras: ExtraActivity[];
   checkin: DailyCheckin;
   hoje?: Date;
+  /** IANA timezone do usuário (default: fuso do dispositivo). */
+  tz?: string | null;
 }): Sugestao {
   const now = args.hoje ?? new Date();
-  const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
+  const tz = args.tz;
+  const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now, tz);
   const liberados = gruposLiberados(timeline, now);
-  const cardio = cargaCardioSemana(timeline, now);
+  const cardio = cargaCardioSemana(timeline, now, tz);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const temPoucoHistorico = args.sessoes.length + args.atividadesExtras.length < 3;
@@ -557,8 +560,9 @@ export function sugerirTreinoDoPlano(args: {
   if (plano.length < 2) return null;
 
   const now = args.hoje ?? new Date();
-  const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now);
-  const cardio = cargaCardioSemana(timeline, now);
+  const tz = args.tz;
+  const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now, tz);
+  const cardio = cargaCardioSemana(timeline, now, tz);
   const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const liberados = gruposLiberados(timeline, now);
