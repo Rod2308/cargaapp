@@ -260,7 +260,26 @@ function NotificationPreferencesPage() {
             onCheckedChange={handleWebPush}
           />
         </div>
+
+        {permission === "granted" && !iosInstallNeeded && (
+          <div className="mt-4 border-t pt-4">
+            <p className="text-xs text-muted-foreground">
+              Não está recebendo? Envie um teste; se não chegar, reconecte este aparelho.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={busy} onClick={handleTest}>
+                Enviar teste
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={handleReconnect}>
+                Reconectar este aparelho
+              </Button>
+            </div>
+            {diag && <p className="mt-3 text-xs text-muted-foreground">{diag}</p>}
+          </div>
+        )}
       </section>
+
+
 
 
       <WorkoutReminderSettings />
