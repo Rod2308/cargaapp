@@ -27,6 +27,7 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as ApiPublicVapidRouteImport } from './routes/api/public/vapid'
 import { Route as ApiPublicBridgeRouteImport } from './routes/api/public/bridge'
 import { Route as AuthenticatedAppVolumeRouteImport } from './routes/_authenticated/app.volume'
+import { Route as AuthenticatedAppSonoRouteImport } from './routes/_authenticated/app.sono'
 import { Route as AuthenticatedAppProgressoRouteImport } from './routes/_authenticated/app.progresso'
 import { Route as AuthenticatedAppPerfilRouteImport } from './routes/_authenticated/app.perfil'
 import { Route as AuthenticatedAppNotificacoesRouteImport } from './routes/_authenticated/app.notificacoes'
@@ -142,6 +143,11 @@ const ApiPublicBridgeRoute = ApiPublicBridgeRouteImport.update({
 const AuthenticatedAppVolumeRoute = AuthenticatedAppVolumeRouteImport.update({
   id: '/volume',
   path: '/volume',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppSonoRoute = AuthenticatedAppSonoRouteImport.update({
+  id: '/sono',
+  path: '/sono',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
 const AuthenticatedAppProgressoRoute =
@@ -314,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/app/sono': typeof AuthenticatedAppSonoRoute
   '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/app/sono': typeof AuthenticatedAppSonoRoute
   '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/_authenticated/app/notificacoes': typeof AuthenticatedAppNotificacoesRoute
   '/_authenticated/app/perfil': typeof AuthenticatedAppPerfilRoute
   '/_authenticated/app/progresso': typeof AuthenticatedAppProgressoRoute
+  '/_authenticated/app/sono': typeof AuthenticatedAppSonoRoute
   '/_authenticated/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
@@ -449,6 +458,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/app/sono'
     | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
@@ -492,6 +502,7 @@ export interface FileRouteTypes {
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
+    | '/app/sono'
     | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/notificacoes'
     | '/_authenticated/app/perfil'
     | '/_authenticated/app/progresso'
+    | '/_authenticated/app/sono'
     | '/_authenticated/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
@@ -710,6 +722,13 @@ declare module '@tanstack/react-router' {
       path: '/volume'
       fullPath: '/app/volume'
       preLoaderRoute: typeof AuthenticatedAppVolumeRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/sono': {
+      id: '/_authenticated/app/sono'
+      path: '/sono'
+      fullPath: '/app/sono'
+      preLoaderRoute: typeof AuthenticatedAppSonoRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/progresso': {
@@ -928,6 +947,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppNotificacoesRoute: typeof AuthenticatedAppNotificacoesRoute
   AuthenticatedAppPerfilRoute: typeof AuthenticatedAppPerfilRoute
   AuthenticatedAppProgressoRoute: typeof AuthenticatedAppProgressoRoute
+  AuthenticatedAppSonoRoute: typeof AuthenticatedAppSonoRoute
   AuthenticatedAppVolumeRoute: typeof AuthenticatedAppVolumeRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppAlunosIdRoute: typeof AuthenticatedAppAlunosIdRoute
@@ -948,6 +968,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppNotificacoesRoute: AuthenticatedAppNotificacoesRoute,
   AuthenticatedAppPerfilRoute: AuthenticatedAppPerfilRoute,
   AuthenticatedAppProgressoRoute: AuthenticatedAppProgressoRoute,
+  AuthenticatedAppSonoRoute: AuthenticatedAppSonoRoute,
   AuthenticatedAppVolumeRoute: AuthenticatedAppVolumeRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppAlunosIdRoute: AuthenticatedAppAlunosIdRoute,
