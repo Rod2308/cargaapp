@@ -589,6 +589,7 @@ export const AUTHED_ACTIONS: Record<string, AuthedAction> = {
   "reminders.save": (sb, uid, p) => saveReminderSettingsAction(sb, uid, p),
   "push.save": (sb, uid, p) => savePushSubscriptionAction(sb, uid, p),
   "push.delete": (sb, uid, p) => deletePushSubscriptionAction(sb, uid, p),
+  "push.test": (sb, uid) => sendTestPushAction(sb, uid),
   "rest.schedule": (sb, uid, p) => scheduleRestPushAction(sb, uid, p),
   "rest.cancel": (sb, uid) => cancelRestPushAction(sb, uid),
   "trainer.listStudents": (sb, uid) => listStudentsAction(sb, uid),
