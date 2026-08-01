@@ -9,6 +9,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { localDateStr, startOfLocalDay } from "./week";
 import {
   ALL_MUSCLE_GROUPS,
   MUSCLE_LABEL,
@@ -191,8 +192,11 @@ function computeScore(input: {
   checkinToday?: CheckinRow | null;
   now: Date;
   cycle: import("./cycle").CycleInfo | null;
+  /** IANA timezone do usuário — datas civis são calculadas nele. */
+  tz?: string | null;
 }) {
   const { profile, sessions, sleep, now } = input;
+  const tz = input.tz;
   const checkinToday = input.checkinToday ?? null;
   const factors: Factor[] = [];
 
@@ -364,12 +368,12 @@ function computeScore(input: {
 
   const daysWithSession = new Set<string>();
   for (const s of sessions) {
-    daysWithSession.add(new Date(s.started_at).toISOString().slice(0, 10));
+    daysWithSession.add(localDateStr(s.started_at, tz));
   }
   let streak = 0;
-  const d = new Date(now);
+  const d = startOfLocalDay(now, tz);
   while (true) {
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateStr(d, tz);
     if (daysWithSession.has(key)) {
       streak++;
       d.setDate(d.getDate() - 1);
@@ -377,7 +381,7 @@ function computeScore(input: {
     if (streak > 14) break;
   }
   const last7 = Array.from(daysWithSession).filter(
-    (k) => (now.getTime() - new Date(k).getTime()) / 86_400_000 <= 7,
+    (k) => (now.getTime() - startOfLocalDay(`${k}T12:00:00Z`, tz).getTime()) / 86_400_000 <= 7,
   ).length;
   const targetFreq = clamp(Number(profile?.weekly_frequency) || 4, 2, 7);
   let freqPenalty = 0;
@@ -409,9 +413,8 @@ function computeScore(input: {
   const WINDOW_DAYS = 14;
   const daysInWindow: { date: string; trained: boolean }[] = [];
   for (let i = 0; i < WINDOW_DAYS; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const d = new Date(startOfLocalDay(now, tz).getTime() - i * 86_400_000);
+    const key = localDateStr(d, tz);
     daysInWindow.push({ date: key, trained: daysWithSession.has(key) });
   }
   const untrainedDaysInWindow = daysInWindow.filter((d) => !d.trained).length;
@@ -550,6 +553,8 @@ function buildFallbackNarrative(calc: ReturnType<typeof computeScore>): {
 export async function computeRecoveryAdviceFor(
   supabase: SupabaseClient<Database>,
   userId: string,
+  /** IANA timezone do usuário (ex.: "America/Sao_Paulo"). */
+  tz?: string | null,
 ): Promise<RecoveryAdvice> {
   const now = new Date();
   const since = new Date(now.getTime() - 14 * 86_400_000);
@@ -572,21 +577,19 @@ export async function computeRecoveryAdviceFor(
       .from("sleep_logs")
       .select("log_date, hours, quality")
       .eq("user_id", userId)
-      .gte("log_date", sleepSince.toISOString().slice(0, 10))
+      .gte("log_date", localDateStr(sleepSince, tz))
       .order("log_date", { ascending: false }),
     supabase
       .from("daily_checkins")
       .select("log_date, sleep_hours, sleep_quality, soreness, energy")
       .eq("user_id", userId)
-      .gte("log_date", sleepSince.toISOString().slice(0, 10))
+      .gte("log_date", localDateStr(sleepSince, tz))
       .order("log_date", { ascending: false }),
   ]);
 
   const sleepUnified = unifySleepSources(sleep as SleepRow[] | null, checkins as CheckinRow[] | null);
 
-  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
+  const todayStr = localDateStr(now, tz);
   const checkinToday =
     ((checkins ?? []) as CheckinRow[]).find((c) => c.log_date === todayStr) ?? null;
 
@@ -634,6 +637,7 @@ export async function computeRecoveryAdviceFor(
       : null;
 
   const calc = computeScore({
+    tz,
     profile: (profile ?? null) as ProfileRow | null,
     sessions: (sessions ?? []) as SessionRow[],
     sleep: sleepUnified,
