@@ -20,6 +20,7 @@ export function DailyCheckinCard({
   userId,
   todayStr,
   initial,
+  sleepToday,
   onSaved,
 }: {
   userId: string;
@@ -30,19 +31,31 @@ export function DailyCheckinCard({
     soreness: number;
     energy: number;
   } | null;
+  /** FONTE ÚNICA DE SONO: vem do card "Sono de hoje" (tabela sleep_logs). */
+  sleepToday?: { hours: number; quality: number | null } | null;
   onSaved?: () => void;
 }) {
   const qc = useQueryClient();
-  const [sleepHours, setSleepHours] = useState<string>(initial?.sleep_hours?.toString() ?? "7.5");
-  const [sleepQuality, setSleepQuality] = useState<number>(initial?.sleep_quality ?? 4);
+  const hasSleepLog = sleepToday != null && sleepToday.hours != null;
+  const [sleepHours, setSleepHours] = useState<string>(
+    (sleepToday?.hours ?? initial?.sleep_hours)?.toString() ?? "7.5",
+  );
+  const [sleepQuality, setSleepQuality] = useState<number>(
+    sleepToday?.quality ?? initial?.sleep_quality ?? 4,
+  );
   const [soreness, setSoreness] = useState<number>(initial?.soreness ?? 2);
   const [energy, setEnergy] = useState<number>(initial?.energy ?? 4);
 
   const save = useMutation({
     mutationFn: async () => {
+      // O sono vem sempre do "Sono de hoje" quando já existe registro do dia.
+      const effectiveHours = hasSleepLog ? Number(sleepToday!.hours) : Number(sleepHours);
+      const effectiveQuality = hasSleepLog
+        ? (sleepToday!.quality ?? sleepQuality)
+        : sleepQuality;
       const parsed = checkinSchema.safeParse({
-        sleep_hours: Number(sleepHours),
-        sleep_quality: sleepQuality,
+        sleep_hours: effectiveHours,
+        sleep_quality: effectiveQuality,
         soreness,
         energy,
       });
@@ -55,21 +68,24 @@ export function DailyCheckinCard({
         { user_id: userId, log_date: todayStr, ...parsed.data },
         { onConflict: "user_id,log_date" },
       );
-      // Mantém sleep_logs em sincronia com o check-in: o motor de Recuperação
-      // usa sleep_logs como fonte primária de sono e o check-in como fallback.
-      await writeUpsert(
-        "sleep_logs",
-        {
-          user_id: userId,
-          log_date: todayStr,
-          hours: parsed.data.sleep_hours,
-          quality: parsed.data.sleep_quality,
-        },
-        { onConflict: "user_id,log_date" },
-      );
+      // Só escreve em sleep_logs quando ainda não há registro do dia — assim o
+      // "Sono de hoje" continua sendo a única fonte de verdade do sono.
+      if (!hasSleepLog) {
+        await writeUpsert(
+          "sleep_logs",
+          {
+            user_id: userId,
+            log_date: todayStr,
+            hours: parsed.data.sleep_hours,
+            quality: parsed.data.sleep_quality,
+          },
+          { onConflict: "user_id,log_date" },
+        );
+      }
       return parsed.data;
 
     },
+
     onSuccess: (payload) => {
       // Atualiza cache local para refletir imediatamente (mesmo offline).
       qc.setQueryData(["daily-checkin", userId, todayStr], payload);
