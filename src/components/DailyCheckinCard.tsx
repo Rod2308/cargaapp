@@ -156,22 +156,38 @@ export function DailyCheckinCard({
           </p>
 
           <div className="mt-4 grid gap-4">
-            <div>
-              <Label className="text-xs">Horas de sono na última noite</Label>
-              <Input
-                type="number"
-                step="0.5"
-                min={0}
-                max={24}
-                value={sleepHours}
-                onChange={(e) => setSleepHours(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Qualidade do sono</Label>
-              <Stars value={sleepQuality} onChange={setSleepQuality} />
-            </div>
+            {hasSleepLog ? (
+              <div className="rounded-lg border border-border bg-secondary/40 p-3">
+                <p className="text-xs font-semibold text-foreground">
+                  💤 Sono de hoje: {sleepToday!.hours}h
+                  {sleepToday!.quality != null ? ` · qualidade ${sleepToday!.quality}/5` : ""}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Usamos o valor do card “Sono de hoje” em todos os cálculos. Para alterar,
+                  edite por lá.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-xs">Horas de sono na última noite</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min={0}
+                    max={24}
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Qualidade do sono</Label>
+                  <Stars value={sleepQuality} onChange={setSleepQuality} />
+                </div>
+              </>
+            )}
+
             <div>
               <Label className="text-xs">Dor muscular hoje (1 = nenhuma, 5 = muita)</Label>
               <Stars value={soreness} onChange={setSoreness} invert />
