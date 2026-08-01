@@ -327,6 +327,7 @@ function SessionPage() {
         match: { session_id: id, workout_exercise_id: item.id },
       });
       await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
+      await syncPending();
       toastUndo({
         message: "Exercício removido",
         description: itemSnap?.exercises?.name ?? undefined,
@@ -336,6 +337,7 @@ function SessionPage() {
           for (const s of setsSnap) {
             await enqueueOp({ kind: "insert", table: "session_sets", row: stripGenerated(s) });
           }
+          await syncPending();
         },
         onRestored: () => {
           qc.invalidateQueries({ queryKey: ["session-plan", id] });
@@ -348,6 +350,7 @@ function SessionPage() {
             match: { session_id: id, workout_exercise_id: item.id },
           });
           await enqueueOp({ kind: "delete", table: "workout_exercises", match: { id: item.id } });
+          await syncPending();
         },
         onRedone: () => {
           qc.invalidateQueries({ queryKey: ["session-plan", id] });
@@ -380,6 +383,7 @@ function SessionPage() {
         match: { id: itemId },
         patch: { exercise_id: exerciseId },
       });
+      await syncPending();
       toast.success(`Trocado por ${replacement.name}`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui trocar o exercício."),
@@ -1016,6 +1020,20 @@ function EffortPicker({ sessionId, onConfirm, pending }: { sessionId: string; on
 
 
 /** Formata uma série do histórico: "40 kg × 12" (ou só reps, se não houver carga). */
+/**
+ * Espera a fila offline gravar no servidor antes de revalidar as queries.
+ * Sem isso, o refetch dispara antes do UPDATE e a tela volta ao valor antigo
+ * (sintoma: precisar trocar o exercício duas vezes para "pegar").
+ */
+async function syncPending() {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  try {
+    await flush();
+  } catch {
+    // offline/erro de rede: a fila tenta de novo sozinha
+  }
+}
+
 function formatRefSet(s: any): string {
   if (!s) return "";
   const reps = s.reps != null ? `${s.reps}` : "?";
