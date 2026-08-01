@@ -621,7 +621,19 @@ function Dashboard() {
           userId={user.id}
           todayStr={todayStr}
           initial={todayCheckin ?? null}
+          sleepToday={
+            todaySleep
+              ? {
+                  hours: Number((todaySleep as any).hours),
+                  quality:
+                    (todaySleep as any).quality != null
+                      ? Number((todaySleep as any).quality)
+                      : null,
+                }
+              : null
+          }
           onSaved={() => setCheckinEditOpen(false)}
+
         />
       ) : suggestion ? (
         <DailySuggestionCard
