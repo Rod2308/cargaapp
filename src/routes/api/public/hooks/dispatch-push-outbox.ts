@@ -41,26 +41,37 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-push-outbox")({
             tag: row.tag ?? `outbox:${row.id}`,
             data: { url: row.url ?? "/", outboxId: row.id },
           });
+          let okThisRow = 0;
           for (const s of subs ?? []) {
             try {
               await webpush.sendNotification(
                 { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
                 payload,
-                { TTL: 60 * 60 * 24 },
+                { TTL: 60 * 60 * 24, urgency: "high" },
               );
               sent++;
+              okThisRow++;
             } catch (err: unknown) {
               failed++;
               const statusCode = (err as { statusCode?: number })?.statusCode;
+              console.error("[push-outbox] envio falhou", {
+                outboxId: row.id,
+                statusCode,
+                message: (err as { body?: string; message?: string })?.body ?? (err as Error)?.message,
+              });
               if (statusCode === 404 || statusCode === 410) {
                 await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
               }
             }
           }
-          await supabaseAdmin
-            .from("push_outbox")
-            .update({ sent_at: new Date().toISOString() })
-            .eq("id", row.id);
+          // Só marca como enviado quando algo saiu (ou quando não há aparelho
+          // inscrito). Se todos os envios falharam, o cron tenta de novo.
+          if (okThisRow > 0 || (subs?.length ?? 0) === 0) {
+            await supabaseAdmin
+              .from("push_outbox")
+              .update({ sent_at: new Date().toISOString() })
+              .eq("id", row.id);
+          }
         }
 
         // Limpa itens antigos (>7 dias)
