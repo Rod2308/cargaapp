@@ -38,6 +38,7 @@ const WEEKDAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 function SleepPanelPage() {
   const { user } = AuthedRoute.useRouteContext();
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const [tab, setTab] = useState<"semanas" | "datas">("semanas");
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["sleep-history", user.id],
