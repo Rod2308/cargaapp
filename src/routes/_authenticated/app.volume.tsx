@@ -38,13 +38,11 @@ type Row = {
   sessions: { started_at: string } | null;
 };
 
+import { weekStart } from "@/lib/week";
+
 const DAY = 86400000;
 
-/** Segunda-feira da semana da data informada. */
-function weekStart(d: Date): Date {
-  const dow = (d.getDay() + 6) % 7;
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow);
-}
+
 
 function WeeklyVolumePage() {
   const { user } = AuthedRoute.useRouteContext();
