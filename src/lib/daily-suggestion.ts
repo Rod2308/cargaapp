@@ -5,7 +5,7 @@
 // vive em `src/lib/muscle-recovery.ts` — fonte única compartilhada com o
 // motor de Recuperação (`recovery-core.ts`).
 
-import { weekStart } from "./week";
+import { localDateStr, localDayStart, localDaysBetween, weekStart } from "./week";
 import {
   MUSCLE_GROUPS,
   MUSCLE_LABEL,
@@ -99,8 +99,8 @@ export type DailyCheckin = {
   energy: number; // 1-5
 };
 
-function toDateStr(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
+function toDateStr(iso: string, tz?: string | null): string {
+  return localDateStr(iso, tz);
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -112,11 +112,12 @@ export function combineTimeline(
   sessoes: WorkoutSession[],
   atividadesExtras: ExtraActivity[],
   now: Date = new Date(),
+  tz?: string | null,
 ): TimelineEntry[] {
   // Janela: últimos 7 dias OU desde o domingo (o que for mais antigo),
   // para que a carga da semana civil nunca fique truncada.
   const rolling = new Date(now.getTime() - 7 * 86400_000);
-  const ws = weekStart(now);
+  const ws = weekStart(now, tz);
   const sevenAgo = ws < rolling ? ws : rolling;
   const out: TimelineEntry[] = [];
 
@@ -132,7 +133,7 @@ export function combineTimeline(
       ? Math.max(0, (new Date(s.ended_at).getTime() - started.getTime()) / 60000)
       : 45;
     out.push({
-      date: toDateStr(s.started_at),
+      date: toDateStr(s.started_at, tz),
       at: s.started_at,
       source: "workout",
       label: s.workout_label ? `Treino ${s.workout_label}` : s.workout_name ?? "Treino",
@@ -151,7 +152,7 @@ export function combineTimeline(
       a.duration_min ??
       (a.ended_at ? Math.max(0, (new Date(a.ended_at).getTime() - started.getTime()) / 60000) : 30);
     out.push({
-      date: toDateStr(a.started_at),
+      date: toDateStr(a.started_at, tz),
       at: a.started_at,
       source: "extra",
       label: a.activity_name,
@@ -229,8 +230,12 @@ function entryStart(e: TimelineEntry): number {
  *   (ex.: Strava + manual) quando iniciam com menos de 30 min de diferença.
  * - Limita a duração de cada sessão a 300 min.
  */
-export function cargaCardioSemana(timeline: TimelineEntry[], now: Date = new Date()): CardioCarga {
-  const inicioSemana = weekStart(now).getTime();
+export function cargaCardioSemana(
+  timeline: TimelineEntry[],
+  now: Date = new Date(),
+  tz?: string | null,
+): CardioCarga {
+  const inicioSemana = weekStart(now, tz).getTime();
   const fim = now.getTime();
 
   const candidatas = timeline
@@ -325,7 +330,7 @@ export function sugerirTreinoDoDia(args: {
   // Pernas exigidas por extra intenso nas últimas 48h?
   const pernasExigidas = timeline.some((e) => {
     if (e.source !== "extra") return false;
-    const dias = daysBetween(new Date(now.toISOString().slice(0, 10)), new Date(e.date));
+    const dias = localDaysBetween(now, localDayStart(e.date, tz), tz);
     return dias <= 2 && (e.impact.pernas === "alto" || e.impact.pernas === "medio");
   });
 
@@ -373,7 +378,7 @@ export function sugerirTreinoDoDia(args: {
       const impactoRecente = timeline.some(
         (e) =>
           e.source === "extra" &&
-          daysBetween(new Date(now.toISOString().slice(0, 10)), new Date(e.date)) <= 2 &&
+          localDaysBetween(now, localDayStart(e.date, tz), tz) <= 2 &&
           (e.impact[l.grupo] === "alto" || e.impact[l.grupo] === "medio"),
       );
       return !impactoRecente;
@@ -406,7 +411,7 @@ export function sugerirTreinoDoDia(args: {
         (e) => e.source === "extra" && (e.impact.pernas === "alto" || e.impact.pernas === "medio"),
       );
       if (extra) {
-        const dias = daysBetween(new Date(now.toISOString().slice(0, 10)), new Date(extra.date));
+        const dias = localDaysBetween(now, localDayStart(extra.date, tz), tz);
         motivoExtra = ` Você fez ${extra.label.toLowerCase()} ${dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`}, então as pernas ficam de fora hoje.`;
       }
     }
