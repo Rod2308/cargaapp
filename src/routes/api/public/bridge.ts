@@ -79,7 +79,10 @@ export const Route = createFileRoute("/api/public/bridge")({
           }
 
           const SUPABASE_URL = process.env.SUPABASE_URL;
-          const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+          const SUPABASE_PUBLISHABLE_KEY =
+            process.env.SUPABASE_PUBLISHABLE_KEY ||
+            process.env.SUPABASE_ANON_KEY ||
+            process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
             return new Response(JSON.stringify({ error: "Backend não configurado" }), {
               status: 500,
@@ -105,13 +108,21 @@ export const Route = createFileRoute("/api/public/bridge")({
             },
           });
 
-          const { data: claims, error } = await supabase.auth.getClaims(token);
-          const userId = claims?.claims?.sub;
-          if (error || !userId) {
-            return new Response(JSON.stringify({ error: "Sessão inválida" }), {
-              status: 401,
-              headers,
-            });
+          // Tenta getClaims (rápido, decode local + verificação).
+          // Se falhar, usa getUser() que valida direto na API do Supabase Auth.
+          let userId: string | undefined;
+          const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+          if (!claimsError && claims?.claims?.sub) {
+            userId = claims.claims.sub;
+          } else {
+            const { data: userData, error: userError } = await supabase.auth.getUser(token);
+            if (userError || !userData?.user?.id) {
+              return new Response(JSON.stringify({ error: "Sessão inválida" }), {
+                status: 401,
+                headers,
+              });
+            }
+            userId = userData.user.id;
           }
 
           const result = await authedAction(supabase, userId, body.payload);
