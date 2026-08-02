@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/grupos/")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { codigo?: string } => ({
     codigo: typeof s.codigo === "string" ? s.codigo : undefined,
   }),
   component: GruposIndex,
