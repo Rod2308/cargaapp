@@ -201,10 +201,10 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
     throw new Error("Chaves de notificação não configuradas no servidor.");
   }
 
-  const { data: subs, error } = await supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: subs, error } = await supabaseAdmin
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth, user_agent")
-    .eq("user_id", userId);
+    .select("id, endpoint, p256dh, auth, user_agent");
   if (error) throw new Error(error.message);
   if (!subs || subs.length === 0) {
     return { devices: 0, sent: 0, failed: 0, removed: 0, errors: [] as string[] };
@@ -214,9 +214,9 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
   webpush.setVapidDetails(subject, publicKey, privateKey);
 
   const payload = JSON.stringify({
-    title: "🔔 Teste do Carga",
-    body: "Se você está vendo isto, as notificações estão funcionando.",
-    tag: "carga-test",
+    title: "🚀 Teste Global da Vercel",
+    body: "Se você recebeu isso, as notificações na Vercel estão 100% ativas para todos os aparelhos!",
+    tag: "carga-test-global",
     data: { url: "/app/notificacoes" },
   });
 
@@ -237,7 +237,7 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
       failed++;
       const statusCode = (err as { statusCode?: number })?.statusCode;
       if (statusCode === 404 || statusCode === 410) {
-        await supabase.from("push_subscriptions").delete().eq("id", s.id);
+        await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
         removed++;
         errors.push("Assinatura expirada removida — reative as notificações neste aparelho.");
       } else {
