@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: "Carga",
   webDir: "dist",
   server: {
+    url: "https://cargaapp.vercel.app",
     androidScheme: "https",
     cleartext: false,
   },
