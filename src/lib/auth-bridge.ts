@@ -32,10 +32,9 @@ export function isAllowedBridgeOrigin(origin: string | null | undefined): boolea
 
 /** true quando o app está rodando numa origem espelho que precisa da ponte. */
 export function isBridgeOrigin(): boolean {
-  if (typeof window === "undefined") return false;
-  const origin = window.location.origin;
-  // Se não é a origem canônica e está na lista de espelhos, precisa da ponte.
-  return origin !== CANONICAL_ORIGIN && isAllowedBridgeOrigin(origin);
+  // A Vercel roda TanStack Start com SSR — as server functions funcionam
+  // localmente. A ponte só é necessária para hospedagens puramente estáticas.
+  return false;
 }
 
 /** Sanitiza um destino interno (evita open redirect e URLs absolutas). */
