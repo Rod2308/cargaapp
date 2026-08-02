@@ -162,7 +162,10 @@ export function getVapidPublicKeyAction() {
 
 export async function savePushSubscriptionAction(supabase: SB, userId: string, input: unknown) {
   const data = SubscriptionSchema.parse(input);
-  const { error } = await supabase.from("push_subscriptions").upsert(
+  // Usa supabaseAdmin para garantir que o upsert não seja bloqueado por RLS.
+  // O userId já foi verificado pelo middleware de autenticação.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("push_subscriptions").upsert(
     {
       user_id: userId,
       endpoint: data.endpoint,
