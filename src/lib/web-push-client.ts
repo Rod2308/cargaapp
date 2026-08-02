@@ -52,7 +52,10 @@ export async function subscribeToWebPush(): Promise<PushSubscription> {
   }
 
   const reg = await ensureRegistration();
-  const { publicKey } = await callServer<{ publicKey: string }>("push.vapid", getVapidPublicKey);
+  const { publicKey } = await callServer<{ publicKey: string | null }>("push.vapid", getVapidPublicKey);
+  if (!publicKey) {
+    throw new Error("Servidor não possui VAPID_PUBLIC_KEY configurada. Web Push desativado.");
+  }
 
   const existing = await reg.pushManager.getSubscription();
   const sub =

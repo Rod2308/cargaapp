@@ -153,7 +153,10 @@ export const SubscriptionSchema = z.object({
 
 export function getVapidPublicKeyAction() {
   const key = process.env.VAPID_PUBLIC_KEY;
-  if (!key) throw new Error("VAPID_PUBLIC_KEY não configurada no servidor");
+  if (!key) {
+    console.warn("[Web Push] VAPID_PUBLIC_KEY não configurada no servidor. Notificações não funcionarão.");
+    return { publicKey: null };
+  }
   return { publicKey: key };
 }
 
@@ -442,18 +445,23 @@ export async function unlinkMyTrainerAction(supabase: SB, userId: string) {
 /* ------------------------------------------------------------------ */
 
 export async function getStravaStatusAction(_supabase: SB, userId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("strava_connections")
-    .select("strava_athlete_id, last_sync_at, scope, created_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return {
-    connected: !!data,
-    athleteId: (data?.strava_athlete_id as number | undefined) ?? null,
-    lastSyncAt: (data?.last_sync_at as string | null | undefined) ?? null,
-    scope: (data?.scope as string | null | undefined) ?? null,
-  };
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("strava_connections")
+      .select("strava_athlete_id, last_sync_at, scope, created_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return {
+      connected: !!data,
+      athleteId: (data?.strava_athlete_id as number | undefined) ?? null,
+      lastSyncAt: (data?.last_sync_at as string | null | undefined) ?? null,
+      scope: (data?.scope as string | null | undefined) ?? null,
+    };
+  } catch (err) {
+    console.warn("[Strava] Erro ao buscar status (possível falta de configuração):", err);
+    return { connected: false, athleteId: null, lastSyncAt: null, scope: null };
+  }
 }
 
 export async function getStravaAuthorizeUrlAction(_supabase: SB, userId: string) {
