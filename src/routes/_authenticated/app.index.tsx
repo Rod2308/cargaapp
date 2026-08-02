@@ -35,7 +35,6 @@ import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
-  alinharComRecuperacao,
   melhorWorkoutParaSugestao,
   proximoNaRotina,
   proximoNaRotinaComRecuperacao,
@@ -285,7 +284,8 @@ function Dashboard() {
   );
 
   const planoOuGeral = useMemo(() => {
-    if (!todayCheckin) return { suggestion: null, workoutId: null as string | null };
+    // A sugestão do dia é calculada com base no histórico e no status da Recuperação.
+    if (!recovery) return { suggestion: null, workoutId: null as string | null };
     const { sessoes, extras } = atividades;
 
     // 1) Tenta rotação pelo plano (A/B/C...) — avança para o próximo treino
@@ -298,7 +298,7 @@ function Dashboard() {
           workouts: planoWorkouts,
           sessoes,
           atividadesExtras: extras,
-          checkin: todayCheckin,
+          recovery,
         })
       : null;
     if (doPlano) {
@@ -309,7 +309,7 @@ function Dashboard() {
     const geral = sugerirTreinoDoDia({
       sessoes,
       atividadesExtras: extras,
-      checkin: todayCheckin,
+      recovery,
     });
     const wList = (workouts as any[]).map((w) => {
       const hay = `${w.label} ${w.name}`.toLowerCase();
@@ -345,25 +345,9 @@ function Dashboard() {
     }
     return { suggestion: ajustada, workoutId: wid };
 
-  }, [todayCheckin, atividades, workouts]);
+  }, [recovery, atividades, workouts]);
 
-  // O motor de Recuperação é a AUTORIDADE sobre treinar × descansar.
-  // A sugestão do dia continua escolhendo QUAL treino, mas a intensidade é
-  // rebaixada aqui pra que os dois cards nunca digam coisas opostas.
-  const suggestion = useMemo(() => {
-    const base = planoOuGeral.suggestion;
-    if (!base) return null;
-    return alinharComRecuperacao(
-      base,
-      recovery
-        ? {
-            status: recovery.status,
-            score: recovery.score,
-            intensityLabel: recovery.intensityLabel,
-          }
-        : null,
-    );
-  }, [planoOuGeral.suggestion, recovery]);
+  const suggestion = planoOuGeral.suggestion;
   const workoutSugeridoId = planoOuGeral.workoutId;
 
   const [checkinEditOpen, setCheckinEditOpen] = useState(false);

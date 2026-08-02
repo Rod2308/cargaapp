@@ -20,6 +20,7 @@ REVOKE INSERT ON public.trainer_students FROM authenticated;
 -- public.messages SELECT RLS already gates postgres_changes to conversation
 -- participants. Add an explicit authenticated-only policy on realtime.messages
 -- so no anonymous client can subscribe to messages broadcast channels.
+/*
 DO $$
 BEGIN
   IF EXISTS (
@@ -32,3 +33,4 @@ BEGIN
     EXECUTE 'CREATE POLICY "authenticated can use realtime" ON realtime.messages FOR SELECT TO authenticated USING (true)';
   END IF;
 END $$;
+*/

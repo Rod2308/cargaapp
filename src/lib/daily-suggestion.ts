@@ -14,15 +14,13 @@ import {
   normalizeMuscleGroup,
   type MuscleGroup,
 } from "./muscle-recovery";
+import type { RecoveryAdvice } from "./recovery-core";
 
 export type { MuscleGroup };
 export { MUSCLE_GROUPS, MUSCLE_LABEL, MUSCLE_RECOVERY_DAYS, normalizeMuscleGroup };
 
-
 export type Impact = "alto" | "medio" | "baixo";
 
-// Mapa de esportes/atividades extras → impacto por grupo muscular.
-// Também marca se há componente cardio (alto/medio/baixo).
 export const ACTIVITY_IMPACT_MAP: Record<
   string,
   { muscles: Partial<Record<MuscleGroup, Impact>>; cardio: Impact }
@@ -41,7 +39,6 @@ export const ACTIVITY_IMPACT_MAP: Record<
   pilates: { muscles: { abdomen: "medio" }, cardio: "baixo" },
 };
 
-// Normaliza um nome livre de atividade (ex: "Futebol Society") ao slug do mapa.
 export function normalizeActivityName(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const s = raw
@@ -61,20 +58,17 @@ export function normalizeActivityName(raw: string | null | undefined): string | 
   if (/tenis|tennis/.test(s)) return "tenis";
   if (/cardio|hiit|elipt|elliptical|rem(o|ar)|row/.test(s)) return "corrida";
   return null;
-
 }
 
 export type TimelineEntry = {
-  date: string; // yyyy-mm-dd
-  at?: string; // timestamp ISO do início (usado p/ dias fracionados)
+  date: string;
+  at?: string;
   source: "workout" | "extra";
-  label: string; // nome do treino ou da atividade extra
+  label: string;
   impact: Partial<Record<MuscleGroup, Impact>>;
   cardio: Impact | null;
   durationMin: number;
-  /** slug normalizado da atividade (corrida, ciclismo...) — usado p/ dedupe */
   slug?: string | null;
-
 };
 
 export type WorkoutSession = {
@@ -82,7 +76,7 @@ export type WorkoutSession = {
   ended_at: string | null;
   workout_label?: string | null;
   workout_name?: string | null;
-  muscle_groups: string[]; // grupos livres vindos de exercises.muscle_group
+  muscle_groups: string[];
 };
 
 export type ExtraActivity = {
@@ -92,20 +86,8 @@ export type ExtraActivity = {
   duration_min: number | null;
 };
 
-export type DailyCheckin = {
-  sleep_hours: number;
-  sleep_quality: number; // 1-5
-  soreness: number; // 1-5
-  energy: number; // 1-5
-};
-
 function toDateStr(iso: string, tz?: string | null): string {
   return localDateStr(iso, tz);
-}
-
-function daysBetween(a: Date, b: Date): number {
-  const ms = a.getTime() - b.getTime();
-  return Math.floor(ms / 86400_000);
 }
 
 export function combineTimeline(
@@ -114,8 +96,6 @@ export function combineTimeline(
   now: Date = new Date(),
   tz?: string | null,
 ): TimelineEntry[] {
-  // Janela: últimos 7 dias OU desde o domingo (o que for mais antigo),
-  // para que a carga da semana civil nunca fique truncada.
   const rolling = new Date(now.getTime() - 7 * 86400_000);
   const ws = weekStart(now, tz);
   const sevenAgo = ws < rolling ? ws : rolling;
@@ -127,7 +107,7 @@ export function combineTimeline(
     const impact: Partial<Record<MuscleGroup, Impact>> = {};
     for (const g of s.muscle_groups) {
       const mg = normalizeMuscleGroup(g);
-      if (mg) impact[mg] = "alto"; // treino formal conta como alto
+      if (mg) impact[mg] = "alto";
     }
     const dur = s.ended_at
       ? Math.max(0, (new Date(s.ended_at).getTime() - started.getTime()) / 60000)
@@ -167,11 +147,6 @@ export function combineTimeline(
   return out;
 }
 
-/**
- * Dias (fracionados) desde o último esforço de impacto médio/alto num grupo.
- * Usa `fractionalDaysSince` — mesma matemática do motor de Recuperação.
- * Infinity quando nunca houve estímulo na janela.
- */
 export function diasDesdeUltimoEsforco(
   timeline: TimelineEntry[],
   grupo: MuscleGroup,
@@ -188,7 +163,6 @@ export function diasDesdeUltimoEsforco(
   return best == null ? Number.POSITIVE_INFINITY : best;
 }
 
-/** Formata dias fracionados para exibição (ex.: 2.4d → "2,4"). */
 export function formatDias(d: number): string {
   if (!Number.isFinite(d)) return "—";
   return d >= 10 ? String(Math.round(d)) : d.toFixed(1).replace(".", ",");
@@ -212,24 +186,13 @@ export type CardioCarga = {
   nivel: "baixa" | "media" | "alta";
 };
 
-/** Teto de sanidade por sessão (min) — evita importações com duração absurda. */
 const MAX_MIN_POR_SESSAO = 300;
-
-/** Duas atividades do mesmo tipo iniciadas dentro dessa janela = mesma sessão. */
 const DEDUPE_MIN = 30;
 
 function entryStart(e: TimelineEntry): number {
   return new Date(e.at ?? `${e.date}T12:00:00.000Z`).getTime();
 }
 
-/**
- * Carga de cardio da SEMANA CIVIL (domingo 00:00 → agora).
- *
- * - Considera apenas atividades com componente cardio médio/alto.
- * - Deduplica registros da mesma atividade vindos de fontes diferentes
- *   (ex.: Strava + manual) quando iniciam com menos de 30 min de diferença.
- * - Limita a duração de cada sessão a 300 min.
- */
 export function cargaCardioSemana(
   timeline: TimelineEntry[],
   now: Date = new Date(),
@@ -277,15 +240,6 @@ export function cargaCardioSemana(
   };
 }
 
-export function scoreRecuperacao(c: DailyCheckin): number {
-  const sonoHoras = Math.max(0, Math.min(c.sleep_hours, 10)) / 8; // 8h = 1.0
-  const sonoQ = (c.sleep_quality - 1) / 4; // 1..5 → 0..1
-  const dor = 1 - (c.soreness - 1) / 4; // dor 1 → 1.0, dor 5 → 0
-  const energia = (c.energy - 1) / 4;
-  const raw = sonoHoras * 3 + sonoQ * 3 + dor * 2 + energia * 2; // max 10
-  return Math.max(0, Math.min(10, Math.round(raw * 10) / 10));
-}
-
 export type Intensidade = "leve" | "moderada" | "alta" | "descanso";
 export type TipoTreino = "descanso ativo" | "funcional leve" | "força" | "cardio leve" | "mobilidade" | "full body";
 
@@ -314,9 +268,8 @@ function joinGrupos(gs: MuscleGroup[]): string {
 export function sugerirTreinoDoDia(args: {
   sessoes: WorkoutSession[];
   atividadesExtras: ExtraActivity[];
-  checkin: DailyCheckin;
+  recovery: Pick<RecoveryAdvice, "score" | "status"> | null;
   hoje?: Date;
-  /** IANA timezone do usuário (default: fuso do dispositivo). */
   tz?: string | null;
 }): Sugestao {
   const now = args.hoje ?? new Date();
@@ -324,30 +277,19 @@ export function sugerirTreinoDoDia(args: {
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now, tz);
   const liberados = gruposLiberados(timeline, now);
   const cardio = cargaCardioSemana(timeline, now, tz);
-  const score = scoreRecuperacao(args.checkin);
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const temPoucoHistorico = args.sessoes.length + args.atividadesExtras.length < 3;
 
-  const scoreDetalhe = `Sono ${args.checkin.sleep_hours}h · qualidade ${args.checkin.sleep_quality}/5 · dor ${args.checkin.soreness}/5 · energia ${args.checkin.energy}/5`;
+  const status = args.recovery?.status ?? "cuidado";
+  const score = args.recovery?.score ?? 50;
+  const scoreDetalhe = `Score da Recuperação: ${score.toFixed(1)}/100`;
 
-  // Pernas exigidas por extra intenso nas últimas 48h?
-  const pernasExigidas = timeline.some((e) => {
-    if (e.source !== "extra") return false;
-    const dias = localDaysBetween(now, localDayStart(e.date, tz), tz);
-    return dias <= 2 && (e.impact.pernas === "alto" || e.impact.pernas === "medio");
-  });
-
-  // Regra 1: descanso ativo
-  if (score <= 4 || args.checkin.soreness >= 4 || diasComEsforco >= 6) {
-    const motivos: string[] = [];
-    if (score <= 4) motivos.push(`recuperação baixa (score ${score.toFixed(1)}/10)`);
-    if (args.checkin.soreness >= 4) motivos.push(`dor muscular alta (${args.checkin.soreness}/5)`);
-    if (diasComEsforco >= 6) motivos.push(`${diasComEsforco} dias de esforço na semana`);
+  if (status === "descanso") {
     return {
       tipo: "descanso ativo",
       grupos: [],
       intensidade: "descanso",
-      motivo: `Hoje é dia de aliviar: ${motivos.join(", ")}. Faça mobilidade, alongamento ou uma caminhada leve.`,
+      motivo: `Hoje é dia de aliviar — seu corpo pediu descanso (Score ${score}/100). Faça mobilidade, alongamento ou uma caminhada leve.`,
       score,
       scoreDetalhe,
       gruposLiberados: liberados,
@@ -357,12 +299,17 @@ export function sugerirTreinoDoDia(args: {
     };
   }
 
-  // Usuário novo: full body moderado padrão
+  const pernasExigidas = timeline.some((e) => {
+    if (e.source !== "extra") return false;
+    const dias = localDaysBetween(now, localDayStart(e.date, tz), tz);
+    return dias <= 2 && (e.impact.pernas === "alto" || e.impact.pernas === "medio");
+  });
+
   if (temPoucoHistorico) {
     return {
       tipo: "full body",
       grupos: ["peito", "costas", "pernas"],
-      intensidade: score >= 7 ? "moderada" : "leve",
+      intensidade: status === "recuperado" ? "moderada" : "leve",
       motivo:
         "Poucos dados ainda. Comece com um full body leve/moderado — as sugestões vão melhorar conforme você registrar treinos e atividades.",
       score,
@@ -374,10 +321,8 @@ export function sugerirTreinoDoDia(args: {
     };
   }
 
-  // Regra 2: funcional leve (score 4-6)
-  if (score <= 6) {
+  if (status === "cuidado") {
     const candidato = liberados.find((l) => {
-      // não pode ter sido impactado por extra recente
       const impactoRecente = timeline.some(
         (e) =>
           e.source === "extra" &&
@@ -392,7 +337,7 @@ export function sugerirTreinoDoDia(args: {
         tipo: "funcional leve",
         grupos: [grupo],
         intensidade: "leve",
-        motivo: `Score moderado (${score.toFixed(1)}/10). Um funcional leve em ${MUSCLE_LABEL[grupo]} (${(() => { const d = candidato?.diasParado ?? liberados[0].diasParado; return Number.isFinite(d) ? `${formatDias(d)}d parado` : "ainda sem registro"; })()}) mantém o ritmo sem sobrecarregar.`,
+        motivo: `Corpo fadigado (Score ${score}/100). Um funcional leve em ${MUSCLE_LABEL[grupo]} mantém o ritmo sem sobrecarregar.`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -403,9 +348,7 @@ export function sugerirTreinoDoDia(args: {
     }
   }
 
-  // Regra 3: força (score > 6)
-  if (score > 6 && liberados.length > 0) {
-    // Filtra pernas se exigidas por extra recente
+  if ((status === "leve" || status === "recuperado") && liberados.length > 0) {
     let candidatos = liberados;
     let motivoExtra = "";
     if (pernasExigidas) {
@@ -415,30 +358,28 @@ export function sugerirTreinoDoDia(args: {
       );
       if (extra) {
         const dias = localDaysBetween(now, localDayStart(extra.date, tz), tz);
-        motivoExtra = ` Você fez ${extra.label.toLowerCase()} ${dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`}, então as pernas ficam de fora hoje.`;
+        motivoExtra = ` (Pernas poupadas pelo ${extra.label.toLowerCase()} de ${dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`}).`;
       }
     }
-    // Cardio alto na semana → evitar pernas mesmo sem extra recente
     if (cardio.nivel === "alta" && candidatos.some((c) => c.grupo === "pernas")) {
       candidatos = candidatos.filter((l) => l.grupo !== "pernas");
-      motivoExtra += ` Cardio acumulado da semana está alto (${cardio.sessoesIntensas} sessões intensas).`;
+      motivoExtra += " (Pernas poupadas pelo cardio alto).";
     }
     const escolhido = candidatos[0] ?? liberados[0];
     if (escolhido) {
       const grupos: MuscleGroup[] = [escolhido.grupo];
-      // Adiciona um grupo sinérgico
       if (escolhido.grupo === "peito") grupos.push("triceps");
       else if (escolhido.grupo === "costas") grupos.push("biceps");
       else if (escolhido.grupo === "ombro") grupos.push("triceps");
       else if (escolhido.grupo === "pernas") grupos.push("gluteo");
 
       const grupoLabel = joinGrupos(grupos);
-      const intensidade: Intensidade = score >= 8 ? "alta" : "moderada";
+      const intensidade: Intensidade = status === "recuperado" ? "alta" : "moderada";
       return {
         tipo: "força",
         grupos,
         intensidade,
-        motivo: `Score ${score.toFixed(1)}/10 e ${escolhido.grupo} ${Number.isFinite(escolhido.diasParado) ? `há ${formatDias(escolhido.diasParado)}d sem estímulo` : "ainda sem registro na semana"} — foco em ${grupoLabel}, intensidade ${intensidade}.${motivoExtra}`,
+        motivo: `Treino de força focado em ${grupoLabel}${motivoExtra}`,
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -449,14 +390,13 @@ export function sugerirTreinoDoDia(args: {
     }
   }
 
-  // Regra 4: nenhum grupo liberado com score bom → cardio leve ou mobilidade
-  if (liberados.length === 0 && score > 6) {
+  if (liberados.length === 0 && (status === "leve" || status === "recuperado")) {
     if (cardio.nivel === "alta") {
       return {
         tipo: "mobilidade",
         grupos: [],
         intensidade: "leve",
-        motivo: `Todos os grupos ainda em recuperação e cardio da semana já está alto (${cardio.sessoesIntensas} sessões intensas). Melhor mobilidade e alongamento hoje.`,
+        motivo: "Cardio semanal alto e músculos ainda em recuperação. Hoje o ideal é alongamento/mobilidade.",
         score,
         scoreDetalhe,
         gruposLiberados: liberados,
@@ -469,7 +409,7 @@ export function sugerirTreinoDoDia(args: {
       tipo: "cardio leve",
       grupos: [],
       intensidade: "leve",
-      motivo: `Nenhum grupo totalmente recuperado, mas você está bem (${score.toFixed(1)}/10). Uma caminhada ou pedalada leve aproveita o dia sem sobrecarregar.`,
+      motivo: "Músculos em recuperação. Uma caminhada ou pedalada leve mantém a atividade diária.",
       score,
       scoreDetalhe,
       gruposLiberados: liberados,
@@ -479,12 +419,11 @@ export function sugerirTreinoDoDia(args: {
     };
   }
 
-  // Fallback: full body leve
   return {
     tipo: "full body",
     grupos: UPPER_BODY.slice(0, 3),
     intensidade: "leve",
-    motivo: `Score ${score.toFixed(1)}/10. Um treino leve de parte superior mantém o ritmo.`,
+    motivo: `Score ${score.toFixed(1)}/100. Um treino leve de parte superior mantém o ritmo.`,
     score,
     scoreDetalhe,
     gruposLiberados: liberados,
@@ -494,7 +433,6 @@ export function sugerirTreinoDoDia(args: {
   };
 }
 
-// Escolhe o workout do plano cujos exercícios mais cobrem os grupos sugeridos.
 export function melhorWorkoutParaSugestao(
   workouts: { id: string; label: string; name: string; muscle_groups: string[] }[],
   grupos: MuscleGroup[],
@@ -510,11 +448,6 @@ export function melhorWorkoutParaSugestao(
   }
   return best && best.score > 0 ? best.id : null;
 }
-
-// ============================================================================
-// Sugestão baseada em SPLIT/PLANO (ex: A, B, C, D, E).
-// Rotaciona o próximo treino do plano com base no último feito.
-// ============================================================================
 
 export type PlanoWorkout = {
   id: string;
@@ -549,9 +482,8 @@ export function sugerirTreinoDoPlano(args: {
   workouts: PlanoWorkout[];
   sessoes: WorkoutSession[];
   atividadesExtras: ExtraActivity[];
-  checkin: DailyCheckin;
+  recovery: Pick<RecoveryAdvice, "score" | "status"> | null;
   hoje?: Date;
-  /** IANA timezone do usuário (default: fuso do dispositivo). */
   tz?: string | null;
 }): SugestaoPlano | null {
   const plano = args.workouts
@@ -565,17 +497,17 @@ export function sugerirTreinoDoPlano(args: {
   const tz = args.tz;
   const timeline = combineTimeline(args.sessoes, args.atividadesExtras, now, tz);
   const cardio = cargaCardioSemana(timeline, now, tz);
-  const score = scoreRecuperacao(args.checkin);
+  
+  const status = args.recovery?.status ?? "cuidado";
+  const score = args.recovery?.score ?? 50;
   const diasComEsforco = new Set(timeline.map((e) => e.date)).size;
   const liberados = gruposLiberados(timeline, now);
-  const scoreDetalhe = `Sono ${args.checkin.sleep_hours}h · qualidade ${args.checkin.sleep_quality}/5 · dor ${args.checkin.soreness}/5 · energia ${args.checkin.energy}/5`;
+  const scoreDetalhe = `Score da Recuperação: ${score.toFixed(1)}/100`;
 
-  // Gate de descanso — mesmo com plano, respeita sinais do corpo
-  if (score <= 4 || args.checkin.soreness >= 4 || diasComEsforco >= 6) {
-    return null; // caller cai no fluxo geral (descanso ativo)
+  if (status === "descanso" || status === "cuidado") {
+    return null; 
   }
 
-  // Encontra último treino do plano executado
   const ordenadas = [...args.sessoes].sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
   let ultimoIdx = -1;
   let ultimaLabel: string | null = null;
@@ -590,9 +522,6 @@ export function sugerirTreinoDoPlano(args: {
     }
   }
 
-  // Ordem de rotação a partir do último feito, mas priorizando o treino
-  // cujos grupos estão descansados há mais tempo — evita repetir (ex: bíceps
-  // treinado há 2 dias) quando existe um treino com mais dias de descanso.
   const rotacao = plano.map((_, i) =>
     plano[((ultimoIdx < 0 ? -1 : ultimoIdx) + 1 + i) % plano.length],
   );
@@ -602,16 +531,15 @@ export function sugerirTreinoDoPlano(args: {
     const descansos = gs.map((g) => diasDesdeUltimoEsforco(timeline, g, now));
     const minDescanso = descansos.length ? Math.min(...descansos) : Number.POSITIVE_INFINITY;
     const recuperado = gs.every((g, i) => descansos[i] >= MUSCLE_RECOVERY_DAYS[g]);
-    const score =
+    const scoreCalc =
       (recuperado ? 1000 : 0) +
       Math.min(Number.isFinite(minDescanso) ? minDescanso : 30, 30) -
       pos * 0.01;
-    if (!melhor || score > melhor.score) melhor = { w, score };
+    if (!melhor || scoreCalc > melhor.score) melhor = { w, score: scoreCalc };
   });
   const proximo = (melhor as { w: PlanoWorkout & { label: string } } | null)?.w ?? rotacao[0];
   const proximoIdx = plano.findIndex((p) => p.id === proximo.id);
 
-  // Se pernas exigidas por extra intenso recente, pula para o próximo do plano que não seja de pernas
   const pernasImpactadas = timeline.some((e) => {
     if (e.source !== "extra") return false;
     const dias = Math.floor((now.getTime() - new Date(e.date).getTime()) / 86400_000);
@@ -632,14 +560,11 @@ export function sugerirTreinoDoPlano(args: {
         (e) => e.source === "extra" && (e.impact.pernas === "alto" || e.impact.pernas === "medio"),
       );
       motivoExtra = extra
-        ? ` Pulei o treino de pernas do plano porque você fez ${extra.label.toLowerCase()} nas últimas 48h.`
+        ? ` Pulei o treino de pernas do plano devido ao ${extra.label.toLowerCase()} recente.`
         : "";
     }
   }
 
-  // Recuperação por grupo: se o próximo do plano tem algum grupo ainda não recuperado
-  // (ex: treinou peito ontem e o próximo é peito/tríceps), avança no plano até um treino
-  // cujos grupos estejam todos liberados.
   const gruposNaoRecuperados = (gs: MuscleGroup[]) =>
     gs.filter((g) => diasDesdeUltimoEsforco(timeline, g, now) < MUSCLE_RECOVERY_DAYS[g]);
 
@@ -655,10 +580,7 @@ export function sugerirTreinoDoPlano(args: {
       if (pernasImpactadas && gs.includes("pernas")) continue;
       if (gruposNaoRecuperados(gs).length === 0) {
         const pulados = pendentes.map((g) => MUSCLE_LABEL[g].toLowerCase()).join(", ");
-        const dias = Math.min(
-          ...pendentes.map((g) => diasDesdeUltimoEsforco(timeline, g, now)),
-        );
-        motivoRecuperacao = ` Pulei o ${escolhido.label} do plano porque ${pulados} ainda está em recuperação (treinado há ${formatDias(dias)}d, precisa de ${MUSCLE_RECOVERY_DAYS[pendentes[0]]}d).`;
+        motivoRecuperacao = ` O treino ${escolhido.label} foi adiado porque: ${pulados} em recuperação.`;
         escolhido = cand;
         gruposEscolhidoAtual = gs;
         pendentes = [];
@@ -668,11 +590,10 @@ export function sugerirTreinoDoPlano(args: {
   }
 
   const gruposEscolhido = gruposEscolhidoAtual;
-  const intensidade: Intensidade = score >= 8 ? "alta" : score >= 6 ? "moderada" : "leve";
+  const intensidade: Intensidade = status === "recuperado" ? "alta" : "moderada";
   const motivo = ultimaLabel
-    ? `Último treino do plano: ${ultimaLabel}. Hoje é o ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}${motivoRecuperacao}`
-    : `Começando pelo ${escolhido.label} — ${escolhido.name}. Score ${score.toFixed(1)}/10, intensidade ${intensidade}.${motivoExtra}${motivoRecuperacao}`;
-
+    ? `Sequência: Hoje é o ${escolhido.label} — ${escolhido.name}.${motivoExtra}${motivoRecuperacao}`
+    : `Iniciando: Hoje é o ${escolhido.label} — ${escolhido.name}.${motivoExtra}${motivoRecuperacao}`;
 
   return {
     workoutId: escolhido.id,
@@ -693,11 +614,6 @@ export function sugerirTreinoDoPlano(args: {
   };
 }
 
-// ============================================================================
-// Rotação simples do plano — independente de check-in diário.
-// Dado o último treino do plano efetivamente concluído, devolve o próximo.
-// ============================================================================
-
 export type RotinaWorkout = { id: string; label: string | null; name: string };
 
 export function ordenarRotina<T extends RotinaWorkout>(workouts: T[]): T[] {
@@ -710,11 +626,6 @@ export function ordenarRotina<T extends RotinaWorkout>(workouts: T[]): T[] {
   return workouts;
 }
 
-/**
- * Próximo treino da rotina com base no último concluído.
- * - Sem histórico → primeiro treino da rotina.
- * - Último = último da lista → recicla para o primeiro.
- */
 export function proximoNaRotina<T extends RotinaWorkout>(
   workouts: T[],
   ultimoWorkoutId: string | null | undefined,
@@ -727,11 +638,6 @@ export function proximoNaRotina<T extends RotinaWorkout>(
   return rotina[(idx + 1) % rotina.length];
 }
 
-/**
- * Próximo treino da rotina considerando a recuperação muscular real.
- * Percorre a rotina a partir do último concluído e prefere o treino cujos
- * grupos estão descansados há mais tempo (evita repetir bíceps treinado há 2d).
- */
 export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
   workouts: T[],
   ultimoWorkoutId: string | null | undefined,
@@ -758,111 +664,12 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
   return melhor?.w ?? rotina[0];
 }
 
-// ============================================================================
-// Autoridade única para a decisão treinar × descansar.
-//
-// O motor de Recuperação (`recovery-core.ts`) é a AUTORIDADE: considera RPE,
-// lesão, frequência semanal, ciclo, sono e inatividade. A sugestão do dia
-// continua decidindo QUAL treino/grupo, mas a intensidade/descanso é
-// rebaixada aqui para nunca contradizer o card de Recuperação.
-// ============================================================================
-
 export type RecoveryAuthority = {
   status: "recuperado" | "leve" | "cuidado" | "descanso";
-  score: number; // 0-100
+  score: number;
   intensityLabel?: string;
 };
 
-const INTENSIDADE_RANK: Record<Intensidade, number> = {
-  descanso: 0,
-  leve: 1,
-  moderada: 2,
-  alta: 3,
-};
-
-const TETO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
-  recuperado: "alta",
-  leve: "moderada",
-  cuidado: "leve",
-  descanso: "descanso",
-};
-
-// Piso: só a Recuperação pode mandar descansar. Se ela diz que dá pra treinar,
-// a sugestão do dia não pode contradizer pedindo descanso total.
-const PISO_POR_STATUS: Record<RecoveryAuthority["status"], Intensidade> = {
-  recuperado: "moderada",
-  leve: "leve",
-  cuidado: "leve",
-  descanso: "descanso",
-};
-
-/** Recuperação mandou descansar? Nesse caso nada de treino de força. */
-export function recuperacaoExigeDescanso(rec: RecoveryAuthority | null | undefined): boolean {
+export function recuperacaoExigeDescanso(rec: Pick<RecoveryAuthority, "status"> | null | undefined): boolean {
   return !!rec && rec.status === "descanso";
 }
-
-export function alinharComRecuperacao(
-  sugestao: Sugestao,
-  rec: RecoveryAuthority | null | undefined,
-): Sugestao {
-  if (!rec) return sugestao;
-
-  const teto = TETO_POR_STATUS[rec.status];
-  const piso = PISO_POR_STATUS[rec.status];
-  const atual = INTENSIDADE_RANK[sugestao.intensidade];
-
-  // 1) Rebaixar quando a sugestão é mais agressiva do que a Recuperação permite
-  if (atual > INTENSIDADE_RANK[teto]) {
-    const nota = ` Ajustado pela Recuperação (${rec.score}/100): ${
-      teto === "descanso" ? "hoje o corpo pede descanso" : `intensidade limitada a ${teto}`
-    }.`;
-
-    if (teto === "descanso") {
-      return {
-        ...sugestao,
-        tipo: "descanso ativo",
-        grupos: [],
-        intensidade: "descanso",
-        motivo: `Hoje é dia de aliviar.${nota} Faça mobilidade, alongamento ou uma caminhada leve.`,
-      };
-    }
-
-    return {
-      ...sugestao,
-      tipo: sugestao.tipo === "força" && teto === "leve" ? "funcional leve" : sugestao.tipo,
-      intensidade: teto,
-      motivo: sugestao.motivo + nota,
-    };
-  }
-
-  // 2) Elevar quando a sugestão pede descanso mas a Recuperação libera treino
-  if (atual < INTENSIDADE_RANK[piso]) {
-    const nota = ` Ajustado pela Recuperação (${rec.score}/100 · ${rec.status}): dá pra treinar hoje, ${
-      piso === "leve" ? "mas mantenha leve" : "com carga moderada"
-    }.`;
-
-    if (sugestao.intensidade === "descanso") {
-      const grupos = sugestao.grupos.length
-        ? sugestao.grupos
-        : sugestao.gruposLiberados.slice(0, 2).map((g) => g.grupo);
-      return {
-        ...sugestao,
-        tipo: grupos.length ? "funcional leve" : "cardio leve",
-        grupos,
-        intensidade: piso,
-        motivo:
-          `Treino ${piso} hoje.${nota}` +
-          (grupos.length ? ` Foco em ${joinGrupos(grupos)}, sem buscar falha.` : " Caminhada, bike leve ou mobilidade."),
-      };
-    }
-
-    return {
-      ...sugestao,
-      intensidade: piso,
-      motivo: sugestao.motivo + nota,
-    };
-  }
-
-  return sugestao;
-}
-

@@ -31,7 +31,7 @@ export default defineConfig({
     },
     plugins: [
       imagetools(),
-      mcpPlugin(),
+      // mcpPlugin(),
       VitePWA({
         registerType: "autoUpdate",
         injectRegister: null,
