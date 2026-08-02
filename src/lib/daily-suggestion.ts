@@ -508,6 +508,14 @@ export function sugerirTreinoDoPlano(args: {
     return null; 
   }
 
+  const inicioSemana = weekStart(now, tz).getTime();
+  const feitosEssaSemana = new Set(
+    args.sessoes
+      .filter((s) => new Date(s.started_at).getTime() >= inicioSemana)
+      .map((s) => s.workout_label?.trim().toUpperCase())
+      .filter(Boolean)
+  );
+
   const ordenadas = [...args.sessoes].sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
   let ultimoIdx = -1;
   let ultimaLabel: string | null = null;
@@ -522,9 +530,14 @@ export function sugerirTreinoDoPlano(args: {
     }
   }
 
-  const rotacao = plano.map((_, i) =>
+  const rotacaoCompleta = plano.map((_, i) =>
     plano[((ultimoIdx < 0 ? -1 : ultimoIdx) + 1 + i) % plano.length],
   );
+  
+  let rotacao = rotacaoCompleta.filter((p) => !feitosEssaSemana.has(p.label));
+  if (rotacao.length === 0) {
+    rotacao = rotacaoCompleta;
+  }
   let melhor: { w: PlanoWorkout & { label: string }; score: number } | null = null;
   rotacao.forEach((w, pos) => {
     const gs = gruposDoWorkoutNome(w.label, w.name);
@@ -646,11 +659,30 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
 ): T | null {
   const rotina = ordenarRotina(workouts);
   if (rotina.length === 0) return null;
-  if (timeline.length === 0) return proximoNaRotina(workouts, ultimoWorkoutId);
+  
+  const inicioSemana = weekStart(now).getTime();
+  const feitosEssaSemana = new Set(
+    timeline
+      .filter((e) => e.source === "workout" && new Date(e.at ?? `${e.date}T12:00:00Z`).getTime() >= inicioSemana)
+      .map((e) => {
+        const m = String(e.label).match(/Treino\s+([A-Z])/i);
+        return m ? m[1].toUpperCase() : String(e.label).trim().toUpperCase();
+      })
+      .filter(Boolean)
+  );
+
   const idx = ultimoWorkoutId ? rotina.findIndex((w) => w.id === ultimoWorkoutId) : -1;
+  const rotacaoCompleta = rotina.map((_, pos) => rotina[(idx + 1 + pos) % rotina.length]);
+  
+  let rotacaoDisponivel = rotacaoCompleta.filter(w => !feitosEssaSemana.has(String(w.label).trim().toUpperCase()));
+  if (rotacaoDisponivel.length === 0) {
+    rotacaoDisponivel = rotacaoCompleta;
+  }
+
+  if (timeline.length === 0) return rotacaoDisponivel[0];
+
   let melhor: { w: T; score: number } | null = null;
-  for (let pos = 0; pos < rotina.length; pos++) {
-    const w = rotina[(idx + 1 + pos) % rotina.length];
+  rotacaoDisponivel.forEach((w, pos) => {
     const gs = gruposDoWorkoutNome(String(w.label ?? ""), w.name);
     const descansos = gs.map((g) => diasDesdeUltimoEsforco(timeline, g, now));
     const minDescanso = descansos.length ? Math.min(...descansos) : Number.POSITIVE_INFINITY;
@@ -660,8 +692,8 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
       Math.min(Number.isFinite(minDescanso) ? minDescanso : 30, 30) -
       pos * 0.01;
     if (!melhor || score > melhor.score) melhor = { w, score };
-  }
-  return melhor?.w ?? rotina[0];
+  });
+  return melhor?.w ?? rotacaoDisponivel[0];
 }
 
 export type RecoveryAuthority = {
