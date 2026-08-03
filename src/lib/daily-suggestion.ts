@@ -504,7 +504,7 @@ export function sugerirTreinoDoPlano(args: {
   const liberados = gruposLiberados(timeline, now);
   const scoreDetalhe = `Score da Recuperação: ${score.toFixed(1)}/100`;
 
-  if (status === "descanso" || status === "cuidado") {
+  if (status === "descanso") {
     return null; 
   }
 
@@ -603,7 +603,7 @@ export function sugerirTreinoDoPlano(args: {
   }
 
   const gruposEscolhido = gruposEscolhidoAtual;
-  const intensidade: Intensidade = status === "recuperado" ? "alta" : "moderada";
+  const intensidade: Intensidade = status === "recuperado" ? "alta" : status === "cuidado" ? "leve" : "moderada";
   const motivo = ultimaLabel
     ? `Sequência: Hoje é o ${escolhido.label} — ${escolhido.name}.${motivoExtra}${motivoRecuperacao}`
     : `Iniciando: Hoje é o ${escolhido.label} — ${escolhido.name}.${motivoExtra}${motivoRecuperacao}`;
