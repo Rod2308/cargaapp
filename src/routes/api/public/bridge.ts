@@ -108,22 +108,18 @@ export const Route = createFileRoute("/api/public/bridge")({
             },
           });
 
-          // Tenta getClaims (rápido, decode local + verificação).
-          // Se falhar, usa getUser() que valida direto na API do Supabase Auth.
-          let userId: string | undefined;
-          const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-          if (!claimsError && claims?.claims?.sub) {
-            userId = claims.claims.sub;
-          } else {
-            const { data: userData, error: userError } = await supabase.auth.getUser(token);
-            if (userError || !userData?.user?.id) {
-              return new Response(JSON.stringify({ error: "Sessão inválida" }), {
-                status: 401,
-                headers,
-              });
-            }
-            userId = userData.user.id;
+          // Tenta decodificar o token localmente e buscar o usuário.
+          // Se o token for uma chave opaca (managed Supabase), getClaims/getUser podem falhar ou exigir apikey.
+          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+          
+          if (userError || !user?.id) {
+            console.error("[bridge] Auth error:", userError?.message || "No user found");
+            return new Response(JSON.stringify({ error: "Sessão inválida" }), {
+              status: 401,
+              headers,
+            });
           }
+          const userId = user.id;
 
           const result = await authedAction(supabase, userId, body.payload);
           return new Response(JSON.stringify({ result }), { headers });
