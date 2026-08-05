@@ -43,7 +43,11 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: Implemente a autenticação com Supabase Auth para que eu possa entrar e manter meus treinos sincronizados.</div>
+      <div className="hidden">Execute esta instrucao no projeto: as notificaçoes nao estão funcionando corretamente, 
+nao da certo ativar as notificações na parte de perfil.
+Nao esta dando para sincronizar com o strava, esta dando erro.
+faça funcionar na lovable e no vercel.
+ajuste na lovable, supabase e vercel</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
