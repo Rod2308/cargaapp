@@ -83,6 +83,7 @@ export const Route = createFileRoute("/api/public/bridge")({
             process.env.SUPABASE_PUBLISHABLE_KEY ||
             process.env.SUPABASE_ANON_KEY ||
             process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
             return new Response(JSON.stringify({ error: "Backend não configurado" }), {
               status: 500,
