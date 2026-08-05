@@ -681,7 +681,7 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
 
   if (timeline.length === 0) return rotacaoDisponivel[0];
 
-  let melhor: { w: T; score: number } | undefined = undefined;
+  let best: { w: T; score: number } | undefined = undefined;
   rotacaoDisponivel.forEach((w, pos) => {
     const gs = gruposDoWorkoutNome(String(w.label ?? ""), w.name);
     const descansos = gs.map((g) => diasDesdeUltimoEsforco(timeline, g, now));
@@ -691,9 +691,9 @@ export function proximoNaRotinaComRecuperacao<T extends RotinaWorkout>(
       (recuperado ? 1000 : 0) +
       Math.min(Number.isFinite(minDescanso) ? minDescanso : 30, 30) -
       pos * 0.01;
-    if (!melhor || score > melhor.score) melhor = { w, score };
+    if (!best || score > best.score) best = { w, score };
   });
-  return melhor ? melhor.w : rotacaoDisponivel[0];
+  return best ? best.w : rotacaoDisponivel[0];
 }
 
 export type RecoveryAuthority = {
