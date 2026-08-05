@@ -43,7 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: isso esta dando ao tentar reconectar e enviar teste</div>
+      <div className="hidden">Execute esta instrucao no projeto: Implementar autenticação com Supabase para que meus treinos fiquem isolados por usuário.</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
