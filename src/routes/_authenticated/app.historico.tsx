@@ -27,9 +27,11 @@ import { useMemo, useState } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isAfter, startOfDay } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, CalendarClock, Pencil, Trash2, Play, Upload, Type } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarClock, Pencil, Trash2, Play, Upload, Type, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
+import { syncVercelWorkouts } from "@/lib/sync.functions";
+import { syncStravaLatest } from "@/lib/strava.functions";
 
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
@@ -125,6 +127,28 @@ function HistoryPage() {
   });
 
 
+  const [syncing, setSyncing] = useState(false);
+  const handleSync = async () => {
+    setSyncing(true);
+    const promise = Promise.all([
+      syncVercelWorkouts({}),
+      syncStravaLatest({})
+    ]);
+
+    toast.promise(promise, {
+      loading: 'Sincronizando treinos...',
+      success: () => {
+        qc.invalidateQueries({ queryKey: ["history-sessions"] });
+        qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+        qc.invalidateQueries({ queryKey: ["month-sessions"] });
+        qc.invalidateQueries({ queryKey: ["recovery"] });
+        return 'Treinos sincronizados com sucesso!';
+      },
+      error: 'Erro ao sincronizar treinos.',
+      finally: () => setSyncing(false)
+    });
+  };
+
   // Agrupar por mês
   const grouped: Record<string, typeof sessions> = {};
   for (const s of sessions) {
@@ -173,6 +197,16 @@ function HistoryPage() {
           <Link to="/app/medidas" className="text-xs font-semibold underline underline-offset-4">
             Medidas e fotos
           </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSync} 
+            disabled={syncing}
+            className="h-9 gap-2"
+          >
+            <RefreshCw className={`size-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            Sincronizar
+          </Button>
           <RetroWorkoutDialog userId={user.id} triggerLabel="Marcar treino esquecido" />
           <ImportWorkoutDialog userId={user.id} />
         </div>
