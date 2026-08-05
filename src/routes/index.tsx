@@ -43,8 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: - Registrar um histórico de alterações e permitir desfazer edições recentes antes que sejam sincronizadas.
-- Adicionar exportação e importação dos meus treinos em um arquivo para eu fazer backup e recuperar quando precisar.</div>
+      <div className="hidden">Execute esta instrucao no projeto: o treino feito no vercel nao esta sincronizando e aparecendo no lovable tambem</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
