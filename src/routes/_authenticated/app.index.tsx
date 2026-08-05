@@ -1,4 +1,5 @@
 import { bridged } from "@/lib/server-bridge";
+import { syncVercelWorkoutsAction } from "@/lib/sync.functions";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDailyQuote } from "@/lib/quotes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,30 @@ function Dashboard() {
   const { user } = AuthedRoute.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
+
+  // Sincronização automática com Vercel
+  useEffect(() => {
+    const fetchSync = bridged("sync.vercelWorkouts", syncVercelWorkoutsAction);
+    
+    const runSync = async () => {
+      try {
+        await fetchSync();
+        // Invalida dados de recuperação e sessões após sincronizar para garantir consistência
+        qc.invalidateQueries({ queryKey: ["recovery"] });
+        qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+        qc.invalidateQueries({ queryKey: ["month-sessions"] });
+      } catch (err) {
+        console.warn("[sync] Erro na sincronização automática:", err);
+      }
+    };
+
+    // Sincroniza ao montar o componente
+    runSync();
+
+    // Sincroniza a cada 5 minutos
+    const interval = setInterval(runSync, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user.id, qc]);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user.id],
