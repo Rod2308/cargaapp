@@ -29,8 +29,9 @@ export async function syncVercelWorkoutsAction(supabase: any, userId: string) {
   };
 }
 
-export const syncVercelWorkouts = bridged("sync.vercelWorkouts", async (payload: any) => {
-  // This is the client-side bridge wrapper.
-  // The actual implementation logic for the server side is added to AUTHED_ACTIONS in bridge-actions.server.ts
-  return { ok: true };
+export const syncVercelWorkouts = bridged("sync.vercelWorkouts", async ({ data }: { data: any }) => {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado");
+  return syncVercelWorkoutsAction(supabase, user.id);
 });
