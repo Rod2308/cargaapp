@@ -156,6 +156,7 @@ export function diasDesdeUltimoEsforco(
   for (const e of timeline) {
     const impact = e.impact[grupo];
     if (impact === "alto" || impact === "medio") {
+      // Usa a data/hora exata se disponível para maior precisão no fuso horário
       const diff = Math.max(0, fractionalDaysSince(e.at ?? `${e.date}T12:00:00.000Z`, now));
       if (best == null || diff < best) best = diff;
     }
