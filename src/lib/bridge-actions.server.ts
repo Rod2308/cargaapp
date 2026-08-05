@@ -14,6 +14,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { computeRecoveryAdviceFor, type RecoveryAdvice } from "@/lib/recovery-core";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminder-settings.shared";
+import { syncVercelWorkoutsAction } from "@/lib/sync.functions";
+
 
 export type SB = SupabaseClient<Database>;
 
@@ -616,6 +618,8 @@ export const AUTHED_ACTIONS: Record<string, AuthedAction> = {
   "strava.backfill": (sb, uid, p) => backfillStravaAction(sb, uid, p),
   "strava.sync": (sb, uid, p) => syncStravaLatestAction(sb, uid, p),
   "strava.ensureWebhook": () => ensureStravaWebhookAction(),
+  "sync.vercelWorkouts": (sb, uid) => syncVercelWorkoutsAction(sb, uid),
+
 };
 
 type PublicAction = (payload: unknown) => Promise<unknown>;

@@ -701,6 +701,8 @@ export type Database = {
           perceived_effort: number | null
           route_geojson: Json | null
           source: string
+          source_id: string | null
+          source_platform: string | null
           started_at: string
           strava_activity_id: number | null
           title: string | null
@@ -723,6 +725,8 @@ export type Database = {
           perceived_effort?: number | null
           route_geojson?: Json | null
           source?: string
+          source_id?: string | null
+          source_platform?: string | null
           started_at?: string
           strava_activity_id?: number | null
           title?: string | null
@@ -745,6 +749,8 @@ export type Database = {
           perceived_effort?: number | null
           route_geojson?: Json | null
           source?: string
+          source_id?: string | null
+          source_platform?: string | null
           started_at?: string
           strava_activity_id?: number | null
           title?: string | null

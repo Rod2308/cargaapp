@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { syncVercelWorkouts } from "@/lib/sync.functions";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -503,6 +505,8 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
   const [fmt, setFmt] = useState<Fmt>("json");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
   const [caching, setCaching] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(() =>
     typeof localStorage !== "undefined" ? localStorage.getItem("offline-cache-at") : null,
@@ -639,7 +643,42 @@ export function DataManagement({ userId, displayName }: { userId: string; displa
         </p>
       </div>
 
+      <div className="space-y-3 border-t border-border pt-4">
+        <p className="text-sm font-semibold flex items-center gap-2">
+          <CloudDownload className="size-4" /> Sincronização
+        </p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Sincronize seus treinos entre a plataforma Vercel e Lovable para garantir a visibilidade dos dados em ambos os ambientes.
+        </p>
+        <Button
+          variant="outline"
+          className="w-full"
+          disabled={syncing}
+          onClick={async () => {
+            setSyncing(true);
+            try {
+              await syncVercelWorkouts({ data: {} });
+              await qc.invalidateQueries({ queryKey: ["recent-sessions"] });
+              await qc.invalidateQueries({ queryKey: ["recovery"] });
+              toast.success("Treinos sincronizados com sucesso!");
+            } catch (err: any) {
+              toast.error(err.message || "Erro ao sincronizar treinos");
+            } finally {
+              setSyncing(false);
+            }
+          }}
+        >
+          {syncing ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <CloudDownload className="mr-2 size-4" />
+          )}
+          {syncing ? "Sincronizando..." : "Sincronizar treinos do Vercel"}
+        </Button>
+      </div>
+
       <div className="space-y-2 border-t border-border pt-4">
+
         <p className="text-sm font-semibold">Importar dados de treino</p>
         <input
           ref={fileRef}
