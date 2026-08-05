@@ -63,7 +63,7 @@ function Dashboard() {
     
     const runSync = async () => {
       try {
-        await fetchSync({}, {});
+        await fetchSync({}, user.id);
         // Invalida dados de recuperação e sessões após sincronizar para garantir consistência
         qc.invalidateQueries({ queryKey: ["recovery"] });
         qc.invalidateQueries({ queryKey: ["recent-sessions"] });
