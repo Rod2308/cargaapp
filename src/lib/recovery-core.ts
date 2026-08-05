@@ -459,7 +459,7 @@ function computeScore(input: {
   );
   const workedYesterday = new Set(
     muscles
-      .filter((m) => m.lastDaysAgo < MUSCLE_RECOVERY_DAYS[m.key] * 1.25 && m.setsRecent >= 4)
+      .filter((m) => m.lastDaysAgo < Math.max(1.2, MUSCLE_RECOVERY_DAYS[m.key] * 0.8) && m.setsRecent >= 3)
       .map((m) => m.group),
   );
   const untouched = muscles

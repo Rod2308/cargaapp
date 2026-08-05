@@ -100,6 +100,8 @@ export function fractionalDaysSince(when: string | Date, now: Date = new Date())
 
 /** O grupo já cumpriu o descanso necessário? (dias fracionados) */
 export function isMuscleRecovered(group: MuscleGroup, daysAgo: number): boolean {
+  // Ajuste fino: se treinou ontem (ex: 20h atrás), ainda não está "totalmente" recuperado
+  // para a maioria dos grupos, mesmo que o limiar seja baixo.
   return daysAgo >= MUSCLE_RECOVERY_DAYS[group];
 }
 

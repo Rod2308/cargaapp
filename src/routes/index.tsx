@@ -43,8 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: - Adicionar um botão para eu forçar a sincronização do meu treino entre o Vercel e meu ambiente de desenvolvimento.
-- Configurar webhooks para que quando um treino for salvo no Vercel ele seja atualizado automaticamente no meu app.</div>
+      <div className="hidden">Execute esta instrucao no projeto: reveja a sugestao de hoje ( está mostando que tem musculo recuperado como o biceps, mas treinei ele ontem) e as situações não estão sincronizadas com a recuperação e o histórico</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
