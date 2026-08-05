@@ -24,6 +24,7 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/ap
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as ApiPublicVercelWebhookRouteImport } from './routes/api/public/vercel-webhook'
 import { Route as ApiPublicVapidRouteImport } from './routes/api/public/vapid'
 import { Route as ApiPublicBridgeRouteImport } from './routes/api/public/bridge'
 import { Route as AuthenticatedAppVolumeRouteImport } from './routes/_authenticated/app.volume'
@@ -130,6 +131,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const ApiPublicVercelWebhookRoute = ApiPublicVercelWebhookRouteImport.update({
+  id: '/api/public/vercel-webhook',
+  path: '/api/public/vercel-webhook',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicVapidRoute = ApiPublicVapidRouteImport.update({
   id: '/api/public/vapid',
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
+  '/api/public/vercel-webhook': typeof ApiPublicVercelWebhookRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
+  '/api/public/vercel-webhook': typeof ApiPublicVercelWebhookRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
@@ -424,6 +432,7 @@ export interface FileRoutesById {
   '/_authenticated/app/volume': typeof AuthenticatedAppVolumeRoute
   '/api/public/bridge': typeof ApiPublicBridgeRoute
   '/api/public/vapid': typeof ApiPublicVapidRoute
+  '/api/public/vercel-webhook': typeof ApiPublicVercelWebhookRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/alunos/$id': typeof AuthenticatedAppAlunosIdRoute
   '/_authenticated/app/grupos/$id': typeof AuthenticatedAppGruposIdRouteWithChildren
@@ -472,6 +481,7 @@ export interface FileRouteTypes {
     | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
+    | '/api/public/vercel-webhook'
     | '/app/'
     | '/app/alunos/$id'
     | '/app/grupos/$id'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
+    | '/api/public/vercel-webhook'
     | '/app'
     | '/app/alunos/$id'
     | '/app/grupos/$id'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/volume'
     | '/api/public/bridge'
     | '/api/public/vapid'
+    | '/api/public/vercel-webhook'
     | '/_authenticated/app/'
     | '/_authenticated/app/alunos/$id'
     | '/_authenticated/app/grupos/$id'
@@ -600,6 +612,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicBridgeRoute: typeof ApiPublicBridgeRoute
   ApiPublicVapidRoute: typeof ApiPublicVapidRoute
+  ApiPublicVercelWebhookRoute: typeof ApiPublicVercelWebhookRoute
   ApiPublicHooksDispatchPushOutboxRoute: typeof ApiPublicHooksDispatchPushOutboxRoute
   ApiPublicHooksDispatchRestPushesRoute: typeof ApiPublicHooksDispatchRestPushesRoute
   ApiPublicHooksEnqueueRemindersRoute: typeof ApiPublicHooksEnqueueRemindersRoute
@@ -714,6 +727,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/api/public/vercel-webhook': {
+      id: '/api/public/vercel-webhook'
+      path: '/api/public/vercel-webhook'
+      fullPath: '/api/public/vercel-webhook'
+      preLoaderRoute: typeof ApiPublicVercelWebhookRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/vapid': {
       id: '/api/public/vapid'
@@ -1034,6 +1054,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicBridgeRoute: ApiPublicBridgeRoute,
   ApiPublicVapidRoute: ApiPublicVapidRoute,
+  ApiPublicVercelWebhookRoute: ApiPublicVercelWebhookRoute,
   ApiPublicHooksDispatchPushOutboxRoute: ApiPublicHooksDispatchPushOutboxRoute,
   ApiPublicHooksDispatchRestPushesRoute: ApiPublicHooksDispatchRestPushesRoute,
   ApiPublicHooksEnqueueRemindersRoute: ApiPublicHooksEnqueueRemindersRoute,
