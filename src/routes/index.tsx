@@ -43,7 +43,13 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: Sincronize automaticamente meus treinos (cargas e repetições) com o banco do Supabase para que eu veja as mesmas informações em qualquer aparelho.</div>
+      <div className="hidden">Execute esta instrucao no projeto: Implemente a sincronização em tempo real dos meus treinos (cargas e repetições) com o Supabase para que eu veja mudanças imediatamente em qualquer aparelho.
+
+Implemente uma lógica de resolução de conflitos quando eu editar o mesmo treino em aparelhos diferentes, para que nunca perca mudanças.
+
+Adicione suporte a edição offline dos meus treinos com fila de reenvio para o Supabase assim que a conexão voltar.
+
+Implemente verificações de consistência para que o treino sincronizado sempre preserve exercícios, séries, cargas e repetições corretamente ao atualizar a lista.</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
