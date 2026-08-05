@@ -94,14 +94,18 @@ export const Route = createFileRoute("/api/public/bridge")({
           const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: { persistSession: false, autoRefreshToken: false },
             global: {
-              headers: { Authorization: `Bearer ${token}` },
               fetch: (input, init) => {
                 const h = new Headers(init?.headers);
+                // Remove Authorization: Bearer <key> se for a chave de anonimato/publishable
                 if (
                   isNewApiKey(SUPABASE_PUBLISHABLE_KEY) &&
                   h.get("Authorization") === `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
                 ) {
                   h.delete("Authorization");
+                }
+                // Garante que o Bearer token do USUÁRIO seja enviado corretamente para RLS
+                if (token) {
+                  h.set("Authorization", `Bearer ${token}`);
                 }
                 h.set("apikey", SUPABASE_PUBLISHABLE_KEY);
                 return fetch(input, { ...init, headers: h });
