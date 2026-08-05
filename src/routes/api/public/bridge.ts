@@ -83,6 +83,7 @@ export const Route = createFileRoute("/api/public/bridge")({
             process.env.SUPABASE_PUBLISHABLE_KEY ||
             process.env.SUPABASE_ANON_KEY ||
             process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
             return new Response(JSON.stringify({ error: "Backend não configurado" }), {
               status: 500,
@@ -93,14 +94,18 @@ export const Route = createFileRoute("/api/public/bridge")({
           const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: { persistSession: false, autoRefreshToken: false },
             global: {
-              headers: { Authorization: `Bearer ${token}` },
               fetch: (input, init) => {
                 const h = new Headers(init?.headers);
+                // Remove Authorization: Bearer <key> se for a chave de anonimato/publishable
                 if (
                   isNewApiKey(SUPABASE_PUBLISHABLE_KEY) &&
                   h.get("Authorization") === `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
                 ) {
                   h.delete("Authorization");
+                }
+                // Garante que o Bearer token do USUÁRIO seja enviado corretamente para RLS
+                if (token) {
+                  h.set("Authorization", `Bearer ${token}`);
                 }
                 h.set("apikey", SUPABASE_PUBLISHABLE_KEY);
                 return fetch(input, { ...init, headers: h });
@@ -108,22 +113,18 @@ export const Route = createFileRoute("/api/public/bridge")({
             },
           });
 
-          // Tenta getClaims (rápido, decode local + verificação).
-          // Se falhar, usa getUser() que valida direto na API do Supabase Auth.
-          let userId: string | undefined;
-          const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-          if (!claimsError && claims?.claims?.sub) {
-            userId = claims.claims.sub;
-          } else {
-            const { data: userData, error: userError } = await supabase.auth.getUser(token);
-            if (userError || !userData?.user?.id) {
-              return new Response(JSON.stringify({ error: "Sessão inválida" }), {
-                status: 401,
-                headers,
-              });
-            }
-            userId = userData.user.id;
+          // Tenta decodificar o token localmente e buscar o usuário.
+          // Se o token for uma chave opaca (managed Supabase), getClaims/getUser podem falhar ou exigir apikey.
+          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+          
+          if (userError || !user?.id) {
+            console.error("[bridge] Auth error:", userError?.message || "No user found");
+            return new Response(JSON.stringify({ error: "Sessão inválida" }), {
+              status: 401,
+              headers,
+            });
           }
+          const userId = user.id;
 
           const result = await authedAction(supabase, userId, body.payload);
           return new Response(JSON.stringify({ result }), { headers });
