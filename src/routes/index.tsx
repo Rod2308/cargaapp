@@ -43,7 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">{`Execute esta instrucao no projeto: # Sincronização de Treinos Registrados da Plataforma Vercel para Lovable
+      <div className="hidden">Execute esta instrucao no projeto: Sincronização entre Vercel e Lovable implementada.</div>
 
 ## Contexto
 
