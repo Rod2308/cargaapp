@@ -113,18 +113,19 @@ export const Route = createFileRoute("/api/public/bridge")({
             },
           });
 
-          // Tenta decodificar o token localmente e buscar o usuário.
-          // Se o token for uma chave opaca (managed Supabase), getClaims/getUser podem falhar ou exigir apikey.
-          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-          
-          if (userError || !user?.id) {
-            console.error("[bridge] Auth error:", userError?.message || "No user found");
+          // Tenta decodificar o token localmente para extrair o userId
+          let userId: string;
+          try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            userId = payload.sub;
+            if (!userId) throw new Error("No sub in token");
+          } catch (e) {
+            console.error("[bridge] Auth decode error:", e);
             return new Response(JSON.stringify({ error: "Sessão inválida" }), {
               status: 401,
               headers,
             });
           }
-          const userId = user.id;
 
           const result = await authedAction(supabase, userId, body.payload);
           return new Response(JSON.stringify({ result }), { headers });

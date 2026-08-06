@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
 import { syncVercelWorkouts } from "@/lib/sync.functions";
 import { syncStravaLatest } from "@/lib/strava.functions";
+import { flush } from "@/lib/offline-queue";
 
 import { sessionTitle, sessionSubtitle, isCardioSession } from "@/lib/session-display";
 import { ImportWorkoutDialog } from "@/components/ImportWorkoutDialog";
@@ -131,8 +132,9 @@ function HistoryPage() {
   const handleSync = async () => {
     setSyncing(true);
     const promise = Promise.all([
+      flush(),
       syncVercelWorkouts({}),
-      syncStravaLatest({})
+      syncStravaLatest({}).catch(e => console.error("Strava sync failed", e))
     ]);
 
     toast.promise(promise, {

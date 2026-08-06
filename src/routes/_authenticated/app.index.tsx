@@ -33,6 +33,8 @@ import { DailySuggestionCard } from "@/components/DailySuggestionCard";
 import { NextWorkoutCard } from "@/components/NextWorkoutCard";
 import { resolveNextWorkout, describeNextWorkout } from "@/lib/next-workout";
 import { syncInvalidate, RECOVERY_SYNC_KEYS } from "@/lib/cross-tab-sync";
+import { flush } from "@/lib/offline-queue";
+import { syncStravaLatest } from "@/lib/strava.functions";
 import {
   sugerirTreinoDoDia,
   sugerirTreinoDoPlano,
@@ -63,7 +65,9 @@ function Dashboard() {
     
     const runSync = async () => {
       try {
+        await flush();
         await fetchSync({}, user.id);
+        await syncStravaLatest({}).catch(e => console.warn("[sync] Strava sync failed:", e));
         // Invalida dados de recuperação e sessões após sincronizar para garantir consistência
         qc.invalidateQueries({ queryKey: ["recovery"] });
         qc.invalidateQueries({ queryKey: ["recent-sessions"] });
