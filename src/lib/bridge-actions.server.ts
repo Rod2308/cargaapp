@@ -224,11 +224,8 @@ export async function deletePushSubscriptionAction(supabase: SB, userId: string,
  */
 export async function sendTestPushAction(supabase: SB, userId: string) {
   // Verificação de permissão: rodrigo2398 ou role admin/test
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", userId)
-    .maybeSingle();
+  const { data: user } = await supabase.auth.getUser();
+  const userEmail = user?.user?.email;
 
   const { data: isAdmin } = await supabase.rpc("has_role", {
     _user_id: userId,
@@ -240,7 +237,7 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
     _role: "test_account",
   } as any);
 
-  const isAuthorized = profile?.username === "rodrigo2398" || isAdmin || isTestAccount;
+  const isAuthorized = userEmail?.includes("rodrigo2398") || isAdmin || isTestAccount;
 
   if (!isAuthorized) {
     throw new Error("Ação restrita a administradores.");
