@@ -122,8 +122,8 @@ export function NextWorkoutCard({
         </div>
       ) : null}
 
-      <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-brand">
-        <Play className="size-4 fill-current" /> Iniciar treino
+      <span className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-3 text-base font-bold text-brand-foreground shadow-brand active:scale-95 transition-transform">
+        <Play className="size-5 fill-current" /> Iniciar treino
       </span>
     </button>
   );

@@ -159,8 +159,8 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
     text-rendering: optimizeLegibility;
     font-feature-settings: "cv11", "ss01", "ss02";
     background-image:
-      radial-gradient(ellipse 50% 30% at 100% 0%, oklch(0.95 0.24 122 / 0.05), transparent 60%),
-      radial-gradient(ellipse 40% 30% at 0% 100%, oklch(0.62 0.19 258 / 0.02), transparent 60%);
+      radial-gradient(ellipse 70% 40% at 100% 0%, oklch(0.95 0.24 122 / 0.08), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, oklch(0.62 0.19 258 / 0.04), transparent 70%);
     background-attachment: fixed;
     /* Respect iOS safe area on all edges so nothing hides under notches / bars */
     padding-left: env(safe-area-inset-left);
@@ -288,23 +288,20 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
 @utility app-container {
   margin-inline: auto;
   width: 100%;
-  max-width: 28rem; /* mobile: focused reading width */
-  /* Fluid horizontal padding — tighter on tiny phones, comfortable on wide screens. */
-  padding-inline: clamp(0.875rem, 4vw, 1.5rem);
+  max-width: 32rem; /* mobile: focused reading width */
+  padding-inline: clamp(1rem, 5vw, 2rem);
 }
-/* Extra tight for <360px devices (older iPhone SE, small Android) */
+/* Extra tight for <360px devices */
 @media (max-width: 359px) {
   .app-container { padding-inline: 0.75rem; }
 }
-/* Tablet portrait — use the extra width instead of leaving 200px of margin */
+/* Tablet portrait */
 @media (min-width: 640px) {
-  .app-container { max-width: 44rem; padding-inline: 1.75rem; }
+  .app-container { max-width: 48rem; padding-inline: 2.5rem; }
 }
-@media (min-width: 768px) {
-  .app-container { max-width: 48rem; padding-inline: 2rem; }
-}
+/* Desktop */
 @media (min-width: 1024px) {
-  .app-container { max-width: 64rem; padding-inline: 2.5rem; }
+  .app-container { max-width: 64rem; padding-inline: 3rem; }
 }
 @media (min-width: 1280px) {
   .app-container { max-width: 72rem; }

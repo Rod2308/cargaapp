@@ -108,7 +108,7 @@ export function DailyCheckinCard({
             key={n}
             type="button"
             onClick={() => onChange(n)}
-            className={`h-10 flex-1 rounded-md border text-sm font-semibold transition ${color}`}
+            className={`h-12 flex-1 rounded-xl border text-base font-bold transition active:scale-95 ${color}`}
           >
             {n}
           </button>
