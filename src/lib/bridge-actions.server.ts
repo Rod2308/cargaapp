@@ -223,6 +223,29 @@ export async function deletePushSubscriptionAction(supabase: SB, userId: string,
  * no servidor, na assinatura ou nas configurações do celular.
  */
 export async function sendTestPushAction(supabase: SB, userId: string) {
+  // Verificação de permissão: rodrigo2398 ou role admin/test
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const { data: isAdmin } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  } as any);
+
+  const { data: isTestAccount } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "test_account",
+  } as any);
+
+  const isAuthorized = profile?.username === "rodrigo2398" || isAdmin || isTestAccount;
+
+  if (!isAuthorized) {
+    throw new Error("Ação restrita a administradores.");
+  }
+
   const subject = process.env.VAPID_SUBJECT;
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
