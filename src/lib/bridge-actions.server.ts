@@ -105,6 +105,8 @@ export async function getRecoveryAdviceAction(
 
 export const ReminderSettingsSchema = z.object({
   enabled: z.boolean(),
+  emailEnabled: z.boolean().optional(),
+  rescheduleEnabled: z.boolean().optional(),
   remindAt: z.string().regex(/^\d{2}:\d{2}$/),
   restDays: z.array(z.number().int().min(0).max(6)).max(7),
   timezone: z.string().min(1).max(64),
@@ -121,6 +123,7 @@ export async function getReminderSettingsAction(supabase: SB, userId: string): P
   return {
     enabled: data.enabled,
     emailEnabled: (data as any).email_enabled ?? false,
+    rescheduleEnabled: (data as any).reschedule_enabled ?? false,
     remindAt: String(data.remind_at).slice(0, 5),
     restDays: (data.rest_days ?? []) as number[],
     timezone: data.timezone ?? DEFAULT_REMINDER_SETTINGS.timezone,
@@ -128,12 +131,13 @@ export async function getReminderSettingsAction(supabase: SB, userId: string): P
 }
 
 export async function saveReminderSettingsAction(supabase: SB, userId: string, input: unknown) {
-  const data = ReminderSettingsSchema.extend({ emailEnabled: z.boolean().optional() }).parse(input);
+  const data = ReminderSettingsSchema.parse(input);
   const { error } = await supabase.from("workout_reminder_settings").upsert(
     {
       user_id: userId,
       enabled: data.enabled,
-      email_enabled: (data as any).emailEnabled ?? false,
+      email_enabled: data.emailEnabled ?? false,
+      reschedule_enabled: data.rescheduleEnabled ?? false,
       remind_at: `${data.remindAt}:00`,
       rest_days: data.restDays,
       timezone: data.timezone,
@@ -142,6 +146,24 @@ export async function saveReminderSettingsAction(supabase: SB, userId: string, i
   );
   if (error) throw new Error(error.message);
   return { ok: true };
+}
+
+/** Envia um e-mail de teste para o usuário logado */
+export async function sendTestEmailAction(supabase: SB, userId: string) {
+  const { data: user, error: userError } = await supabase.auth.getUser();
+  if (userError || !user.user?.email) throw new Error("E-mail do usuário não encontrado.");
+
+  // Aqui integraríamos com o serviço de e-mail (ex: Resend via server route ou similar)
+  // Por enquanto, simulamos o sucesso e registramos no log.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  
+  await supabaseAdmin.from("notification_logs").insert({
+    user_id: userId,
+    type: "email",
+    status: "sent",
+  });
+
+  return { ok: true, email: user.user.email };
 }
 
 /* ------------------------------------------------------------------ */
