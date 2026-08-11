@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -28,6 +29,29 @@ export function WorkoutReminderSettings() {
   const fetchSettings = bridged("reminders.get", getReminderSettings);
   const save = bridged("reminders.save", saveReminderSettings);
   const queryClient = useQueryClient();
+
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      } as any);
+
+      const { data: isTestAccount } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "test_account",
+      } as any);
+
+      const authorized = user.email?.includes("rodrigo2398") || isAdmin || isTestAccount;
+      setIsAuthorized(!!authorized);
+    }
+    checkAuth();
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["reminder-settings"],
@@ -142,26 +166,28 @@ export function WorkoutReminderSettings() {
         />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testPushMutation.mutate(undefined)}
-          disabled={testPushMutation.isPending || !local.enabled}
-        >
-          {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testEmailMutation.mutate(undefined)}
-          disabled={testEmailMutation.isPending || !local.enabled}
-        >
-          {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}
-        </Button>
-      </div>
+      {isAuthorized && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[10px] uppercase tracking-wider"
+            onClick={() => testPushMutation.mutate(undefined)}
+            disabled={testPushMutation.isPending || !local.enabled}
+          >
+            {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[10px] uppercase tracking-wider"
+            onClick={() => testEmailMutation.mutate(undefined)}
+            disabled={testEmailMutation.isPending || !local.enabled}
+          >
+            {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}
+          </Button>
+        </div>
+      )}
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <Label htmlFor="reminder-time" className="text-base">

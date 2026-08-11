@@ -223,6 +223,26 @@ export async function deletePushSubscriptionAction(supabase: SB, userId: string,
  * no servidor, na assinatura ou nas configurações do celular.
  */
 export async function sendTestPushAction(supabase: SB, userId: string) {
+  // Verificação de permissão: rodrigo2398 ou role admin/test
+  const { data: user } = await supabase.auth.getUser();
+  const userEmail = user?.user?.email;
+
+  const { data: isAdmin } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  } as any);
+
+  const { data: isTestAccount } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "test_account",
+  } as any);
+
+  const isAuthorized = userEmail?.includes("rodrigo2398") || isAdmin || isTestAccount;
+
+  if (!isAuthorized) {
+    throw new Error("Ação restrita a administradores.");
+  }
+
   const subject = process.env.VAPID_SUBJECT;
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -243,8 +263,8 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
   webpush.setVapidDetails(subject, publicKey, privateKey);
 
   const payload = JSON.stringify({
-    title: "🚀 Teste Global da Vercel",
-    body: "Se você recebeu isso, as notificações na Vercel estão 100% ativas para todos os aparelhos!",
+    title: "Notificação de Teste",
+    body: "Esta é uma verificação do serviço de notificações push. Nenhuma ação é necessária.",
     tag: "carga-test-global",
     data: { url: "/app/notificacoes" },
   });
