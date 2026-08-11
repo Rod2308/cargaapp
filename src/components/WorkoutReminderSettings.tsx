@@ -91,6 +91,23 @@ export function WorkoutReminderSettings() {
         />
       </div>
 
+      <div className="mt-5 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <Label htmlFor="reminder-email" className="text-base">
+            Receber por e-mail
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Também enviaremos o lembrete para o seu e-mail cadastrado.
+          </p>
+        </div>
+        <Switch
+          id="reminder-email"
+          disabled={isLoading || !local.enabled}
+          checked={local.emailEnabled}
+          onCheckedChange={(v) => patch({ emailEnabled: v })}
+        />
+      </div>
+
       <div className="mt-5 flex items-center justify-between gap-4">
         <Label htmlFor="reminder-time" className="text-base">
           Horário do lembrete
