@@ -147,7 +147,7 @@ export function WorkoutReminderSettings() {
           variant="outline"
           size="sm"
           className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testPushMutation.mutate()}
+          onClick={() => testPushMutation.mutate(undefined)}
           disabled={testPushMutation.isPending || !local.enabled}
         >
           {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
@@ -156,7 +156,7 @@ export function WorkoutReminderSettings() {
           variant="outline"
           size="sm"
           className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testEmailMutation.mutate()}
+          onClick={() => testEmailMutation.mutate(undefined)}
           disabled={testEmailMutation.isPending || !local.enabled}
         >
           {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}

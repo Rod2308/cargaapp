@@ -157,11 +157,11 @@ export async function sendTestEmailAction(supabase: SB, userId: string) {
   // Por enquanto, simulamos o sucesso e registramos no log.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   
-  await supabaseAdmin.from("notification_logs").insert({
+  await supabaseAdmin.from("notification_logs" as any).insert({
     user_id: userId,
     type: "email",
     status: "sent",
-  });
+  } as any);
 
   return { ok: true, email: user.user.email };
 }

@@ -431,6 +431,33 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null
@@ -980,6 +1007,7 @@ export type Database = {
           email_enabled: boolean
           enabled: boolean
           remind_at: string
+          reschedule_enabled: boolean | null
           rest_days: number[]
           timezone: string
           updated_at: string
@@ -990,6 +1018,7 @@ export type Database = {
           email_enabled?: boolean
           enabled?: boolean
           remind_at?: string
+          reschedule_enabled?: boolean | null
           rest_days?: number[]
           timezone?: string
           updated_at?: string
@@ -1000,6 +1029,7 @@ export type Database = {
           email_enabled?: boolean
           enabled?: boolean
           remind_at?: string
+          reschedule_enabled?: boolean | null
           rest_days?: number[]
           timezone?: string
           updated_at?: string
