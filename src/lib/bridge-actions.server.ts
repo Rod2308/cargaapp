@@ -113,13 +113,14 @@ export const ReminderSettingsSchema = z.object({
 export async function getReminderSettingsAction(supabase: SB, userId: string): Promise<ReminderSettings> {
   const { data, error } = await supabase
     .from("workout_reminder_settings")
-    .select("enabled, remind_at, rest_days, timezone")
+    .select("*")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return DEFAULT_REMINDER_SETTINGS;
   return {
     enabled: data.enabled,
+    emailEnabled: (data as any).email_enabled ?? false,
     remindAt: String(data.remind_at).slice(0, 5),
     restDays: (data.rest_days ?? []) as number[],
     timezone: data.timezone ?? DEFAULT_REMINDER_SETTINGS.timezone,
@@ -127,15 +128,16 @@ export async function getReminderSettingsAction(supabase: SB, userId: string): P
 }
 
 export async function saveReminderSettingsAction(supabase: SB, userId: string, input: unknown) {
-  const data = ReminderSettingsSchema.parse(input);
+  const data = ReminderSettingsSchema.extend({ emailEnabled: z.boolean().optional() }).parse(input);
   const { error } = await supabase.from("workout_reminder_settings").upsert(
     {
       user_id: userId,
       enabled: data.enabled,
+      email_enabled: (data as any).emailEnabled ?? false,
       remind_at: `${data.remindAt}:00`,
       rest_days: data.restDays,
       timezone: data.timezone,
-    },
+    } as any,
     { onConflict: "user_id" },
   );
   if (error) throw new Error(error.message);

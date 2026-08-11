@@ -113,6 +113,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_push_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          payload: Json
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           created_at: string
@@ -944,6 +977,7 @@ export type Database = {
       workout_reminder_settings: {
         Row: {
           created_at: string
+          email_enabled: boolean
           enabled: boolean
           remind_at: string
           rest_days: number[]
@@ -953,6 +987,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_enabled?: boolean
           enabled?: boolean
           remind_at?: string
           rest_days?: number[]
@@ -962,6 +997,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_enabled?: boolean
           enabled?: boolean
           remind_at?: string
           rest_days?: number[]
