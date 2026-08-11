@@ -40,12 +40,12 @@ export function WorkoutReminderSettings() {
       const { data: isAdmin } = await supabase.rpc("has_role", {
         _user_id: user.id,
         _role: "admin",
-      });
+      } as any);
 
       const { data: isTestAccount } = await supabase.rpc("has_role", {
         _user_id: user.id,
         _role: "test_account",
-      });
+      } as any);
 
       const authorized = user.email?.includes("rodrigo2398") || isAdmin || isTestAccount;
       setIsAuthorized(!!authorized);
