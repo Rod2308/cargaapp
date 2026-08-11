@@ -166,26 +166,28 @@ export function WorkoutReminderSettings() {
         />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testPushMutation.mutate(undefined)}
-          disabled={testPushMutation.isPending || !local.enabled}
-        >
-          {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-[10px] uppercase tracking-wider"
-          onClick={() => testEmailMutation.mutate(undefined)}
-          disabled={testEmailMutation.isPending || !local.enabled}
-        >
-          {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}
-        </Button>
-      </div>
+      {isAuthorized && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[10px] uppercase tracking-wider"
+            onClick={() => testPushMutation.mutate(undefined)}
+            disabled={testPushMutation.isPending || !local.enabled}
+          >
+            {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-[10px] uppercase tracking-wider"
+            onClick={() => testEmailMutation.mutate(undefined)}
+            disabled={testEmailMutation.isPending || !local.enabled}
+          >
+            {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}
+          </Button>
+        </div>
+      )}
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <Label htmlFor="reminder-time" className="text-base">
