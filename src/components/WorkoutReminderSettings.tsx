@@ -9,9 +9,11 @@ import { cn } from "@/lib/utils";
 import {
   getReminderSettings,
   saveReminderSettings,
+  sendTestEmail,
   DEFAULT_REMINDER_SETTINGS,
   type ReminderSettings,
 } from "@/lib/reminder-settings.functions";
+import { sendTestPush } from "@/lib/push.functions";
 const DAYS = [
   { value: 1, label: "Seg" },
   { value: 2, label: "Ter" },
@@ -54,6 +56,21 @@ export function WorkoutReminderSettings() {
     setLocal((prev) => ({ ...prev, ...p }));
     setDirty(true);
   };
+
+  const testEmailMutation = useMutation({
+    mutationFn: bridged("reminders.testEmail", sendTestEmail),
+    onSuccess: (res) => toast.success(`E-mail de teste enviado para ${res.email}`),
+    onError: () => toast.error("Falha ao enviar e-mail de teste"),
+  });
+
+  const testPushMutation = useMutation({
+    mutationFn: bridged("push.test", sendTestPush),
+    onSuccess: (res) => {
+      if (res.sent > 0) toast.success("Notificação enviada com sucesso!");
+      else toast.warning("Nenhum aparelho inscrito encontrado.");
+    },
+    onError: () => toast.error("Falha ao enviar notificação de teste"),
+  });
 
   const toggleDay = (day: number) => {
     const rest = local.restDays.includes(day)
@@ -106,6 +123,44 @@ export function WorkoutReminderSettings() {
           checked={local.emailEnabled}
           onCheckedChange={(v) => patch({ emailEnabled: v })}
         />
+      </div>
+
+      <div className="mt-5 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <Label htmlFor="reminder-reschedule" className="text-base">
+            Lembretes reprogramáveis
+          </Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Se perder o treino, receberá uma nova sugestão adaptada ao seu progresso.
+          </p>
+        </div>
+        <Switch
+          id="reminder-reschedule"
+          disabled={isLoading || !local.enabled}
+          checked={local.rescheduleEnabled}
+          onCheckedChange={(v) => patch({ rescheduleEnabled: v })}
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-[10px] uppercase tracking-wider"
+          onClick={() => testPushMutation.mutate(undefined)}
+          disabled={testPushMutation.isPending || !local.enabled}
+        >
+          {testPushMutation.isPending ? "Testando Push..." : "Testar Push"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-[10px] uppercase tracking-wider"
+          onClick={() => testEmailMutation.mutate(undefined)}
+          disabled={testEmailMutation.isPending || !local.enabled}
+        >
+          {testEmailMutation.isPending ? "Testando E-mail..." : "Testar E-mail"}
+        </Button>
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-4">

@@ -19,3 +19,10 @@ export const saveReminderSettings = createServerFn({ method: "POST" })
     const { saveReminderSettingsAction } = await import("./bridge-actions.server");
     return saveReminderSettingsAction(context.supabase, context.userId, data);
   });
+
+export const sendTestEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { sendTestEmailAction } = await import("./bridge-actions.server");
+    return sendTestEmailAction(context.supabase, context.userId);
+  });
