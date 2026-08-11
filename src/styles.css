@@ -143,8 +143,8 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
     /* Safety net: never allow horizontal scroll on the page itself.
        Intentional horizontal scrollers (carousels) live inside opt-in
        overflow-x:auto containers and keep working. */
-    overflow-x: clip;
-    max-width: 100vw;
+    overflow-x: hidden;
+    max-width: 100%;
   }
   html {
     /* Consistent tap highlight + smoother scroll on touch devices */
