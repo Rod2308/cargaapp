@@ -243,8 +243,8 @@ export async function sendTestPushAction(supabase: SB, userId: string) {
   webpush.setVapidDetails(subject, publicKey, privateKey);
 
   const payload = JSON.stringify({
-    title: "🚀 Teste Global da Vercel",
-    body: "Se você recebeu isso, as notificações na Vercel estão 100% ativas para todos os aparelhos!",
+    title: "Notificação de Teste",
+    body: "Esta é uma verificação do serviço de notificações push. Nenhuma ação é necessária.",
     tag: "carga-test-global",
     data: { url: "/app/notificacoes" },
   });
