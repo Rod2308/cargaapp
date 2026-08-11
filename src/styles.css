@@ -200,8 +200,9 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
     [role="button"],
     a.btn,
     input[type="button"],
-    input[type="submit"] {
-      min-height: 40px;
+    input[type="submit"],
+    .btn-primary {
+      min-height: 48px;
     }
   }
   .font-display { font-family: var(--font-display); letter-spacing: -0.01em; text-transform: none; line-height: 1.15; }
