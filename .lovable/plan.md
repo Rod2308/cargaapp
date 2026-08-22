@@ -1,48 +1,35 @@
-# Plano de Implementação: Configurações de IA e Montagem de Treino
+# Plano de Implementação: IA Própria e Gerador de Treinos
 
-Este plano detalha a implementação da funcionalidade de chaves de API personalizadas por usuário (OpenAI, Anthropic, Gemini) e a nova ferramenta de montagem de treinos assistida por IA.
+Implementação de um sistema que permite aos usuários utilizarem suas próprias chaves de API (OpenAI, Anthropic, Gemini) e uma funcionalidade para gerar planos de treino completos via IA.
 
-## 1. Banco de Dados e Segurança
-- Criar tabela `user_ai_configs` para armazenar `user_id`, `provider` e `api_key`.
-- Habilitar RLS para que apenas o proprietário possa ler/escrever.
-- **Segurança:** As chaves serão armazenadas no Supabase. O acesso via frontend será restrito (campo password).
-- Implementar `has_ai_config` como uma RPC ou via `createServerFn` para checagem rápida.
+## Mudanças
 
-## 2. Interface do Usuário (Perfil)
-- Adicionar seção "Configurações de IA" em `app.perfil.tsx`.
-- Componente `AiKeyManager`:
-  - Seletor de provedor.
-  - Input de chave (tipo password com toggle de visibilidade).
-  - Botão "Validar chave": dispara uma Server Function que testa a chave contra a API do provedor.
-  - Botão "Salvar": habilitado apenas após validação.
-  - Botão "Remover chave".
+### Backend (Supabase)
+- Criar tabela `user_ai_configs` para armazenar o provedor e a chave de API (criptografada no transporte via SSL e protegida por RLS).
+- Definir enum `ai_provider` com os valores: `openai`, `anthropic`, `google`.
+- Garantir políticas de RLS para que o usuário acesse apenas sua própria configuração.
 
-## 3. Roteamento de IA (Backend)
-- Criar `src/lib/ai-router.functions.ts` (ou similar):
-  - Função centralizada `getAiCompletion`.
-  - Lógica:
-    1. Busca configuração do usuário.
-    2. Se existir chave válida, roteia a requisição para o provedor escolhido (usando a chave do usuário).
-    3. Se não existir, utiliza o provedor/chave padrão do sistema.
-    4. Trata erros específicos de chaves de usuário (créditos, revogada) emitindo alertas claros.
-- Padronização de Prompt: Injetar um prompt-base estruturado para garantir respostas JSON consistentes entre provedores.
+### Server Functions e Gateway
+- **Centralização:** Criar um roteador de IA que verifica se o usuário possui chave própria.
+- **Normalização:** Padronizar prompts e respostas (JSON) para consistência entre diferentes modelos/provedores.
+- **Validação:** Implementar rotina de teste de chave antes de salvar.
 
-## 4. Funcionalidade "Montar Treino com IA"
-- Criar nova rota/modal `app.treinos.gerar.tsx`.
-- Formulário de entrada:
-  - Objetivo (Hipertrofia, etc.).
-  - Dias/Semana.
-  - Nível de Experiência.
-  - Grupos Musculares.
-  - Equipamentos.
-- Geração:
-  - Envia dados para o roteador de IA.
-  - Recebe JSON estruturado.
-- Revisão:
-  - Renderiza o treino proposto em uma lista editável.
-  - Permite alterar exercícios, séries ou remover itens antes de salvar definitivamente no histórico/planos do usuário.
+### UI (Perfil e Treino)
+- **Perfil:** Adicionar seção "Configurações de IA" com campo de chave (password), seletor de provedor e ações de Validar/Salvar/Remover.
+- **Gerador de Treinos:** Nova tela ou modal para coletar objetivos, frequência e equipamentos, gerando um plano completo para revisão e salvamento.
 
 ## Detalhes Técnicos
-- **Zod:** Validação rigorosa dos esquemas JSON retornados pela IA.
-- **Server Functions:** Todo o tráfego de API de IA passará pelo servidor para ocultar chaves e gerenciar requisições.
-- **UX:** Feedback visual claro durante a validação da chave e a geração do treino.
+
+- **Segurança:** As chaves nunca são expostas no client-side após o salvamento inicial (apenas via bridge-actions seguras).
+- **Fallback:** Se o usuário não tiver chave, o app continua usando a infraestrutura padrão.
+- **Prompt Engineering:** Instrução de sistema fixa para garantir que o JSON retornado seja compatível com o parser do app.
+
+```text
+[Usuário] -> [App UI] -> [Server Function] -> [AI Router]
+                                                  |
+                          ------------------------------------------------
+                          |                                              |
+                 [Possui Chave Própria?]                         [Usa Chave Padrão]
+                          |                                              |
+                [Chama API do Provedor]                        [Chama Gateway Lovable]
+```

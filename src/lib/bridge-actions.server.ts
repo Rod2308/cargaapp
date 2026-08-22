@@ -15,6 +15,8 @@ import type { Database } from "@/integrations/supabase/types";
 import { computeRecoveryAdviceFor, type RecoveryAdvice } from "@/lib/recovery-core";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminder-settings.shared";
 import { syncVercelWorkoutsAction } from "@/lib/sync.functions";
+import { importActivities } from "./strava.server";
+
 
 
 export type SB = SupabaseClient<Database>;
@@ -98,6 +100,50 @@ export async function getRecoveryAdviceAction(
     );
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Configurações de IA do Usuário                                      */
+/* ------------------------------------------------------------------ */
+
+export const AiConfigSchema = z.object({
+  provider: z.enum(["openai", "anthropic", "google"]),
+  api_key: z.string().min(1),
+});
+
+export async function saveAiConfigAction(supabase: SB, userId: string, input: unknown) {
+  const data = AiConfigSchema.parse(input);
+  const { error } = await supabase
+    .from("user_ai_configs")
+    .upsert({
+      user_id: userId,
+      provider: data.provider,
+      api_key: data.api_key,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function getAiConfigAction(supabase: SB, userId: string) {
+  const { data, error } = await supabase
+    .from("user_ai_configs")
+    .select("provider, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAiConfigAction(supabase: SB, userId: string) {
+  const { error } = await supabase
+    .from("user_ai_configs")
+    .delete()
+    .eq("user_id", userId);
+  if (error) throw error;
+  return { ok: true };
+}
+
 
 /* ------------------------------------------------------------------ */
 /* Preferências de lembrete de treino                                  */
@@ -663,8 +709,11 @@ export const AUTHED_ACTIONS: Record<string, AuthedAction> = {
   "strava.sync": (sb, uid, p) => syncStravaLatestAction(sb, uid, p),
   "strava.ensureWebhook": () => ensureStravaWebhookAction(),
   "sync.vercelWorkouts": (sb, uid) => syncVercelWorkoutsAction(sb, uid),
-
+  "ai.saveConfig": (sb, uid, p) => saveAiConfigAction(sb, uid, p),
+  "ai.getConfig": (sb, uid) => getAiConfigAction(sb, uid),
+  "ai.deleteConfig": (sb, uid) => deleteAiConfigAction(sb, uid),
 };
+
 
 type PublicAction = (payload: unknown) => Promise<unknown>;
 
