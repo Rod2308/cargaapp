@@ -20,6 +20,10 @@ import { DataManagement } from "@/components/DataManagement";
 import { StravaConnect } from "@/components/StravaConnect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { performLogout } from "@/lib/logout";
+import { saveUserAiConfig, getUserAiConfig, deleteUserAiConfig, validateAiKey } from "@/lib/ai-config.functions";
+import { Eye, EyeOff, Check, X, Shield, Trash2, Save, RefreshCw } from "lucide-react";
+
+
 
 
 function calcAge(birth?: string | null) {
@@ -153,6 +157,9 @@ function PerfilPage() {
 
 
       <InstallInstructions />
+
+      <AiKeyManager />
+
 
       <Button variant="outline" onClick={signOut} disabled={signingOut} className="mt-6 w-full">
         <LogOut className="size-4" /> {signingOut ? "Saindo…" : "Sair da conta"}
@@ -759,4 +766,161 @@ function InstallInstructions() {
     </div>
   );
 }
+
+function AiKeyManager() {
+  const qc = useQueryClient();
+  const [showKey, setShowKey] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
+  const [provider, setProvider] = useState<"openai" | "anthropic" | "google">("openai");
+  const [apiKey, setApiKey] = useState("");
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ["user-ai-config"],
+    queryFn: () => getUserAiConfig(),
+  });
+
+  const validate = useMutation({
+    mutationFn: (data: { provider: any; api_key: string }) => validateAiKey({ data }),
+    onSuccess: (res) => {
+      if (res.valid) {
+        setIsValidated(true);
+        toast.success("Chave válida ✅");
+      } else {
+        setIsValidated(false);
+        toast.error("Chave inválida ❌");
+      }
+    },
+    onError: (e: any) => {
+      setIsValidated(false);
+      toast.error(e.message || "Erro ao validar chave");
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: (data: { provider: any; api_key: string }) => saveUserAiConfig({ data }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-ai-config"] });
+      toast.success("Configurações de IA salvas");
+      setIsValidated(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteUserAiConfig(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-ai-config"] });
+      setApiKey("");
+      setIsValidated(false);
+      toast.success("Chave removida");
+    },
+  });
+
+  if (isLoading) return null;
+
+  return (
+    <div className="card-soft mt-6 p-5">
+      <div className="flex items-center gap-2">
+        <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Shield className="size-5" />
+        </div>
+        <h2 className="text-lg font-semibold">Configurações de IA Própria</h2>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Use sua própria chave de API para ter sugestões personalizadas e recursos avançados.
+      </p>
+
+      <div className="mt-4 space-y-4">
+        <div className="space-y-1.5">
+          <Label>Provedor</Label>
+          <Select
+            value={config?.provider || provider}
+            onValueChange={(v: any) => {
+              setProvider(v);
+              setIsValidated(false);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o provedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI (GPT-4o, GPT-3.5)</SelectItem>
+              <SelectItem value="anthropic">Anthropic (Claude 3.5 Sonnet, Haiku)</SelectItem>
+              <SelectItem value="google">Google Gemini (1.5 Pro, Flash)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Chave de API</Label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showKey ? "text" : "password"}
+                placeholder={config?.api_key ? "••••••••••••••••" : "Cole sua chave aqui"}
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setIsValidated(false);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={validate.isPending || !apiKey}
+              onClick={() => validate.mutate({ provider, api_key: apiKey })}
+            >
+              {validate.isPending ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : isValidated ? (
+                <Check className="size-4 text-green-500" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          {config ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => remove.mutate()}
+              disabled={remove.isPending}
+            >
+              <Trash2 className="mr-2 size-4" /> Remover chave
+            </Button>
+          ) : (
+            <div />
+          )}
+          
+          <Button
+            size="sm"
+            disabled={!isValidated || save.isPending}
+            onClick={() => save.mutate({ provider, api_key: apiKey })}
+          >
+            <Save className="mr-2 size-4" /> {save.isPending ? "Salvando..." : "Salvar Chave"}
+          </Button>
+        </div>
+
+        {config && !apiKey && (
+          <p className="text-center text-[10px] text-muted-foreground">
+            Uma chave já está salva. Para alterá-la, cole a nova acima e valide.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
