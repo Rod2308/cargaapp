@@ -8,8 +8,8 @@
  */
 
 export const EXPECTED_PUBLIC_ENV = {
-  VITE_SUPABASE_URL: "https://sqqabqvdsdhyrzrxvkx.supabase.co",
-  VITE_SUPABASE_PROJECT_ID: "sqqabqvdsdhyrzrxvkx",
+  VITE_SUPABASE_URL: "https://isqqabqvdsdhyrzrxvkx.supabase.co",
+  VITE_SUPABASE_PROJECT_ID: "isqqabqvdsdhyrzrxvkx",
   VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
 } as const;
 
