@@ -1,7 +1,7 @@
 import { bridged } from "@/lib/server-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Route as AuthedRoute } from "./route";
 import { Button } from "@/components/ui/button";
@@ -774,10 +774,14 @@ function AiKeyManager() {
   const [provider, setProvider] = useState<"openai" | "anthropic" | "google">("openai");
   const [apiKey, setApiKey] = useState("");
 
-  const { data: config, isLoading } = useQuery({
+  const { data: config, isLoading, refetch } = useQuery({
     queryKey: ["user-ai-config"],
     queryFn: () => getUserAiConfig(),
   });
+
+  useEffect(() => {
+    if (config?.provider) setProvider(config.provider as any);
+  }, [config]);
 
   const validate = useMutation({
     mutationFn: (data: { provider: any; api_key: string }) => validateAiKey({ data }),
@@ -800,8 +804,11 @@ function AiKeyManager() {
     mutationFn: (data: { provider: any; api_key: string }) => saveUserAiConfig({ data }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-ai-config"] });
+      // Também invalidar queries de treino que podem usar a IA
+      qc.invalidateQueries({ queryKey: ["daily-suggestion"] });
       toast.success("Configurações de IA salvas");
       setIsValidated(false);
+      setApiKey(""); // Limpa o input após salvar
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -825,6 +832,11 @@ function AiKeyManager() {
           <Shield className="size-5" />
         </div>
         <h2 className="text-lg font-semibold">Configurações de IA Própria</h2>
+        {config?.api_key && (
+          <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+            <Check className="size-3" /> IA Ativa
+          </div>
+        )}
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         Use sua própria chave de API para ter sugestões personalizadas e recursos avançados.
