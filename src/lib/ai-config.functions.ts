@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { bridged } from "./server-bridge";
 
@@ -8,49 +8,23 @@ const AiConfigInput = z.object({
 });
 
 export const saveUserAiConfig = createServerFn({ method: "POST" })
-  .input(AiConfigInput)
-  .handler(async ({ data, context }) => {
-    return bridged("ai.saveConfig", async (supabase, userId, payload: any) => {
-      const { error } = await supabase
-        .from("user_ai_configs")
-        .upsert({
-          user_id: userId,
-          provider: payload.provider,
-          api_key: payload.api_key,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-      if (error) throw error;
-      return { ok: true };
-    })(data);
+  .validator((data: unknown) => AiConfigInput.parse(data))
+  .handler(async ({ data }) => {
+    return bridged("ai.saveConfig", async () => ({} as any))(data);
   });
 
 export const getUserAiConfig = createServerFn({ method: "GET" })
-  .handler(async ({ context }) => {
-    return bridged("ai.getConfig", async (supabase, userId) => {
-      const { data, error } = await supabase
-        .from("user_ai_configs")
-        .select("provider, api_key")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    })();
+  .handler(async () => {
+    return bridged("ai.getConfig", async () => ({} as any))({});
   });
 
 export const deleteUserAiConfig = createServerFn({ method: "POST" })
-  .handler(async ({ context }) => {
-    return bridged("ai.deleteConfig", async (supabase, userId) => {
-      const { error } = await supabase
-        .from("user_ai_configs")
-        .delete()
-        .eq("user_id", userId);
-      if (error) throw error;
-      return { ok: true };
-    })();
+  .handler(async () => {
+    return bridged("ai.deleteConfig", async () => ({} as any))({});
   });
 
 export const validateAiKey = createServerFn({ method: "POST" })
-  .input(AiConfigInput)
+  .validator((data: unknown) => AiConfigInput.parse(data))
   .handler(async ({ data }) => {
     const { provider, api_key } = data;
     
