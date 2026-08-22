@@ -2,7 +2,6 @@ import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { bridged } from "./server-bridge";
 
 export type AiProvider = "openai" | "anthropic" | "google";
 
@@ -53,6 +52,17 @@ export async function routeAiRequest(userId: string, options: {
       system: options.systemPrompt,
       prompt: options.userPrompt,
     });
+
+    if (options.jsonMode) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        return JSON.parse(jsonMatch ? jsonMatch[0] : text);
+      } catch (e) {
+        console.error("AI JSON Parse Error:", e, "Raw text:", text);
+        throw new Error("A IA retornou um formato inválido. Tente novamente.");
+      }
+    }
+
     return text;
   } catch (err: any) {
     console.error("[routeAiRequest] Generation error:", err);
@@ -61,20 +71,4 @@ export async function routeAiRequest(userId: string, options: {
     }
     throw new Error(err.message || "Erro inesperado na geração por IA.");
   }
-}
-
-// O resto do arquivo (jsonMode) será movido para dentro do try acima no próximo passo se necessário, 
-// mas aqui estamos apenas ajustando o fluxo principal.
-
-  if (options.jsonMode) {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      return JSON.parse(jsonMatch ? jsonMatch[0] : text);
-    } catch (e) {
-      console.error("AI JSON Parse Error:", e, "Raw text:", text);
-      throw new Error("A IA retornou um formato inválido. Tente novamente.");
-    }
-  }
-
-  return text;
 }
