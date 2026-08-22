@@ -804,8 +804,11 @@ function AiKeyManager() {
     mutationFn: (data: { provider: any; api_key: string }) => saveUserAiConfig({ data }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-ai-config"] });
+      // Também invalidar queries de treino que podem usar a IA
+      qc.invalidateQueries({ queryKey: ["daily-suggestion"] });
       toast.success("Configurações de IA salvas");
       setIsValidated(false);
+      setApiKey(""); // Limpa o input após salvar
     },
     onError: (e: any) => toast.error(e.message),
   });
