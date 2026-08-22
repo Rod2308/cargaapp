@@ -106,7 +106,7 @@ export const MANUAL_CHECKLIST: { id: string; label: string; hint: string }[] = [
   {
     id: "email-mirror",
     label: "Entrar com e-mail/senha no domínio espelho",
-    hint: `Abra ${ALLOWED_BRIDGE_ORIGINS[0]}/auth: o login roda no domínio principal e a sessão volta pela ponte.`,
+    hint: `Abra o login: se estiver no domínio espelho, o fluxo roda no domínio principal e a sessão volta pela ponte.`,
   },
   {
     id: "google-mirror",
