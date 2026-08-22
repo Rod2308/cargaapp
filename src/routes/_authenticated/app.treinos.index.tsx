@@ -13,6 +13,7 @@ import { toastUndo, stripGenerated } from "@/lib/undo";
 
 import { CardioRecoveryAlert } from "@/components/CardioRecoveryAlert";
 import { ImportWorkoutPlanDialog } from "@/components/ImportWorkoutPlanDialog";
+import { AiWorkoutGenerator } from "@/components/AiWorkoutGenerator";
 import { EmptyState } from "@/components/EmptyState";
 import { GridSkeleton } from "@/components/LoadingState";
 
@@ -112,7 +113,8 @@ function TreinosList() {
           <p className="mt-1 text-sm text-muted-foreground">Suas divisões A, B, C...</p>
         </div>
         <div className="flex gap-2">
-        <ImportWorkoutPlanDialog userId={user.id} />
+          <ImportWorkoutPlanDialog userId={user.id} />
+          <AiWorkoutGenerator userId={user.id} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline"><Plus className="size-4" /> Novo</Button>
