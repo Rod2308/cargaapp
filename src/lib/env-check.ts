@@ -8,9 +8,9 @@
  */
 
 export const EXPECTED_PUBLIC_ENV = {
-  VITE_SUPABASE_URL: "https://lgxwvmhaaxiymhjqmglk.supabase.co",
-  VITE_SUPABASE_PROJECT_ID: "lgxwvmhaaxiymhjqmglk",
-  VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_Wn25jk_uxUmXuuBNBSS7LA_TPuCdCCU",
+  VITE_SUPABASE_URL: "https://sqqabqvdsdhyrzrxvkx.supabase.co",
+  VITE_SUPABASE_PROJECT_ID: "sqqabqvdsdhyrzrxvkx",
+  VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
 } as const;
 
 export type PublicEnvName = keyof typeof EXPECTED_PUBLIC_ENV;

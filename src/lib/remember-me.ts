@@ -11,7 +11,7 @@
 // - Em `beforeunload`, se a sessão é temporária, removemos novamente do localStorage
 //   para garantir que ela morra junto com a aba.
 
-const SUPABASE_REF = "lgxwvmhaaxiymhjqmglk";
+const SUPABASE_REF = "sqqabqvdsdhyrzrxvkx";
 const AUTH_KEY = `sb-${SUPABASE_REF}-auth-token`;
 const TEMP_FLAG = "carga_temp_session";
 const REMEMBER_FLAG = "carga_remember_me"; // localStorage: última escolha do usuário (para UI)
