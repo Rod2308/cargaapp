@@ -774,10 +774,14 @@ function AiKeyManager() {
   const [provider, setProvider] = useState<"openai" | "anthropic" | "google">("openai");
   const [apiKey, setApiKey] = useState("");
 
-  const { data: config, isLoading } = useQuery({
+  const { data: config, isLoading, refetch } = useQuery({
     queryKey: ["user-ai-config"],
     queryFn: () => getUserAiConfig(),
   });
+
+  useEffect(() => {
+    if (config?.provider) setProvider(config.provider as any);
+  }, [config]);
 
   const validate = useMutation({
     mutationFn: (data: { provider: any; api_key: string }) => validateAiKey({ data }),
