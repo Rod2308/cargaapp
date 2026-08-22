@@ -20,7 +20,7 @@ export async function routeAiRequest(userId: string, options: {
     .from("user_ai_configs" as any)
     .select("provider, api_key")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle() as any;
 
   if (error) {
     console.error("[routeAiRequest] Error fetching config:", error);
