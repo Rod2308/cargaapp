@@ -38,7 +38,7 @@ export async function routeAiRequest(userId: string, options: {
     }
   }
 
-  // Fallback para chave padrão
+  // Fallback para chave padrão (via Lovable AI Gateway implicitamente se model for nulo)
   if (!model) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("AI não configurada (faltando chave padrão)");
