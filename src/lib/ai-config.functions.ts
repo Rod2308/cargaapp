@@ -7,20 +7,28 @@ const AiConfigInput = z.object({
   api_key: z.string().min(1),
 });
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 export const saveUserAiConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((data: unknown) => AiConfigInput.parse(data))
-  .handler(async ({ data }) => {
-    return (bridged("ai.saveConfig", async () => ({} as any)) as any)(data);
+  .handler(async ({ data, context }) => {
+    const { saveAiConfigAction } = await import("./bridge-actions.server");
+    return saveAiConfigAction(context.supabase, context.userId, data);
   });
 
 export const getUserAiConfig = createServerFn({ method: "GET" })
-  .handler(async () => {
-    return (bridged("ai.getConfig", async () => ({} as any)) as any)({});
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getAiConfigAction } = await import("./bridge-actions.server");
+    return getAiConfigAction(context.supabase, context.userId);
   });
 
 export const deleteUserAiConfig = createServerFn({ method: "POST" })
-  .handler(async () => {
-    return (bridged("ai.deleteConfig", async () => ({} as any)) as any)({});
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { deleteAiConfigAction } = await import("./bridge-actions.server");
+    return deleteAiConfigAction(context.supabase, context.userId);
   });
 
 export const validateAiKey = createServerFn({ method: "POST" })
