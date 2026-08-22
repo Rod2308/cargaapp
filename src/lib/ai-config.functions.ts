@@ -10,17 +10,17 @@ const AiConfigInput = z.object({
 export const saveUserAiConfig = createServerFn({ method: "POST" })
   .validator((data: unknown) => AiConfigInput.parse(data))
   .handler(async ({ data }) => {
-    return bridged("ai.saveConfig", async () => ({} as any))(data);
+    return (bridged("ai.saveConfig", async () => ({} as any)) as any)(data);
   });
 
 export const getUserAiConfig = createServerFn({ method: "GET" })
   .handler(async () => {
-    return bridged("ai.getConfig", async () => ({} as any))({});
+    return (bridged("ai.getConfig", async () => ({} as any)) as any)({});
   });
 
 export const deleteUserAiConfig = createServerFn({ method: "POST" })
   .handler(async () => {
-    return bridged("ai.deleteConfig", async () => ({} as any))({});
+    return (bridged("ai.deleteConfig", async () => ({} as any)) as any)({});
   });
 
 export const validateAiKey = createServerFn({ method: "POST" })
