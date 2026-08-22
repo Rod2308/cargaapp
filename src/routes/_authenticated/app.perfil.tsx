@@ -829,6 +829,11 @@ function AiKeyManager() {
           <Shield className="size-5" />
         </div>
         <h2 className="text-lg font-semibold">Configurações de IA Própria</h2>
+        {config?.api_key && (
+          <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+            <Check className="size-3" /> IA Ativa
+          </div>
+        )}
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         Use sua própria chave de API para ter sugestões personalizadas e recursos avançados.
