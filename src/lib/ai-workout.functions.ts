@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { routeAiRequest } from "./ai-router.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const WorkoutAiInput = z.object({
   goal: z.string(),
@@ -11,6 +12,7 @@ const WorkoutAiInput = z.object({
 });
 
 export const generateWorkoutPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((data: unknown) => WorkoutAiInput.parse(data))
   .handler(async ({ data, context }) => {
     // Nota: O userId vem do middleware de auth se disponível,
