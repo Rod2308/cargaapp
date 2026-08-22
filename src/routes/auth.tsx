@@ -224,6 +224,12 @@ function AuthPage() {
   const [bridgeFailed, setBridgeFailed] = useState(false);
   const [bridgeAttempt, setBridgeAttempt] = useState(0);
 
+  function getRedirectUrl() {
+    return bridge
+      ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
+      : `${window.location.origin}${redirectTo}`;
+  }
+
   async function sendReset(e: React.FormEvent) {
     e.preventDefault();
     const parsed = emailSchema.safeParse(forgotEmail || email);
@@ -306,7 +312,7 @@ function AuthPage() {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: pendingEmail,
-      options: { emailRedirectTo: `${window.location.origin}${redirectTo}` },
+      options: { emailRedirectTo: getRedirectUrl() },
     });
     setResending(false);
     if (error) {
@@ -360,10 +366,7 @@ function AuthPage() {
       email: parsedEmail.data,
       password: parsedPassword.data,
       options: {
-        emailRedirectTo: bridge
-          ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
-          : `${window.location.origin}${redirectTo}`,
-
+        emailRedirectTo: getRedirectUrl(),
         data: { display_name: parsedName.data, role },
       },
     });
@@ -421,43 +424,20 @@ function AuthPage() {
     }
 
 
-    // Descobre se estamos rodando dentro da plataforma Lovable
-    const isLovable = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
-
     const nativeParam = new URLSearchParams(window.location.search).get("native");
-    // Com ?bridge=, o retorno do Google volta para esta mesma tela canônica
-    // mantendo o parâmetro, e o efeito acima devolve a sessão para a origem espelho.
-    const bridgeReturn = bridge
-      ? `${window.location.origin}/auth?bridge=${encodeURIComponent(bridge)}${next ? `&next=${encodeURIComponent(next)}` : ""}`
-      : null;
     const myRedirectUri = nativeParam === "1"
       ? `${window.location.origin}/?native=1`
-      : bridgeReturn ?? `${window.location.origin}${redirectTo}`;
+      : getRedirectUrl();
 
-    if (isLovable) {
-      // Usa o atalho original da Lovable se estivermos lá dentro
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: myRedirectUri,
-      });
-      if (result.error) {
-        setBusy(false);
-        toast.error("Erro ao entrar com Google");
-        return;
-      }
-      if (result.redirected) return;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: myRedirectUri },
+    });
+    
+    if (error) {
       setBusy(false);
-      await finishLogin();
-    } else {
-      // Usa o Supabase oficial se estivermos na Vercel ou no seu domínio próprio
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: myRedirectUri },
-      });
-      if (error) {
-        setBusy(false);
-        toast.error("Erro ao entrar com Google");
-        return;
-      }
+      toast.error("Erro ao entrar com Google");
+      return;
     }
 
   }
