@@ -1,47 +1,48 @@
-# Modo Offline — Evolução do sistema atual (auditado)
+# Plano de Implementação: Configurações de IA e Montagem de Treino
 
-> Revisado após auditoria do código existente. **Não vamos reconstruir do zero.**
-> O app já tem uma base offline funcional; o plano agora é evoluí-la.
+Este plano detalha a implementação da funcionalidade de chaves de API personalizadas por usuário (OpenAI, Anthropic, Gemini) e a nova ferramenta de montagem de treinos assistida por IA.
 
-## O que JÁ existe hoje (auditoria)
+## 1. Banco de Dados e Segurança
+- Criar tabela `user_ai_configs` para armazenar `user_id`, `provider` e `api_key`.
+- Habilitar RLS para que apenas o proprietário possa ler/escrever.
+- **Segurança:** As chaves serão armazenadas no Supabase. O acesso via frontend será restrito (campo password).
+- Implementar `has_ai_config` como uma RPC ou via `createServerFn` para checagem rápida.
 
-| Peça | Arquivo | Estado |
-|---|---|---|
-| Fila de escrita offline (IndexedDB via `idb-keyval`) | `src/lib/offline-queue.ts` | Funciona: FIFO, flush em `online`/`focus`/30s, idempotência por `client_mutation_id` |
-| Helpers de escrita "atravessa fila" | `src/lib/offline-writes.ts` | Funciona: insert/upsert/update/delete com fallback automático para a fila |
-| Cache de leitura offline | `src/lib/query-persister.ts` | Funciona: persiste o cache do React Query em IndexedDB (30 dias) |
-| Pré-carga de dados essenciais | `src/lib/offline-prefetch.ts` | Funciona |
-| Banner de status + pendentes | `src/components/SyncStatus.tsx` | Funciona, com ping real de rede (`useOnline`) |
-| Aviso "precisa de internet" | `src/components/OfflineNotice.tsx` | Funciona |
-| Snapshot da sessão em andamento | `src/lib/session-persist.ts` | Funciona |
-| Coluna `client_mutation_id` UNIQUE | migration já aplicada | Feito |
+## 2. Interface do Usuário (Perfil)
+- Adicionar seção "Configurações de IA" em `app.perfil.tsx`.
+- Componente `AiKeyManager`:
+  - Seletor de provedor.
+  - Input de chave (tipo password com toggle de visibilidade).
+  - Botão "Validar chave": dispara uma Server Function que testa a chave contra a API do provedor.
+  - Botão "Salvar": habilitado apenas após validação.
+  - Botão "Remover chave".
 
-## Decisão sobre Dexie / tabelas `cache_*`
+## 3. Roteamento de IA (Backend)
+- Criar `src/lib/ai-router.functions.ts` (ou similar):
+  - Função centralizada `getAiCompletion`.
+  - Lógica:
+    1. Busca configuração do usuário.
+    2. Se existir chave válida, roteia a requisição para o provedor escolhido (usando a chave do usuário).
+    3. Se não existir, utiliza o provedor/chave padrão do sistema.
+    4. Trata erros específicos de chaves de usuário (créditos, revogada) emitindo alertas claros.
+- Padronização de Prompt: Injetar um prompt-base estruturado para garantir respostas JSON consistentes entre provedores.
 
-**Não implementar agora.** O `idb-keyval` + persister do React Query já cobre
-leitura e escrita offline com volume atual (dezenas de treinos, ~30 sessões,
-~100 mensagens por conversa). Dexie só se justifica quando precisarmos de
-consultas indexadas locais (filtro/ordenção por data direto no IndexedDB) ou
-quando o blob único do cache passar de ~5 MB.
+## 4. Funcionalidade "Montar Treino com IA"
+- Criar nova rota/modal `app.treinos.gerar.tsx`.
+- Formulário de entrada:
+  - Objetivo (Hipertrofia, etc.).
+  - Dias/Semana.
+  - Nível de Experiência.
+  - Grupos Musculares.
+  - Equipamentos.
+- Geração:
+  - Envia dados para o roteador de IA.
+  - Recebe JSON estruturado.
+- Revisão:
+  - Renderiza o treino proposto em uma lista editável.
+  - Permite alterar exercícios, séries ou remover itens antes de salvar definitivamente no histórico/planos do usuário.
 
-**Gatilhos para reavaliar Dexie:**
-- cache serializado do React Query > 5 MB (medir com `navigator.storage.estimate()`);
-- necessidade de busca/paginação local em histórico longo;
-- perda de performance no throttle de gravação (hoje 1,5 s).
-
-## O que falta (backlog priorizado)
-
-1. **Falhas permanentes visíveis** — *feito*: ops que falham por RLS/constraint
-   vão para `failed_ops` persistido, com badge "N alterações não sincronizaram",
-   detalhe do erro e botões tentar de novo / descartar.
-2. **`PendingBadge` nos itens** — marcar visualmente itens criados offline
-   (`_pending` já é devolvido por `writeInsert`).
-3. **Detecção de conflito por `updated_at`** — hoje o último write vence.
-4. **Backoff exponencial** no flush (hoje intervalo fixo de 30 s).
-5. **Limpeza de cache ao trocar de conta** (evitar vazamento entre usuários).
-6. **Migrar escritas restantes** para `offline-writes` (medidas, grupos, perfil).
-
-## Fora de escopo
-
-- Sincronização colaborativa em tempo real offline (chat/ranking de grupo).
-- Cache offline de imagens de exercícios.
+## Detalhes Técnicos
+- **Zod:** Validação rigorosa dos esquemas JSON retornados pela IA.
+- **Server Functions:** Todo o tráfego de API de IA passará pelo servidor para ocultar chaves e gerenciar requisições.
+- **UX:** Feedback visual claro durante a validação da chave e a geração do treino.
