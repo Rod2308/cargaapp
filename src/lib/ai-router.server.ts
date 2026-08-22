@@ -14,16 +14,13 @@ export async function routeAiRequest(userId: string, options: {
   userPrompt: string;
   jsonMode?: boolean;
 }) {
-  // 1. Busca config do usuário via bridge (seguro, server-side)
-  // O bridge action espera (payload, userId)
-  const config = await (bridged("ai.getConfig", async (supabase, uid) => {
-    const { data } = await (supabase
-      .from("user_ai_configs" as any) as any)
-      .select("provider, api_key")
-      .eq("user_id", uid)
-      .maybeSingle();
-    return data;
-  }) as any)({}, userId);
+  // 1. Busca config do usuário
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: config } = await supabaseAdmin
+    .from("user_ai_configs" as any)
+    .select("provider, api_key")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   let model;
   if (config?.api_key && config?.provider) {
