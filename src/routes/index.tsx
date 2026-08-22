@@ -43,7 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">Execute esta instrucao no projeto: Adicione lembretes push ou por e-mail para eu não perder o treino do dia e ajustar minhas sessões ao longo da semana.</div>
+      <div className="hidden">tem como adicionar um modo em que a pessoa loga na propria conta da ia dela para usar no app? ai o app teria uma ia que funcionaria no login proprio de cada pessoa</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
