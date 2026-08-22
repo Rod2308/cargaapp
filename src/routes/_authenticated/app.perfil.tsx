@@ -21,7 +21,8 @@ import { StravaConnect } from "@/components/StravaConnect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { performLogout } from "@/lib/logout";
 import { saveUserAiConfig, getUserAiConfig, deleteUserAiConfig, validateAiKey } from "@/lib/ai-config.functions";
-import { Eye, EyeOff, Check, X, Shield, Trash2, Save } from "lucide-react";
+import { Eye, EyeOff, Check, X, Shield, Trash2, Save, RefreshCw } from "lucide-react";
+
 
 
 
