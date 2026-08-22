@@ -26,32 +26,45 @@ export async function routeAiRequest(userId: string, options: {
     console.error("[routeAiRequest] Error fetching config:", error);
   }
 
-  let model;
-  if (config?.api_key && config?.provider) {
-    // Usa chave do usuário
-    const provider = config.provider as AiProvider;
-    if (provider === "openai") {
-      model = createOpenAI({ apiKey: config.api_key })("gpt-4o");
-    } else if (provider === "anthropic") {
-      model = createAnthropic({ apiKey: config.api_key })("claude-3-5-sonnet-20240620");
-    } else if (provider === "google") {
-      model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-pro-latest");
+  try {
+    let model;
+    if (config?.api_key && config?.provider) {
+      // Usa chave do usuário
+      const provider = config.provider as AiProvider;
+      if (provider === "openai") {
+        model = createOpenAI({ apiKey: config.api_key })("gpt-4o");
+      } else if (provider === "anthropic") {
+        model = createAnthropic({ apiKey: config.api_key })("claude-3-5-sonnet-20240620");
+      } else if (provider === "google") {
+        model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-pro-latest");
+      }
     }
-  }
 
-  // Fallback para chave padrão (via Lovable AI Gateway implicitamente se model for nulo)
-  if (!model) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("AI não configurada (faltando chave padrão)");
-    const openai = createOpenAI({ apiKey });
-    model = openai("gpt-4o");
-  }
+    // Fallback para chave padrão (via Lovable AI Gateway implicitamente se model for nulo)
+    if (!model) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("Recurso de IA temporariamente indisponível. Por favor, adicione sua própria chave de API no Perfil.");
+      const openai = createOpenAI({ apiKey });
+      model = openai("gpt-4o");
+    }
 
-  const { text } = await generateText({
-    model,
-    system: options.systemPrompt,
-    prompt: options.userPrompt,
-  });
+    const { text } = await generateText({
+      model,
+      system: options.systemPrompt,
+      prompt: options.userPrompt,
+    });
+    return text;
+  } catch (err: any) {
+    console.error("[routeAiRequest] Generation error:", err);
+    if (err.status === 401 || err.message?.includes("401") || err.message?.includes("key")) {
+      throw new Error("Sua chave de API de IA parece ser inválida ou expirou. Por favor, verifique-a no seu Perfil.");
+    }
+    throw new Error(err.message || "Erro inesperado na geração por IA.");
+  }
+}
+
+// O resto do arquivo (jsonMode) será movido para dentro do try acima no próximo passo se necessário, 
+// mas aqui estamos apenas ajustando o fluxo principal.
 
   if (options.jsonMode) {
     try {
