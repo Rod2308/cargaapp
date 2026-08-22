@@ -16,11 +16,15 @@ export async function routeAiRequest(userId: string, options: {
 }) {
   // 1. Busca config do usuário
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: config } = await supabaseAdmin
+  const { data: config, error } = await supabaseAdmin
     .from("user_ai_configs" as any)
     .select("provider, api_key")
     .eq("user_id", userId)
     .maybeSingle();
+
+  if (error) {
+    console.error("[routeAiRequest] Error fetching config:", error);
+  }
 
   let model;
   if (config?.api_key && config?.provider) {
@@ -31,7 +35,7 @@ export async function routeAiRequest(userId: string, options: {
     } else if (provider === "anthropic") {
       model = createAnthropic({ apiKey: config.api_key })("claude-3-5-sonnet-20240620");
     } else if (provider === "google") {
-      model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-pro");
+      model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-pro-latest");
     }
   }
 
