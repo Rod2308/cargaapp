@@ -99,8 +99,8 @@ export async function getRecoveryAdviceAction(
       "Não foi possível calcular sua recuperação agora. Tente novamente em alguns instantes.",
     );
   }
-  }
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Configurações de IA do Usuário                                      */
