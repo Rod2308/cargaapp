@@ -43,7 +43,7 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div>o login por email e google não está funcionando</div>
+      <div className="p-4 text-center bg-accent text-accent-foreground font-medium">sim</div>
       <div className="hidden">Quero implementar a opção 1 (campo simples no Perfil), com espaço para evoluir para fallback depois. Por favor:
 
 Adicione uma seção "Configurações de IA" na página de Perfil do usuário, com:
