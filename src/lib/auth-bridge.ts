@@ -17,10 +17,10 @@
  * para um domínio de terceiros.
  */
 
-export const CANONICAL_ORIGIN = "https://cargaapp.lovable.app";
+export const CANONICAL_ORIGIN = "https://cargaapp.vercel.app";
 
 /** Origens espelho autorizadas a receber a sessão pela ponte. */
-export const ALLOWED_BRIDGE_ORIGINS = ["https://cargaapp.vercel.app"] as const;
+export const ALLOWED_BRIDGE_ORIGINS = [] as const;
 
 /** Caminho público que recebe a sessão na origem espelho. */
 export const BRIDGE_CALLBACK_PATH = "/auth-bridge";
