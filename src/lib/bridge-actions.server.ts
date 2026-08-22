@@ -21,7 +21,7 @@ import { syncVercelWorkoutsAction } from "@/lib/sync.functions";
 
 export type SB = SupabaseClient<Database>;
 
-const CANONICAL_APP_ORIGIN = "https://cargaapp.lovable.app";
+const CANONICAL_APP_ORIGIN = "https://cargaapp.vercel.app";
 
 function appOrigin() {
   const origin = process.env.PUBLIC_APP_URL || process.env.APP_URL || CANONICAL_APP_ORIGIN;

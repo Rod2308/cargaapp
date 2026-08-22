@@ -404,7 +404,7 @@ function AuthPage() {
       // Open Chrome Custom Tab for OAuth (WebViews are blocked by Google)
       const { Browser } = await import("@capacitor/browser");
       await Browser.open({
-        url: "https://cargaapp.lovable.app/auth?native=1",
+        url: "https://cargaapp.vercel.app/auth?native=1",
       });
       setBusy(false);
       return;

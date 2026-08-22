@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Trophy, Users } from "lucide-react";
 import { getPublicInvite, type PublicInvite } from "@/lib/invites.functions";
 
-const SITE_URL = "https://cargaapp.lovable.app";
+const SITE_URL = "https://cargaapp.vercel.app";
 const DEFAULT_OG_IMAGE =
   "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/00425b45-eeac-49c1-8a72-fbb87d9cff32/id-preview-84b6e1cb--a45a51fe-d372-477e-98b1-329caa5ebd07.lovable.app-1783396862047.png";
 
