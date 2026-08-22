@@ -43,7 +43,23 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="hidden">tem como adicionar um modo em que a pessoa loga na propria conta da ia dela para usar no app? ai o app teria uma ia que funcionaria no login proprio de cada pessoa</div>
+      <div className="hidden">Quero implementar a opção 1 (campo simples no Perfil), com espaço para evoluir para fallback depois. Por favor:
+
+Adicione uma seção "Configurações de IA" na página de Perfil do usuário, com:
+Um campo de texto (tipo password, com botão de mostrar/ocultar) para colar a chave de API
+Um seletor (dropdown) para escolher o provedor: OpenAI, Anthropic ou Google Gemini
+Um botão "Validar chave" que faz uma chamada de teste simples à API do provedor escolhido e mostra "Chave válida ✅" ou "Chave inválida ❌"
+Um botão "Salvar" que só fica habilitado depois que a chave for validada com sucesso
+Um botão "Remover chave" para o usuário apagar a chave salva
+Armazene a chave de forma segura (não em texto puro no client-side/localStorage) — use uma tabela no banco vinculada ao usuário, com o valor da chave criptografado ou, se o Supabase estiver habilitado no projeto, guarde como secret vinculado ao user_id.
+Quando o usuário for usar algum recurso de IA no app (sugestões de treino, montagem de treino, etc.), o sistema deve:
+Verificar se existe uma chave própria salva para aquele usuário e qual provedor ele escolheu
+Se existir, usar a chave e the provedor próprios dele nas chamadas de IA (roteando para a API correta: OpenAI, Anthropic ou Gemini)
+Se não existir, usar a chave padrão do app (comportamento atual)
+Isso deve ser transparente para o usuário, sem exigir nenhuma ação extra dele depois de salvar a chave
+Se a chamada com a chave própria do usuário falhar (ex: sem créditos, chave revogada), mostre uma mensagem clara pedindo para ele revisar a chave no Perfil — não caia silenciosamente para a chave padrão do app.
+Para garantir que a experiência seja consistente independente do provedor escolhido, padronize o formato de saída da IA: defina um prompt-base fixo que instrua o modelo a responder sempre em um formato estruturado (ex: JSON com campos como peso_sugerido, repeticoes_sugeridas, tempo_descanso_sugerido, observacao), e use esse mesmo formato de parsing para OpenAI, Anthropic e Gemini. Isso evita que a resposta varie de estilo (bullets, texto corrido, tom mais ou menos detalhado) dependendo do provedor escolhido pelo usuário.
+Adicione uma funcionalidade de "Montar treino com IA": o usuário informa objetivo (ex: hipertrofia, força, resistência, emagrecimento), dias disponíveis por semana, nível de experiência (iniciante/intermediário/avançado), grupos musculares que quer priorizar e equipamentos disponíveis (academia completa, halteres em casa, peso corporal, etc.). Com base nessas respostas, a IA monta uma divisão de treino completa (ex: Treino A, B, C) com exercícios, séries, repetições e tempo de descanso sugeridos para cada um. O resultado deve seguir o mesmo formato de saída estruturado (JSON) definido no item 5, para funcionar de forma consistente com qualquer provedor. O usuário deve poder revisar o treino gerado antes de salvá-lo, podendo editar ou remover exercícios individualmente antes de confirmar.</div>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <picture>
