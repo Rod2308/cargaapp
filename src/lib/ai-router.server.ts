@@ -15,14 +15,15 @@ export async function routeAiRequest(userId: string, options: {
   jsonMode?: boolean;
 }) {
   // 1. Busca config do usuário via bridge (seguro, server-side)
-  const config = await bridged("ai.getConfig", async (supabase, uid) => {
-    const { data } = await supabase
-      .from("user_ai_configs" as any)
+  // O bridge action espera (payload, userId)
+  const config = await (bridged("ai.getConfig", async (supabase, uid) => {
+    const { data } = await (supabase
+      .from("user_ai_configs" as any) as any)
       .select("provider, api_key")
       .eq("user_id", uid)
       .maybeSingle();
     return data;
-  })(userId);
+  }) as any)({}, userId);
 
   let model;
   if (config?.api_key && config?.provider) {
@@ -37,10 +38,11 @@ export async function routeAiRequest(userId: string, options: {
     }
   }
 
-  // Fallback para chave padrão (via Lovable AI Gateway implicitamente se model for nulo)
+  // Fallback para chave padrão
   if (!model) {
-    // Aqui usamos o provedor padrão configurado no ambiente se o usuário não tiver chave
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("AI não configurada (faltando chave padrão)");
+    const openai = createOpenAI({ apiKey });
     model = openai("gpt-4o");
   }
 
@@ -52,7 +54,6 @@ export async function routeAiRequest(userId: string, options: {
 
   if (options.jsonMode) {
     try {
-      // Tenta extrair JSON do texto (alguns modelos podem colocar markdown)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       return JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (e) {
