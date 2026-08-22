@@ -43,7 +43,10 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-4 text-center bg-accent text-accent-foreground font-medium">sim</div>
+      <div className="p-4 text-center bg-accent text-accent-foreground font-medium whitespace-pre-line">Reparar o login por e-mail e senha verificando confirmação de e-mail, limites de envio e fluxo de autenticação no Supabase.
+
+Corrigir o login com Google fazendo o OAuth redirecionar corretamente e autenticar no Supabase.
+Tem que funcionar no lovable e no vercel</div>
       <div className="hidden">Quero implementar a opção 1 (campo simples no Perfil), com espaço para evoluir para fallback depois. Por favor:
 
 Adicione uma seção "Configurações de IA" na página de Perfil do usuário, com:
