@@ -63,7 +63,11 @@ export const validateAiKey = createServerFn({ method: "POST" })
       
       if (provider === "google") {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${api_key}`);
-        return { valid: res.ok };
+        if (!res.ok) {
+          const body = await res.text();
+          return { valid: false, error: `Erro Google: ${res.status} - ${body}` };
+        }
+        return { valid: true };
       }
       
       return { valid: false, error: "Provedor desconhecido" };

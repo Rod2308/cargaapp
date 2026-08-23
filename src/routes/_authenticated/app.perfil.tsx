@@ -787,7 +787,7 @@ function AiKeyManager() {
         toast.success("Chave válida ✅");
       } else {
         setIsValidated(false);
-        toast.error("Chave inválida ❌");
+        toast.error(`Chave inválida ❌ ${data.error ? '(' + data.error + ')' : ''}`);
       }
     },
     onError: (e: any) => {
