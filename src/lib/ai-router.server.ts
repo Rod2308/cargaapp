@@ -35,7 +35,7 @@ export async function routeAiRequest(userId: string, options: {
     } else if (provider === "anthropic") {
       model = createAnthropic({ apiKey: config.api_key })("claude-3-5-sonnet-20240620");
     } else if (provider === "google") {
-      model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-flash");
+      model = createGoogleGenerativeAI({ apiKey: config.api_key })("gemini-1.5-flash-latest");
     }
   }
 
