@@ -27,6 +27,7 @@ import { AutoProgressionCard } from "@/components/AutoProgressionCard";
 
 import { StreakSummaryCard } from "@/components/StreakSummaryCard";
 import { RetroWorkoutDialog } from "@/components/RetroWorkoutDialog";
+import { CardioSportDialog } from "@/components/CardioSportDialog";
 import { DecisionExplainer } from "@/components/DecisionExplainer";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { DailySuggestionCard } from "@/components/DailySuggestionCard";
@@ -452,63 +453,7 @@ function Dashboard() {
 
 
 
-  // Esportes: exercícios do grupo "Esportes" para log rápido do dia
-  const { data: sports = [] } = useQuery({
-    queryKey: ["sports"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("exercises")
-        .select("id, name")
-        .eq("muscle_group", "Esportes")
-        .order("name");
-      return data ?? [];
-    },
-  });
-
   const [sportOpen, setSportOpen] = useState(false);
-  const [sportId, setSportId] = useState<string>("");
-  const [sportDuration, setSportDuration] = useState<string>("30");
-  const [sportDate, setSportDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
-
-
-  const logSport = useMutation({
-    mutationFn: async () => {
-      if (!sportId) throw new Error("Escolha um esporte");
-      const dur = Number(sportDuration);
-      if (!dur || dur <= 0) throw new Error("Duração inválida");
-      const startedAt = new Date(`${sportDate}T12:00:00`);
-      const endedAt = new Date(startedAt.getTime() + dur * 60_000);
-      const { data: sess, error: sErr } = await supabase
-        .from("sessions")
-        .insert({
-          user_id: user.id,
-          workout_id: null,
-          started_at: startedAt.toISOString(),
-          ended_at: endedAt.toISOString(),
-          notes: `Esporte · ${dur} min`,
-        })
-        .select()
-        .single();
-      if (sErr) throw sErr;
-      const { error: setErr } = await supabase.from("session_sets").insert({
-        session_id: sess.id,
-        exercise_id: sportId,
-        set_number: 1,
-        reps: dur,
-        completed_at: endedAt.toISOString(),
-      });
-      if (setErr) throw setErr;
-      return sess;
-    },
-    onSuccess: () => {
-      toast.success("Esporte registrado!");
-      syncInvalidate(qc, RECOVERY_SYNC_KEYS);
-      setSportOpen(false);
-      setSportId("");
-      setSportDuration("30");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "atleta";
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
@@ -712,54 +657,12 @@ function Dashboard() {
 
 
 
-      {/* Dialog: registrar esporte */}
-      <Dialog open={sportOpen} onOpenChange={setSportOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar esporte</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs">Esporte / atividade</Label>
-              <Select value={sportId} onValueChange={setSportId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Escolha um esporte" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {sports.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Duração (min)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={sportDuration}
-                  onChange={(e) => setSportDuration(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Data</Label>
-                <Input
-                  type="date"
-                  value={sportDate}
-                  onChange={(e) => setSportDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSportOpen(false)}>Cancelar</Button>
-            <Button onClick={() => logSport.mutate()} disabled={logSport.isPending}>
-              <Trophy className="size-4" /> Registrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog: registrar cardio / esporte */}
+      <CardioSportDialog
+        open={sportOpen}
+        onOpenChange={setSportOpen}
+        userId={user.id}
+      />
 
 
 

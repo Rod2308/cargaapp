@@ -53,6 +53,7 @@ function isImported(s: SessionLike): boolean {
 
 // Atividades consideradas cardio (aeróbicas / esportes contínuos).
 const CARDIO_ACTIVITY_KEYWORDS = [
+  "cardio", "esteira", "escada", "padel", "futsal",
   "corrida", "corrid", "run",
   "caminhada", "caminh", "walk", "hik", "trilha",
   "ciclism", "bike", "cycl", "pedal",
@@ -74,7 +75,7 @@ const CARDIO_ACTIVITY_KEYWORDS = [
 
 const CARDIO_ACTIVITY_TYPES = new Set([
   "running", "run", "cycling", "biking", "bike", "walking", "walk",
-  "hiking", "swimming", "swim", "rowing", "row", "elliptical", "cardio",
+  "hiking", "swimming", "swim", "rowing", "row", "elliptical", "cardio", "sport",
 ]);
 
 function normalize(str: string): string {
@@ -82,13 +83,13 @@ function normalize(str: string): string {
 }
 
 export function isCardioSession(s: SessionLike): boolean {
-  // Atividades importadas com activity_type conhecido
+  // Atividades com activity_type conhecido
   if (s.activity_type && CARDIO_ACTIVITY_TYPES.has(s.activity_type.toLowerCase())) return true;
   // Distância registrada = corrida/caminhada/pedal
   if ((s.distance_m ?? 0) > 0) return true;
-  // Treino livre com exercício do grupo "Esportes"
+  // Treino livre com exercício do grupo "Esportes" ou "Cardio"
   const ex = firstExercise(s);
-  if (ex?.muscle_group === "Esportes") return true;
+  if (ex?.muscle_group === "Esportes" || ex?.muscle_group === "Cardio") return true;
   // Nomes conhecidos no exercício ou no título/atividade
   const haystack = normalize(
     [ex?.name ?? "", s.title ?? "", s.activity_type ?? ""].join(" "),
@@ -129,12 +130,23 @@ export function sessionSubtitle(s: SessionLike): string | null {
     return parts.length ? parts.join(" · ") : null;
   }
   if (!s.workouts) {
-    const ex = firstExercise(s);
-    if (ex?.muscle_group === "Esportes") {
-      const sets = s.session_sets ?? [];
-      const minutes = sets.reduce((acc, set) => acc + (set?.reps ?? 0), 0);
-      if (minutes > 0) return `${minutes} min`;
+    const parts: string[] = [];
+    if (s.started_at && s.ended_at) {
+      const secs = Math.max(0, Math.round((new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 1000));
+      const m = Math.round(secs / 60);
+      if (m > 0) parts.push(`${m} min`);
+    } else {
+      const ex = firstExercise(s);
+      if (ex?.muscle_group === "Esportes" || ex?.muscle_group === "Cardio") {
+        const sets = s.session_sets ?? [];
+        const minutes = sets.reduce((acc, set) => acc + (set?.reps ?? 0), 0);
+        if (minutes > 0) parts.push(`${minutes} min`);
+      }
     }
+    if (s.distance_m && s.distance_m > 0) {
+      parts.push(s.distance_m >= 1000 ? `${(s.distance_m / 1000).toFixed(2).replace(".", ",")} km` : `${s.distance_m} m`);
+    }
+    if (parts.length > 0) return parts.join(" · ");
   }
   const setsCount = s.session_sets?.length ?? 0;
   if (setsCount > 0 && s.workouts) return `${setsCount} série${setsCount === 1 ? "" : "s"}`;

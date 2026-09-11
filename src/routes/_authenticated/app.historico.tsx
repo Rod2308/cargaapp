@@ -321,7 +321,12 @@ function HistoryPage() {
                               Importado
                             </span>
                           )}
-                          {isCardioSession(s) && (
+                          {!imported && (s.activity_type === "sport" || s.session_sets?.[0]?.exercises?.muscle_group === "Esportes") && (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                              Esporte
+                            </span>
+                          )}
+                          {isCardioSession(s) && (s.activity_type !== "sport" && s.session_sets?.[0]?.exercises?.muscle_group !== "Esportes") && (
                             <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
                               Cardio
                             </span>
