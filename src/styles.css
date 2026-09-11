@@ -140,10 +140,6 @@ body, [class*="card-"], [class*="bg-"], [class*="text-"], [class*="border-"] {
   * { border-color: var(--color-border); }
   html, body {
     font-family: var(--font-sans);
-    /* Safety net: never allow horizontal scroll on the page itself.
-       Intentional horizontal scrollers (carousels) live inside opt-in
-       overflow-x:auto containers and keep working. */
-    overflow-x: hidden;
     max-width: 100%;
   }
   html {

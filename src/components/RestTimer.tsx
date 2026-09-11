@@ -295,10 +295,10 @@ export function RestTimer({
     <div
       role="status"
       aria-live="polite"
-      className={`sticky top-3 z-20 mt-4 overflow-hidden rounded-xl border p-4 shadow-md transition-colors ${
+      className={`sticky top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-30 mt-4 overflow-hidden rounded-xl border p-4 shadow-lift backdrop-blur-md transition-all ${
         done
-          ? "border-success/60 bg-success/10 animate-pulse"
-          : "border-border bg-card"
+          ? "border-success/60 bg-success/15 dark:bg-success/20 animate-pulse"
+          : "border-border bg-card/95"
       }`}
     >
       <div className="flex items-center gap-4">
