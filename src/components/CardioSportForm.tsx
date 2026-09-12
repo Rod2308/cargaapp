@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Trophy, ArrowLeft } from "lucide-react";
+import { Trophy, ArrowLeft, Gauge, Flame, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,27 +15,14 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { ActivitySelector } from "@/components/ActivitySelector";
+import {
+  findActivityByName,
+  calculatePace,
+  saveRecentActivity,
+} from "@/lib/activities-catalog";
 
 const MAX_RETRO_DAYS = 90;
-
-export const CARDIO_SPORT_ACTIVITIES = [
-  "Caminhada",
-  "Corrida",
-  "Esteira",
-  "Bicicleta",
-  "Bike indoor",
-  "Elíptico",
-  "Escada",
-  "Natação",
-  "Futebol",
-  "Futsal",
-  "Padel",
-  "Tênis",
-  "Basquete",
-  "Vôlei",
-  "Cardio da academia",
-  "Outro",
-] as const;
 
 export type IntensityLevel = "leve" | "moderada" | "intensa" | "";
 
@@ -48,6 +35,7 @@ const INTENSITY_RPE_MAP: Record<string, number> = {
 type Props = {
   userId: string;
   defaultDate?: string;
+  initialActivity?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
   onBack?: () => void;
@@ -56,6 +44,7 @@ type Props = {
 export function CardioSportForm({
   userId,
   defaultDate,
+  initialActivity = "Esteira",
   onSuccess,
   onCancel,
   onBack,
@@ -65,13 +54,27 @@ export function CardioSportForm({
   const todayStr = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
   const minStr = useMemo(() => format(subDays(new Date(), MAX_RETRO_DAYS), "yyyy-MM-dd"), []);
 
-  const [activity, setActivity] = useState<string>("Esteira");
+  const [activity, setActivity] = useState<string>(initialActivity);
   const [customName, setCustomName] = useState<string>("");
   const [durationMin, setDurationMin] = useState<string>("30");
   const [dateStr, setDateStr] = useState<string>(defaultDate || todayStr);
   const [distanceKm, setDistanceKm] = useState<string>("");
   const [intensity, setIntensity] = useState<IntensityLevel>("");
   const [notes, setNotes] = useState<string>("");
+
+  const activityMeta = useMemo(() => {
+    return findActivityByName(activity === "Outro" ? customName : activity);
+  }, [activity, customName]);
+
+  // Cálculo dinâmico do Pace em tempo real quando distância e duração forem preenchidos
+  const calculatedPace = useMemo(() => {
+    const dur = Number(durationMin);
+    const dist = distanceKm ? parseFloat(distanceKm.replace(",", ".")) : 0;
+    if (dist > 0 && dur > 0) {
+      return calculatePace(dur, dist);
+    }
+    return null;
+  }, [durationMin, distanceKm]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -97,14 +100,25 @@ export function CardioSportForm({
 
       const rpe = intensity ? INTENSITY_RPE_MAP[intensity] ?? null : null;
 
-      // Monta observação estruturada com intensidade se informada
+      // Monta observação estruturada com intensidade / pace se aplicável
       const intensityLabel = intensity === "leve" ? "Leve" : intensity === "moderada" ? "Moderada" : intensity === "intensa" ? "Intensa" : null;
-      const finalNotes = notes.trim()
-        ? (intensityLabel ? `${notes.trim()} (Intensidade: ${intensityLabel})` : notes.trim())
-        : (intensityLabel ? `Intensidade: ${intensityLabel}` : null);
+      const extraDetails: string[] = [];
+      if (intensityLabel) extraDetails.push(`Intensidade: ${intensityLabel}`);
+      if (calculatedPace) extraDetails.push(`Pace: ${calculatedPace}`);
 
-      // Determina tipo de atividade
-      const isSportCategory = ["Futebol", "Futsal", "Padel", "Tênis", "Basquete", "Vôlei"].includes(finalName);
+      const detailsStr = extraDetails.length > 0 ? `(${extraDetails.join(" · ")})` : "";
+      const finalNotes = notes.trim()
+        ? (detailsStr ? `${notes.trim()} ${detailsStr}` : notes.trim())
+        : (detailsStr || null);
+
+      // Salva no histórico de recentes locais
+      saveRecentActivity(finalName);
+
+      // Determina categoria para exercícios
+      const isSportCategory = activityMeta?.category === "esportes_coletivos" ||
+        activityMeta?.category === "esportes_raquete" ||
+        activityMeta?.category === "lutas_artes_marciais" ||
+        activityMeta?.category === "danca";
       const activityType = isSportCategory ? "sport" : "cardio";
 
       const { data: session, error: sErr } = await supabase
@@ -195,40 +209,24 @@ export function CardioSportForm({
         </button>
       )}
 
-      {/* Atividade */}
+      {/* Seletor Integrado de Atividades */}
       <div>
-        <Label className="text-xs font-semibold">Atividade *</Label>
-        <Select value={activity} onValueChange={setActivity}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Escolha a atividade" />
-          </SelectTrigger>
-          <SelectContent className="max-h-72">
-            {CARDIO_SPORT_ACTIVITIES.map((act) => (
-              <SelectItem key={act} value={act}>
-                {act}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label className="text-xs font-semibold mb-1.5 block">Modalidade *</Label>
+        <ActivitySelector
+          selectedActivity={activity}
+          onSelectActivity={setActivity}
+          customActivityName={customName}
+          onChangeCustomName={setCustomName}
+        />
       </div>
 
-      {activity === "Outro" && (
-        <div>
-          <Label className="text-xs font-semibold">Nome da atividade *</Label>
-          <Input
-            type="text"
-            placeholder="Ex: Remo indoor, Muay Thai, etc."
-            value={customName}
-            onChange={(e) => setCustomName(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-      )}
-
       {/* Duração e Data */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 pt-1">
         <div>
-          <Label className="text-xs font-semibold">Duração (min) *</Label>
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            <Clock className="size-3.5 text-muted-foreground" />
+            Duração (min) *
+          </Label>
           <Input
             type="number"
             min={1}
@@ -240,7 +238,10 @@ export function CardioSportForm({
           />
         </div>
         <div>
-          <Label className="text-xs font-semibold">Data *</Label>
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            <Calendar className="size-3.5 text-muted-foreground" />
+            Data *
+          </Label>
           <Input
             type="date"
             value={dateStr}
@@ -252,22 +253,32 @@ export function CardioSportForm({
         </div>
       </div>
 
-      {/* Distância e Intensidade */}
+      {/* Distância, Pace e Intensidade */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs font-semibold">Distância (km)</Label>
+          <Label className="text-xs font-semibold flex items-center justify-between">
+            <span>Distância (km)</span>
+            {calculatedPace && (
+              <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                Pace: {calculatedPace}
+              </span>
+            )}
+          </Label>
           <Input
             type="number"
             step="0.01"
             min={0}
-            placeholder="Ex: 3.5"
+            placeholder={activityMeta?.supportsDistance ? "Ex: 5.0" : "Opcional"}
             value={distanceKm}
             onChange={(e) => setDistanceKm(e.target.value)}
             className="mt-1"
           />
         </div>
         <div>
-          <Label className="text-xs font-semibold">Intensidade</Label>
+          <Label className="text-xs font-semibold flex items-center gap-1">
+            <Gauge className="size-3.5 text-muted-foreground" />
+            Intensidade
+          </Label>
           <Select value={intensity} onValueChange={(v) => setIntensity(v as IntensityLevel)}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Opcional" />
@@ -283,9 +294,9 @@ export function CardioSportForm({
 
       {/* Observações */}
       <div>
-        <Label className="text-xs font-semibold">Observação</Label>
+        <Label className="text-xs font-semibold">Observações (opcional)</Label>
         <Textarea
-          placeholder="Ex: 20 min de esteira após o treino, ritmo leve..."
+          placeholder="Ex: Treino em jejum, subidas, jogo de duplas, sensação ótima..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}

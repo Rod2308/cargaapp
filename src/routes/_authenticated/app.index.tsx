@@ -637,7 +637,7 @@ function Dashboard() {
         </div>
 
 
-        {/* Registrar esporte do dia */}
+        {/* Registrar atividade do dia (Cardio / Esporte) */}
         <button
           onClick={() => setSportOpen(true)}
           className="card-lift col-span-2 flex items-center gap-3 p-4 text-left sm:p-5 md:col-span-2"
@@ -646,8 +646,8 @@ function Dashboard() {
             <Trophy className="size-5" strokeWidth={2.5} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-eyebrow text-muted-foreground">Praticou um esporte?</p>
-            <p className="font-display text-base font-bold leading-tight">Registrar esporte do dia</p>
+            <p className="text-eyebrow text-muted-foreground">Praticou um cardio ou esporte?</p>
+            <p className="font-display text-base font-bold leading-tight">Registrar atividade do dia</p>
           </div>
           <Plus className="size-5 text-muted-foreground" strokeWidth={2.5} />
         </button>

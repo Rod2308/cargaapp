@@ -10,14 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check, HeartPulse } from "lucide-react";
+import { ArrowLeft, Play, Plus, Trash2, GripVertical, TrendingUp, TrendingDown, Minus, Sparkles, Check, HeartPulse, Dumbbell, Activity as ActivityIcon } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
+import { ActivitySelector } from "@/components/ActivitySelector";
+import { findActivityByName } from "@/lib/activities-catalog";
 
 import { z } from "zod";
 import { suggestAdjustment, hasChange, type Suggestion, type CardioLoad } from "@/lib/progression";
-
 
 export const Route = createFileRoute("/_authenticated/app/treinos/$id")({
   validateSearch: z.object({ add: z.number().optional() }),
@@ -31,17 +32,25 @@ function WorkoutEditor() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
+  const [addTab, setAddTab] = useState<"musculacao" | "cardio">("musculacao");
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const pendingAddsRef = useRef(0);
+
+  // Estado para adicionar Cardio / Esporte ao treino
+  const [selectedCardio, setSelectedCardio] = useState<string>("Esteira");
+  const [customCardioName, setCustomCardioName] = useState<string>("");
+  const [cardioDuration, setCardioDuration] = useState<string>("20");
+  const [cardioDistance, setCardioDistance] = useState<string>("");
+  const [cardioIntensity, setCardioIntensity] = useState<string>("moderada");
+  const [cardioNotes, setCardioNotes] = useState<string>("");
+
   useEffect(() => {
     if (routeSearch.add) {
       setAddOpen(true);
       navigate({ to: "/app/treinos/$id", params: { id }, search: {}, replace: true });
     }
   }, [routeSearch.add, id, navigate]);
-
-
 
   const { data: workout } = useQuery({
     queryKey: ["workout", id],
@@ -72,10 +81,11 @@ function WorkoutEditor() {
   });
 
   const muscleGroups = useMemo(() => {
-    return Array.from(new Set(exercises.map((e) => e.muscle_group))).sort();
+    return Array.from(new Set(exercises.map((e) => e.muscle_group))).filter((g) => g !== "Cardio" && g !== "Esportes").sort();
   }, [exercises]);
 
   const filtered = exercises
+    .filter((e) => e.muscle_group !== "Cardio" && e.muscle_group !== "Esportes")
     .filter(
       (e) =>
         (muscleFilter === "all" || e.muscle_group === muscleFilter) &&
@@ -114,6 +124,73 @@ function WorkoutEditor() {
       qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
     },
     onError: (e: any) => toast.error(e.message),
+  });
+
+  const addCardioItem = useMutation({
+    mutationFn: async () => {
+      const finalName = selectedCardio === "Outro" ? customCardioName.trim() : selectedCardio;
+      if (!finalName) throw new Error("Informe o nome do cardio ou esporte");
+
+      const durMin = parseInt(cardioDuration) || 20;
+      const meta = findActivityByName(finalName);
+      const isSportCategory = meta?.category === "esportes_coletivos" ||
+        meta?.category === "esportes_raquete" ||
+        meta?.category === "lutas_artes_marciais" ||
+        meta?.category === "danca";
+      const muscleGroup = isSportCategory ? "Esportes" : "Cardio";
+
+      // Busca ou cria o registro em exercises
+      const { data: existingEx } = await supabase
+        .from("exercises")
+        .select("id")
+        .eq("name", finalName)
+        .maybeSingle();
+
+      let exId = existingEx?.id;
+      if (!exId) {
+        const { data: newEx, error: newErr } = await supabase
+          .from("exercises")
+          .insert({
+            name: finalName,
+            muscle_group: muscleGroup,
+            is_default: false,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+        if (newErr) throw newErr;
+        exId = newEx.id;
+      }
+
+      // Monta anotação estruturada (ex: Distância: 3.5km, Intensidade: moderada)
+      const details: string[] = [];
+      if (cardioDistance) details.push(`Distância planejada: ${cardioDistance} km`);
+      if (cardioIntensity) details.push(`Intensidade: ${cardioIntensity}`);
+      if (cardioNotes.trim()) details.push(cardioNotes.trim());
+      const finalNotes = details.join(" · ") || null;
+
+      const maxIdx = (items as any[]).reduce((m, it) => Math.max(m, it.order_idx ?? 0), -1);
+
+      const { writeInsert } = await import("@/lib/offline-writes");
+      await writeInsert("workout_exercises", {
+        workout_id: id,
+        exercise_id: exId,
+        order_idx: maxIdx + 1,
+        target_sets: 1, // 1 bloco de cardio
+        target_reps: `${durMin} min`,
+        target_rest_seconds: 60,
+        notes: finalNotes,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workout-exercises", id] });
+      qc.invalidateQueries({ queryKey: ["exercises"] });
+      toast.success("Cardio / Esporte adicionado ao treino!");
+      setAddOpen(false);
+      setCardioDistance("");
+      setCardioNotes("");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao adicionar cardio"),
   });
 
   const addedIds = useMemo(() => new Set((items as any[]).map((it) => it.exercise_id)), [items]);
@@ -304,54 +381,165 @@ function WorkoutEditor() {
         </Button>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline"><Plus className="size-4" /> Exercício</Button>
+            <Button variant="outline"><Plus className="size-4" /> Adicionar</Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[80vh] overflow-hidden">
-            <DialogHeader><DialogTitle>Adicionar exercício</DialogTitle></DialogHeader>
-            <div className="flex gap-2">
-              <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
-              <Select value={muscleFilter} onValueChange={setMuscleFilter}>
-                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os grupos</SelectItem>
-                  {muscleGroups.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <DialogContent className="max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Adicionar ao treino</DialogTitle>
+            </DialogHeader>
+
+            {/* Tabs de Seleção: Musculação vs Cardio */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-muted/60 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setAddTab("musculacao")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  addTab === "musculacao"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Dumbbell className="size-4" />
+                Musculação
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddTab("cardio")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  addTab === "cardio"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <ActivityIcon className="size-4" />
+                Cardio / Esporte
+              </button>
             </div>
-            <div className="max-h-[50vh] space-y-1 overflow-y-auto">
-              {filtered.map((e) => {
-                const added = addedIds.has(e.id);
-                return (
-                  <button
-                    key={e.id}
-                    onClick={() => {
-                      if (added) return;
-                      const maxIdx = (items as any[]).reduce((m, it) => Math.max(m, it.order_idx ?? 0), -1);
-                      addExercise.mutate({ exerciseId: e.id, orderIdx: maxIdx + 1 + pendingAddsRef.current++ });
-                    }}
-                    disabled={added || addExercise.isPending}
-                    className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary disabled:cursor-default"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{e.name}</p>
-                      <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
-                    </div>
-                    {added ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                        <Check className="size-3" /> Adicionado
-                      </span>
-                    ) : (
-                      <Plus className="size-4 text-muted-foreground" />
-                    )}
-                  </button>
-                );
-              })}
-              {filtered.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Nenhum exercício encontrado.</p>}
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setAddOpen(false)} className="w-full sm:w-auto">Concluir</Button>
+
+            {addTab === "musculacao" ? (
+              <div className="space-y-3 overflow-hidden flex flex-col flex-1">
+                <div className="flex gap-2">
+                  <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <Select value={muscleFilter} onValueChange={setMuscleFilter}>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os grupos</SelectItem>
+                      {muscleGroups.map((g) => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="max-h-[45vh] space-y-1 overflow-y-auto pr-1">
+                  {filtered.map((e) => {
+                    const added = addedIds.has(e.id);
+                    return (
+                      <button
+                        key={e.id}
+                        onClick={() => {
+                          if (added) return;
+                          const maxIdx = (items as any[]).reduce((m, it) => Math.max(m, it.order_idx ?? 0), -1);
+                          addExercise.mutate({ exerciseId: e.id, orderIdx: maxIdx + 1 + pendingAddsRef.current++ });
+                        }}
+                        disabled={added || addExercise.isPending}
+                        className="flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary disabled:cursor-default"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{e.name}</p>
+                          <p className="text-xs text-muted-foreground">{e.muscle_group}{e.equipment && ` · ${e.equipment}`}</p>
+                        </div>
+                        {added ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                            <Check className="size-3" /> Adicionado
+                          </span>
+                        ) : (
+                          <Plus className="size-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    );
+                  })}
+                  {filtered.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Nenhum exercício encontrado.</p>}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 overflow-y-auto max-h-[55vh] pr-1">
+                <p className="text-xs text-muted-foreground">
+                  Planeje esteira, bike, corrida, vôlei ou qualquer atividade aeróbica dentro deste treino.
+                </p>
+                <div>
+                  <Label className="text-xs font-semibold mb-1.5 block">Modalidade</Label>
+                  <ActivitySelector
+                    selectedActivity={selectedCardio}
+                    onSelectActivity={setSelectedCardio}
+                    customActivityName={customCardioName}
+                    onChangeCustomName={setCustomCardioName}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold">Duração prevista (min)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={300}
+                      value={cardioDuration}
+                      onChange={(e) => setCardioDuration(e.target.value)}
+                      placeholder="20"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Distância prevista (km)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      value={cardioDistance}
+                      onChange={(e) => setCardioDistance(e.target.value)}
+                      placeholder="Ex: 3.0"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold">Intensidade planejada</Label>
+                    <Select value={cardioIntensity} onValueChange={setCardioIntensity}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="leve">Leve</SelectItem>
+                        <SelectItem value="moderada">Moderada</SelectItem>
+                        <SelectItem value="intensa">Intensa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Notas (opcional)</Label>
+                    <Input
+                      value={cardioNotes}
+                      onChange={(e) => setCardioNotes(e.target.value)}
+                      placeholder="Ex: No fim do treino"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="mt-2 pt-2 border-t flex flex-row items-center justify-between sm:justify-end gap-2">
+              <Button variant="outline" onClick={() => setAddOpen(false)}>Fechar</Button>
+              {addTab === "cardio" && (
+                <Button
+                  onClick={() => addCardioItem.mutate()}
+                  disabled={addCardioItem.isPending}
+                  className="gap-1.5 font-semibold"
+                >
+                  <Plus className="size-4" />
+                  Adicionar ao treino
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -395,35 +583,67 @@ function WorkoutEditor() {
             Adicione exercícios para começar.
           </div>
         )}
-        {items.map((it: any, idx: number) => (
-          <div key={it.id} className="card-soft p-4">
-            <div className="flex items-start gap-2">
-              <GripVertical className="mt-1 size-4 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold leading-tight">{idx + 1}. {it.exercises.name}</p>
-                <p className="text-xs text-muted-foreground">{it.exercises.muscle_group}{it.exercises.equipment && ` · ${it.exercises.equipment}`}</p>
+        {items.map((it: any, idx: number) => {
+          const isCardio = it.exercises?.muscle_group === "Cardio" || it.exercises?.muscle_group === "Esportes";
+
+          return (
+            <div key={it.id} className={`card-soft p-4 ${isCardio ? "border border-brand/40 bg-brand/5" : ""}`}>
+              <div className="flex items-start gap-2">
+                <GripVertical className="mt-1 size-4 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    {isCardio && (
+                      <span className="rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">
+                        Cardio / Esporte
+                      </span>
+                    )}
+                    <p className="font-semibold leading-tight">{idx + 1}. {it.exercises?.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isCardio ? "Atividade Aeróbica" : `${it.exercises?.muscle_group}${it.exercises?.equipment ? ` · ${it.exercises.equipment}` : ""}`}
+                    {it.notes ? ` · ${it.notes}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => removeItem.mutate(it.id)}
+                  className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-destructive"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() => removeItem.mutate(it.id)}
-                className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-destructive"
-              >
-                <Trash2 className="size-4" />
-              </button>
+
+              {isCardio ? (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <FieldText
+                    label="Duração planejada"
+                    value={it.target_reps || "20 min"}
+                    onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_reps: v } })}
+                  />
+                  <FieldText
+                    label="Notas / Distância"
+                    value={it.notes || ""}
+                    onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { notes: v } })}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    <FieldNum label="Séries" value={it.target_sets} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_sets: v } })} />
+                    <FieldText label="Reps" value={it.target_reps} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_reps: v } })} />
+                    <FieldNum label="Carga (kg)" step={0.5} value={it.target_weight_kg ?? ""} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_weight_kg: v || null } })} />
+                    <FieldNum label="Desc. (s)" value={it.target_rest_seconds} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_rest_seconds: v } })} />
+                  </div>
+                  <SuggestionRow
+                    suggestion={suggestionsByItem.get(it.id)}
+                    currentWeight={it.target_weight_kg ?? null}
+                    currentRest={it.target_rest_seconds}
+                    onApply={(patch) => updateItem.mutate({ itemId: it.id, patch })}
+                  />
+                </>
+              )}
             </div>
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              <FieldNum label="Séries" value={it.target_sets} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_sets: v } })} />
-              <FieldText label="Reps" value={it.target_reps} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_reps: v } })} />
-              <FieldNum label="Carga (kg)" step={0.5} value={it.target_weight_kg ?? ""} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_weight_kg: v || null } })} />
-              <FieldNum label="Desc. (s)" value={it.target_rest_seconds} onSave={(v) => updateItem.mutate({ itemId: it.id, patch: { target_rest_seconds: v } })} />
-            </div>
-            <SuggestionRow
-              suggestion={suggestionsByItem.get(it.id)}
-              currentWeight={it.target_weight_kg ?? null}
-              currentRest={it.target_rest_seconds}
-              onApply={(patch) => updateItem.mutate({ itemId: it.id, patch })}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
     </TooltipProvider>

@@ -14,6 +14,7 @@ import {
 } from "@/lib/session-persist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,8 @@ import { toast } from "sonner";
 import { toastUndo, stripGenerated } from "@/lib/undo";
 import { RestTimer } from "@/components/RestTimer";
 import { PlateCalculator } from "@/components/PlateCalculator";
+import { ActivitySelector } from "@/components/ActivitySelector";
+import { findActivityByName, calculatePace, saveRecentActivity } from "@/lib/activities-catalog";
 import { checkPr } from "@/lib/pr";
 import { translateActivityType } from "@/lib/workout-file-parser";
 import { suggestAdjustment, hasChange, type Suggestion, type SetRow as ProgSetRow } from "@/lib/progression";
@@ -723,7 +726,40 @@ function SessionPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
 
         {items.map((it: any, idx: number) => {
+          const isCardio = it.exercises?.muscle_group === "Cardio" || it.exercises?.muscle_group === "Esportes";
           const done = sets.filter((s: any) => s.workout_exercise_id === it.id);
+
+          if (isCardio) {
+            return (
+              <CardioExecutionCard
+                key={it.id}
+                item={it}
+                index={idx}
+                doneSets={done}
+                onLogCardio={(mins, distanceKm, intensity, notes) => {
+                  const details: string[] = [];
+                  if (distanceKm) details.push(`Distância: ${distanceKm} km`);
+                  if (intensity) details.push(`Intensidade: ${intensity}`);
+                  if (notes.trim()) details.push(notes.trim());
+                  const finalNotes = details.join(" · ") || null;
+
+                  logSet.mutate({
+                    session_id: id,
+                    workout_exercise_id: it.id,
+                    exercise_id: it.exercise_id,
+                    set_number: 1,
+                    reps: mins,
+                    weight_kg: null,
+                    notes: finalNotes,
+                  });
+                  saveRecentActivity(it.exercises?.name);
+                }}
+                onDeleteSet={(setId) => deleteSet.mutate(setId)}
+                onRemoveItem={() => removeExerciseItem.mutate({ id: it.id, exercise_id: it.exercise_id })}
+              />
+            );
+          }
+
           const suggestion = suggestionsByItem.get(it.id);
           const suggestedWeight = suggestion?.suggested_weight_kg ?? null;
           const lastRef = lastByExercise.get(it.exercise_id) ?? null;
@@ -841,7 +877,7 @@ function SessionPage() {
         {extraGroups.map(([exerciseId, doneSets], idx) => {
           const ex = allExercises.find((e: any) => e.id === exerciseId);
           const name = ex?.name ?? "Exercício extra";
-          const isSport = ex?.muscle_group === "Esportes";
+          const isSport = ex?.muscle_group === "Esportes" || ex?.muscle_group === "Cardio";
           return (
             <div key={exerciseId} className="card-soft border border-brand/30 p-4">
               <div className="flex items-start gap-3">
@@ -850,7 +886,7 @@ function SessionPage() {
                   <div className="flex items-baseline justify-between gap-2">
                     <h2 className="font-semibold leading-tight">
                       <span className="mr-1 rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">
-                        {isSport ? "Esporte" : "Extra"}
+                        {isSport ? "Cardio / Esporte" : "Extra"}
                       </span>
                       {items.length + idx + 1}. {name}
                     </h2>
@@ -1626,6 +1662,171 @@ function SuggestionHint({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CardioExecutionCard({
+  item,
+  index,
+  doneSets,
+  onLogCardio,
+  onDeleteSet,
+  onRemoveItem,
+}: {
+  item: any;
+  index: number;
+  doneSets: any[];
+  onLogCardio: (mins: number, distanceKm: number | null, intensity: string, notes: string) => void;
+  onDeleteSet: (setId: string) => void;
+  onRemoveItem: () => void;
+}) {
+  const targetMinMatch = String(item.target_reps).match(/\d+/);
+  const plannedMins = targetMinMatch ? parseInt(targetMinMatch[0]) : 20;
+
+  const [mins, setMins] = useState<string>(String(plannedMins));
+  const [distanceKm, setDistanceKm] = useState<string>("");
+  const [intensity, setIntensity] = useState<string>("moderada");
+  const [notes, setNotes] = useState<string>("");
+
+  const isCompleted = doneSets.length > 0;
+  const completedSet = doneSets[0];
+
+  const pace = useMemo(() => {
+    const m = Number(mins);
+    const d = distanceKm ? parseFloat(distanceKm.replace(",", ".")) : 0;
+    if (d > 0 && m > 0) return calculatePace(m, d);
+    return null;
+  }, [mins, distanceKm]);
+
+  return (
+    <div className={`card-soft p-4 border transition-all ${isCompleted ? "border-emerald-500/40 bg-emerald-500/5" : "border-brand/40 bg-brand/5"}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">
+              Cardio / Esporte
+            </span>
+            <h2 className="font-semibold leading-tight">{index + 1}. {item.exercises?.name}</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Meta: {item.target_reps || `${plannedMins} min`}
+            {item.notes ? ` · ${item.notes}` : ""}
+          </p>
+        </div>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover {item.exercises?.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta atividade será removida do treino atual.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={onRemoveItem}>Remover</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {isCompleted ? (
+        <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              <Check className="size-4" />
+              <span>Cardio Concluído ({completedSet.reps} min)</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDeleteSet(completedSet.id)}
+              className="h-6 text-[11px] text-muted-foreground hover:text-destructive"
+            >
+              Editar / Refazer
+            </Button>
+          </div>
+          {completedSet.notes && (
+            <p className="text-xs text-muted-foreground">{completedSet.notes}</p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px] font-medium text-muted-foreground">Tempo realizado (min)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={300}
+                value={mins}
+                onChange={(e) => setMins(e.target.value)}
+                className="mt-1 h-9 text-xs"
+                placeholder={String(plannedMins)}
+              />
+            </div>
+            <div>
+              <Label className="text-[11px] font-medium text-muted-foreground flex items-center justify-between">
+                <span>Distância (km)</span>
+                {pace && <span className="text-[10px] text-emerald-500 font-semibold">{pace}</span>}
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={distanceKm}
+                onChange={(e) => setDistanceKm(e.target.value)}
+                className="mt-1 h-9 text-xs"
+                placeholder="Ex: 3.5 (opcional)"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px] font-medium text-muted-foreground">Intensidade</Label>
+              <Select value={intensity} onValueChange={setIntensity}>
+                <SelectTrigger className="mt-1 h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="leve">Leve</SelectItem>
+                  <SelectItem value="moderada">Moderada</SelectItem>
+                  <SelectItem value="intensa">Intensa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[11px] font-medium text-muted-foreground">Observação</Label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="mt-1 h-9 text-xs"
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            className="w-full h-9 text-xs font-semibold gap-1.5 shadow-xs"
+            onClick={() => {
+              const m = Number(mins) || plannedMins;
+              const d = distanceKm ? parseFloat(distanceKm.replace(",", ".")) : null;
+              onLogCardio(m, d, intensity, notes);
+            }}
+          >
+            <Check className="size-3.5" />
+            Concluir cardio
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
