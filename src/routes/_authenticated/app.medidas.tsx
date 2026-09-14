@@ -24,15 +24,7 @@ import {
   Pencil,
   X,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { BodyEvolutionChart } from "@/components/BodyEvolutionChart";
 
 export const Route = createFileRoute("/_authenticated/app/medidas")({
   component: MeasurementsPage,
@@ -168,6 +160,14 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
     },
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("height_cm").eq("id", userId).maybeSingle();
+      return data;
+    },
+  });
+
   const resetForm = () => {
     setEditingId(null);
     setValues({});
@@ -227,7 +227,6 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
     onError: (e: any) => toast.error(e?.message ?? "Não consegui salvar as medidas."),
   });
 
-
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("body_measurements").delete().eq("id", id);
@@ -239,19 +238,6 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
     },
     onError: (e: any) => toast.error(e?.message ?? "Não consegui remover."),
   });
-
-  const chart = useMemo(
-    () =>
-      rows
-        .filter((r) => r[metric] != null)
-        .slice()
-        .reverse()
-        .map((r) => ({
-          date: format(new Date(`${r.log_date}T12:00:00`), "dd/MM"),
-          valor: Number(r[metric]),
-        })),
-    [rows, metric],
-  );
 
   const last = rows[0];
   const prev = rows[1];
@@ -311,7 +297,6 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         </p>
       </section>
 
-
       {error ? (
         <EmptyState
           icon={Ruler}
@@ -328,60 +313,12 @@ function MeasurementsTab({ userId, qc }: { userId: string; qc: ReturnType<typeof
         />
       ) : (
         <>
-          <section className="card-lift p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold">Evolução</h2>
-              <Select value={metric} onValueChange={(v) => setMetric(v as FieldKey)}>
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FIELDS.map((f) => (
-                    <SelectItem key={f.key} value={f.key}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {chart.length < 2 ? (
-              <p className="text-sm text-muted-foreground">
-                Registre pelo menos dois dias para ver o gráfico dessa medida.
-              </p>
-            ) : (
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chart} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="date" fontSize={11} />
-                    <YAxis fontSize={11} domain={["auto", "auto"]} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Line type="monotone" dataKey="valor" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            {last && prev && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Última vs. anterior:{" "}
-                {FIELDS.filter((f) => last[f.key] != null && prev[f.key] != null)
-                  .map((f) => {
-                    const d = Number(last[f.key]) - Number(prev[f.key]);
-                    return `${f.label} ${d >= 0 ? "+" : ""}${(Math.round(d * 10) / 10)
-                      .toString()
-                      .replace(".", ",")}${f.unit}`;
-                  })
-                  .join(" · ") || "sem comparação disponível"}
-              </p>
-            )}
-          </section>
+          <BodyEvolutionChart
+            records={rows}
+            userHeightCm={profile?.height_cm ?? null}
+            activeMetric={metric}
+            onChangeMetric={(m) => setMetric(m as FieldKey)}
+          />
 
           <section className="space-y-2">
             <h2 className="font-display text-lg font-bold">Histórico</h2>
