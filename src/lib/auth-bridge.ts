@@ -18,21 +18,56 @@
  */
 
 export const CANONICAL_ORIGIN = "https://cargaapp.vercel.app";
-
+ 
 /** Origens espelho autorizadas a receber a sessão pela ponte. */
-export const ALLOWED_BRIDGE_ORIGINS = [] as const;
+export const ALLOWED_BRIDGE_ORIGINS = [
+  "https://cargaapp.lovable.app",
+  "https://preview--cargaapp.lovable.app",
+  "http://localhost:8080",
+  "http://localhost:5173",
+  "http://localhost:3000",
+] as const;
 
 /** Caminho público que recebe a sessão na origem espelho. */
 export const BRIDGE_CALLBACK_PATH = "/auth-bridge";
 
 export function isAllowedBridgeOrigin(origin: string | null | undefined): boolean {
   if (!origin) return false;
-  return (ALLOWED_BRIDGE_ORIGINS as readonly string[]).includes(origin);
+  if ((ALLOWED_BRIDGE_ORIGINS as readonly string[]).includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    if (
+      host.endsWith(".lovable.app") ||
+      host === "lovable.app" ||
+      host.endsWith(".lovableproject.com") ||
+      host === "lovableproject.com" ||
+      host.endsWith(".lovableproject-dev.com") ||
+      host === "lovableproject-dev.com" ||
+      host === "localhost" ||
+      host === "127.0.0.1"
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 /** true quando o app está rodando numa origem espelho que precisa da ponte. */
 export function isBridgeOrigin(): boolean {
   if (typeof window === "undefined") return false;
+  const inIframe = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+  // No Lovable preview/iframe ou localhost, não força redirecionamento externo
+  if (inIframe) return false;
+
   const origin = window.location.origin;
   return origin !== CANONICAL_ORIGIN && isAllowedBridgeOrigin(origin);
 }

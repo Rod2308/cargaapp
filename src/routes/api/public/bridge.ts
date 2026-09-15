@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { ALLOWED_BRIDGE_ORIGINS, CANONICAL_ORIGIN } from "@/lib/auth-bridge";
+import { ALLOWED_BRIDGE_ORIGINS, CANONICAL_ORIGIN, isAllowedBridgeOrigin } from "@/lib/auth-bridge";
 
 // Ponte HTTP de funções do servidor.
 //
@@ -10,10 +10,14 @@ import { ALLOWED_BRIDGE_ORIGINS, CANONICAL_ORIGIN } from "@/lib/auth-bridge";
 // bridge-actions.server.ts — por HTTP, autenticado com o token do próprio
 // usuário. Só origens espelho autorizadas podem chamá-la (CORS fechado).
 
-const ALLOWED_ORIGINS = [CANONICAL_ORIGIN, ...ALLOWED_BRIDGE_ORIGINS] as string[];
+function isOriginAllowed(origin: string | null): boolean {
+  if (!origin) return false;
+  if (origin === CANONICAL_ORIGIN) return true;
+  return isAllowedBridgeOrigin(origin);
+}
 
 function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : "";
+  const allowed = isOriginAllowed(origin) ? (origin || "*") : "";
   return {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowed,
@@ -37,7 +41,7 @@ export const Route = createFileRoute("/api/public/bridge")({
         const origin = request.headers.get("origin");
         const headers = corsHeaders(origin);
 
-        if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+        if (origin && !isOriginAllowed(origin)) {
           return new Response(JSON.stringify({ error: "Origem não autorizada" }), {
             status: 403,
             headers,
